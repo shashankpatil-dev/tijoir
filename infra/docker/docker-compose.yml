@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tijoir-postgres
+    environment:
+      POSTGRES_DB: tijoir
+      POSTGRES_USER: tijoir
+      POSTGRES_PASSWORD: tijoir
+    ports:
+      - "5432:5432"
+    volumes:
+      - tijoir-postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: tijoir-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ../../backend
+    container_name: tijoir-backend
+    profiles:
+      - app
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/tijoir
+      DATABASE_USERNAME: tijoir
+      DATABASE_PASSWORD: tijoir
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: replace-with-local-dev-secret
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    build:
+      context: ../../frontend
+    container_name: tijoir-frontend
+    profiles:
+      - app
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  tijoir-postgres-data:

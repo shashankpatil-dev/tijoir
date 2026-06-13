@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: tijoir-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/tijoir}
+    username: ${DATABASE_USERNAME:tijoir}
+    password: ${DATABASE_PASSWORD:tijoir}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+tijoir:
+  security:
+    jwt-secret: ${JWT_SECRET:change-me-in-local-env}
+  gcp:
+    project-id: ${GCP_PROJECT_ID:}
+

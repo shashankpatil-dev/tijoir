@@ -1,0 +1,24 @@
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Java/Spring
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Node/Next
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# Logs
+*.log
+
