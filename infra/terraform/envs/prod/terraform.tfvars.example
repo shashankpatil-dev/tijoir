@@ -1,0 +1,17 @@
+aws_region   = "ap-south-1"
+project_name = "tijoir"
+environment  = "prod"
+
+backend_image_tag = "bootstrap"
+
+# First apply: false. After pushing a real backend image to ECR, set true.
+enable_backend_lambda = false
+
+# Replace after CloudFront is created if you want stricter CORS.
+allowed_cors_origins = ["*"]
+
+database_instance_class       = "db.t4g.micro"
+database_allocated_storage    = 20
+database_deletion_protection  = true
+lambda_memory_size            = 1024
+lambda_timeout                = 30

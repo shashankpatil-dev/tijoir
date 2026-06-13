@@ -68,7 +68,7 @@ Supported secret types:
 * certificate
 * custom secret
 
-The actual secret value is stored securely in **Google Cloud Secret Manager** or encrypted storage. The application database stores only metadata, ownership, policy, status, and access records.
+The actual secret value is stored securely in **AWS Secrets Manager** or encrypted storage. The application database stores only metadata, ownership, policy, status, and access records.
 
 ---
 
@@ -165,7 +165,7 @@ Audit log records who performed the offboarding action.
 
 The MVP focuses on backend correctness, secure workflows, and clean architecture.
 
-The project should be positioned as a **vendor credential exchange platform**, not as a generic replacement for HashiCorp Vault, 1Password, Infisical, or Google Secret Manager. The strongest use case is secure organization-to-organization credential exchange during vendor onboarding, integration setup, SFTP onboarding, webhook setup, and partner offboarding.
+The project should be positioned as a **vendor credential exchange platform**, not as a generic replacement for HashiCorp Vault, 1Password, Infisical, or AWS Secrets Manager. The strongest use case is secure organization-to-organization credential exchange during vendor onboarding, integration setup, SFTP onboarding, webhook setup, and partner offboarding.
 
 ### In Scope
 
@@ -175,7 +175,7 @@ The project should be positioned as a **vendor credential exchange platform**, n
 * role-based access control
 * secure secret creation
 * secret generator
-* Google Cloud Secret Manager integration
+* AWS Secrets Manager integration
 * PostgreSQL metadata storage
 * Redis rate limiting and one-time link locking
 * secure share links
@@ -263,7 +263,7 @@ Used for:
 ### Secret Storage
 
 ```text
-Google Cloud Secret Manager
+AWS Secrets Manager
 ```
 
 Used for storing actual secret payloads.
@@ -298,11 +298,11 @@ flowchart TB
 
     API --> PG[(PostgreSQL)]
     API --> REDIS[(Redis)]
-    API --> GSM[Google Cloud Secret Manager]
+    API --> ASM[AWS Secrets Manager]
 
-    SECRET --> GSM
+    SECRET --> ASM
     SHARE --> REDIS
-    SHARE --> GSM
+    SHARE --> ASM
     AUDIT --> PG
     NOTIF --> PG
     CONTRACT --> PG
@@ -338,7 +338,7 @@ Responsible for:
 * validating all requests
 * managing organization data
 * managing secret metadata
-* storing/retrieving secret payloads from Google Secret Manager
+* storing/retrieving secret payloads from AWS Secrets Manager
 * generating secure share links
 * enforcing expiry and one-time view policies
 * managing org-to-org connections
@@ -367,7 +367,7 @@ PostgreSQL should **not store raw secret values**.
 
 ---
 
-### 7.4 Google Cloud Secret Manager
+### 7.4 AWS Secrets Manager
 
 Stores actual secret payloads:
 
@@ -378,7 +378,7 @@ Stores actual secret payloads:
 * SSH keys
 * certificates
 
-PostgreSQL stores only the Secret Manager reference.
+PostgreSQL stores only the AWS Secrets Manager reference.
 
 ---
 
@@ -574,7 +574,7 @@ POST /api/auth/resend-verification
 Responsibilities:
 
 * create secret metadata
-* store actual secret in Secret Manager
+* store actual secret in AWS Secrets Manager
 * list organization secrets
 * reveal secret only to authorized owner
 * generate password/API key/webhook secret
@@ -706,7 +706,7 @@ GET /api/audit-logs
 Responsibilities:
 
 * rotate secret value
-* create new Secret Manager version
+* create new AWS Secrets Manager version
 * mark previous version inactive
 * update secret metadata
 * notify connected organizations
@@ -751,15 +751,15 @@ sequenceDiagram
     participant U as Org User
     participant FE as Next.js Frontend
     participant API as Spring Boot API
-    participant GSM as Google Secret Manager
+    participant ASM as AWS Secrets Manager
     participant DB as PostgreSQL
     participant AUD as Audit Module
 
     U->>FE: Create new secret
     FE->>API: POST /api/secrets
     API->>API: Validate JWT and request
-    API->>GSM: Store actual secret payload
-    GSM-->>API: Return secret_manager_ref
+    API->>ASM: Store actual secret payload
+    ASM-->>API: Return secret_manager_ref
     API->>DB: Save secret metadata
     API->>AUD: Record SECRET_CREATED
     API-->>FE: Secret created response
@@ -782,7 +782,7 @@ flowchart TD
     E --> G
     F --> G
     G --> H[User saves secret]
-    H --> I[Store payload in Secret Manager]
+    H --> I[Store payload in AWS Secrets Manager]
     I --> J[Save metadata in PostgreSQL]
     J --> K[Create audit log]
 ```
@@ -798,7 +798,7 @@ sequenceDiagram
     participant API as Backend
     participant DB as PostgreSQL
     participant R as Redis
-    participant GSM as Secret Manager
+    participant ASM as AWS Secrets Manager
     participant V as External Vendor
 
     A->>FE: Click Share Secret
@@ -816,8 +816,8 @@ sequenceDiagram
     API->>DB: Find active share link
     API->>API: Validate expiry and view count
     API->>R: Acquire one-time reveal lock
-    API->>GSM: Fetch secret payload
-    GSM-->>API: Secret value
+    API->>ASM: Fetch secret payload
+    ASM-->>API: Secret value
     API->>DB: Increment view count / mark consumed
     API->>DB: Write audit log
     API->>R: Release lock
@@ -872,15 +872,15 @@ flowchart TD
 sequenceDiagram
     participant U as Org User
     participant API as Backend
-    participant GSM as Secret Manager
+    participant ASM as AWS Secrets Manager
     participant DB as PostgreSQL
     participant N as Notification Module
     participant A as Audit Module
 
     U->>API: POST /api/secrets/{id}/rotate
     API->>DB: Validate secret ownership
-    API->>GSM: Create new secret version
-    GSM-->>API: New version reference
+    API->>ASM: Create new secret version
+    ASM-->>API: New version reference
     API->>DB: Update secret current version
     API->>DB: Save rotation history
     API->>N: Notify connected orgs if shared
@@ -1171,7 +1171,7 @@ In scope:
 
 Out of scope for MVP:
 - compromised end-user device or browser
-- malicious cloud provider or compromised Google Cloud project owner
+- malicious cloud provider or compromised AWS account owner
 - full zero-knowledge encryption where the backend cannot ever see plaintext
 - advanced insider threat with direct production database and cloud IAM access
 - hardware memory extraction while the backend is processing a secret
@@ -1193,9 +1193,9 @@ PostgreSQL stores:
 - type
 - owner org
 - status
-- Secret Manager reference
+- AWS Secrets Manager reference
 
-Google Secret Manager stores:
+AWS Secrets Manager stores:
 - actual secret payload
 ```
 
@@ -1403,9 +1403,9 @@ POST /api/contracts/{contractId}/secrets/{secretId}/reveal
 
 ```text
 Rules:
-- a secret has one active Secret Manager version reference
+- a secret has one active AWS Secrets Manager version reference
 - rotation creates a new version first
-- the database active version is updated only after Secret Manager confirms the new version
+- the database active version is updated only after AWS Secrets Manager confirms the new version
 - old versions are disabled first, not immediately destroyed
 - rollback can restore the previous version if the new credential fails validation
 - destroyed versions cannot be recovered and should be a separate explicit cleanup action
@@ -1971,7 +1971,7 @@ src/main/java/com/tijoir
 
 ```text
 1. Only owner organization can rotate secret.
-2. Rotation creates a new version in Secret Manager.
+2. Rotation creates a new version in AWS Secrets Manager.
 3. Rotation history must be saved.
 4. If secret is shared in a contract, connected organization should receive notification.
 5. Old versions should be disabled before they are destroyed.
@@ -2062,7 +2062,7 @@ CRUD is only a small part of the platform. The main complexity is in secure work
 
 ```text
 1. Create secret metadata
-2. Store secret in Google Secret Manager
+2. Store secret in AWS Secrets Manager
 3. List secrets
 4. Get secret details
 5. Generate password/API key/webhook secret
@@ -2150,7 +2150,7 @@ CRUD is only a small part of the platform. The main complexity is in secure work
 
 ## 22. Final Resume-Oriented Summary
 
-Tijoir is a secure credential vault and organization-to-organization secret exchange platform built using Spring Boot, PostgreSQL, Redis, and Google Cloud Secret Manager.
+Tijoir is a secure credential vault and organization-to-organization secret exchange platform built using Spring Boot, PostgreSQL, Redis, and AWS Secrets Manager.
 
 It allows organizations to securely generate, store, share, receive, and rotate credentials such as passwords, API keys, SSH keys, SFTP credentials, webhook secrets, and tokens.
 
@@ -2159,7 +2159,7 @@ The platform focuses on vendor onboarding and partner integration workflows. It 
 Resume bullet:
 
 ```text
-Built Tijoir, a secure vendor credential exchange backend using Spring Boot, PostgreSQL, Redis, and Google Cloud Secret Manager, with one-time secret links, organization-to-organization contracts, RBAC, append-only audit logs, vendor offboarding, and secret rotation workflows.
+Built Tijoir, a secure vendor credential exchange backend using Spring Boot, PostgreSQL, Redis, and AWS Secrets Manager, with one-time secret links, organization-to-organization contracts, RBAC, append-only audit logs, vendor offboarding, and secret rotation workflows.
 ```
 
 ---
@@ -2177,7 +2177,7 @@ Database:
 PostgreSQL for metadata, contracts, links, notifications, audit logs
 
 Secret Store:
-Google Cloud Secret Manager for actual secret payloads
+AWS Secrets Manager for actual secret payloads
 
 Redis:
 Rate limiting, failed attempt counters, one-time reveal locks

@@ -1,0 +1,7 @@
+aws_region        = "ap-south-1"
+state_bucket_name = "tijoir-terraform-state-shashank-2026"
+lock_table_name   = "tijoir-terraform-locks"
+
+# Optional, but recommended for GitHub Actions Terraform workflow.
+create_github_actions_role = true
+github_repository          = "shashankpatil-dev/tijoir"

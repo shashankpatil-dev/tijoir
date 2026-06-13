@@ -14,7 +14,7 @@ contract      integration contracts and contract secret permissions
 notification  lightweight notification records
 audit         append-only audit logs
 rotation      secret version rotation history
-common        config, exceptions, Redis, GCP, shared utilities
+common        config, exceptions, security controls, AWS, and shared utilities
 ```
 
 ## Local Dependencies
@@ -22,6 +22,5 @@ common        config, exceptions, Redis, GCP, shared utilities
 ```text
 PostgreSQL
 Redis
-Google Cloud Secret Manager credentials for real secret storage
+AWS credentials for production secret storage
 ```
-

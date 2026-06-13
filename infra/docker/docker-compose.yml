@@ -30,7 +30,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: replace-with-local-dev-secret
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
     ports:
       - "8080:8080"
     depends_on:

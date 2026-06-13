@@ -6,9 +6,14 @@ Local infrastructure starts with Docker Compose:
 docker compose -f infra/docker/docker-compose.yml up -d
 ```
 
-Cloud-specific notes belong in:
+Production AWS infrastructure is managed with Terraform:
 
 ```text
-infra/gcp/
+infra/terraform/
 ```
 
+Cloud-specific notes:
+
+```text
+infra/terraform/    AWS production infrastructure
+```

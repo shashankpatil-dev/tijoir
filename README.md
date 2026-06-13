@@ -20,7 +20,7 @@ Full product and architecture spec: [docs/product-spec.md](docs/product-spec.md)
 ```text
 1. Auth and email verification
 2. Organization and RBAC
-3. Secret Vault backed by Google Cloud Secret Manager
+3. Secret Vault backed by AWS Secrets Manager in production
 4. One-time public share links
 5. Organization connections
 6. Integration contracts
@@ -35,3 +35,15 @@ Full product and architecture spec: [docs/product-spec.md](docs/product-spec.md)
 ```bash
 docker compose -f infra/docker/docker-compose.yml up -d
 ```
+
+## Production Infra
+
+Production AWS infrastructure lives in:
+
+```text
+infra/terraform/
+```
+
+Local and staging-style testing should stay local until the MVP backend is stable.
+
+Terraform apply is allowed only from the `main` branch workflow. Other branches should use pull requests for plan review.

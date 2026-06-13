@@ -1,0 +1,10 @@
+terraform {
+  backend "s3" {
+    bucket         = "tijoir-terraform-state-REPLACE_WITH_UNIQUE_SUFFIX"
+    key            = "prod/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "tijoir-terraform-locks"
+    encrypt        = true
+  }
+}
+

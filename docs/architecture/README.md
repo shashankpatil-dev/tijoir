@@ -6,5 +6,4 @@ Core services:
 
 - PostgreSQL for metadata
 - Redis for locks and rate limits
-- Google Cloud Secret Manager for secret payloads
-
+- AWS Secrets Manager for production secret payloads

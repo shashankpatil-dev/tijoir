@@ -6,5 +6,4 @@ Planned:
 
 - create local Docker resources
 - verify Postgres and Redis health
-- prepare GCP Secret Manager resources
-
+- prepare AWS Secrets Manager resources
