@@ -15,6 +15,11 @@ resource "random_password" "database" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = false
+}
+
 resource "aws_secretsmanager_secret" "database" {
   name                    = "${local.name_prefix}/database"
   kms_key_id              = aws_kms_key.app.arn
@@ -40,4 +45,3 @@ resource "aws_secretsmanager_secret" "app_secret_prefix" {
   recovery_window_in_days = 7
   description             = "Placeholder secret proving the app secret namespace exists."
 }
-

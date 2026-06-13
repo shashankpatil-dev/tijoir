@@ -1,0 +1,46 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/backend-prod-deploy.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/backend-prod-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Backend tests and coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run tests with coverage
+        working-directory: backend
+        run: mvn -B verify
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jacoco-report
+          path: backend/target/site/jacoco
+          if-no-files-found: error

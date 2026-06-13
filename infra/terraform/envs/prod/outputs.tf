@@ -14,6 +14,10 @@ output "frontend_cloudfront_domain" {
   value = aws_cloudfront_distribution.frontend.domain_name
 }
 
+output "frontend_url" {
+  value = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
 output "database_secret_arn" {
   value     = aws_secretsmanager_secret.database.arn
   sensitive = true

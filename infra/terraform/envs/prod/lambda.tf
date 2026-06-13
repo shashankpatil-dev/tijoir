@@ -139,6 +139,8 @@ resource "aws_lambda_function" "backend" {
       APP_SECRET_NAME_PREFIX      = "${local.name_prefix}/app/"
       APP_SECRETS_PLACEHOLDER_ARN = aws_secretsmanager_secret.app_secret_prefix.arn
       AWS_KMS_KEY_ID              = aws_kms_key.app.arn
+      JWT_SECRET                  = random_password.jwt_secret.result
+      CORS_ALLOWED_ORIGINS        = join(",", var.allowed_cors_origins)
     }
   }
 

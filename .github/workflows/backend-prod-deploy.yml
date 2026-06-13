@@ -1,22 +1,17 @@
-name: Terraform Production
+name: Backend Production Deploy
 
 on:
-  pull_request:
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform-prod.yml"
   push:
     branches:
       - main
     paths:
-      - "infra/**"
-      - ".github/workflows/terraform-prod.yml"
+      - "backend/**"
+      - ".github/workflows/backend-prod-deploy.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
-  pull-requests: read
 
 concurrency:
   group: terraform-prod-${{ github.ref }}
@@ -28,18 +23,36 @@ env:
   TF_IN_AUTOMATION: true
   TF_INPUT: false
   TF_VAR_aws_region: ${{ vars.AWS_REGION || 'ap-south-1' }}
-  TF_VAR_backend_image_tag: ${{ vars.BACKEND_IMAGE_TAG || 'bootstrap' }}
-  TF_VAR_enable_backend_lambda: ${{ vars.ENABLE_BACKEND_LAMBDA || 'false' }}
+  TF_VAR_backend_image_tag: ${{ github.sha }}
+  TF_VAR_enable_backend_lambda: "true"
   TF_VAR_allowed_cors_origins: ${{ vars.ALLOWED_CORS_ORIGINS_JSON || '["*"]' }}
 
 jobs:
-  terraform:
-    name: Terraform plan/apply
+  deploy:
+    name: Build image, push ECR, apply Lambda
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run backend tests with coverage
+        working-directory: backend
+        run: mvn -B verify
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jacoco-report
+          path: backend/target/site/jacoco
+          if-no-files-found: error
 
       - name: Validate AWS role secret
         env:
@@ -65,15 +78,13 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Show AWS identity
-        run: |
-          aws sts get-caller-identity
-          echo "AWS_REGION=${AWS_REGION}"
-          aws configure list
+        run: aws sts get-caller-identity
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
+          terraform_wrapper: false
 
       - name: Write backend config
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -102,11 +113,41 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
 
-      - name: Terraform plan
+      - name: Read ECR repository URL
+        id: ecr
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: echo "repository_url=$(terraform output -raw backend_ecr_repository_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Login to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.repository_url }}
+        run: |
+          REGISTRY_HOST="$(printf '%s' "$ECR_REGISTRY" | cut -d/ -f1)"
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY_HOST"
+
+      - name: Build backend Lambda image
+        env:
+          REPOSITORY_URL: ${{ steps.ecr.outputs.repository_url }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: docker build -f backend/Dockerfile.lambda -t "$REPOSITORY_URL:$IMAGE_TAG" backend
+
+      - name: Push backend Lambda image
+        env:
+          REPOSITORY_URL: ${{ steps.ecr.outputs.repository_url }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: docker push "$REPOSITORY_URL:$IMAGE_TAG"
+
+      - name: Terraform plan with pushed image
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform plan -out=tfplan
 
-      - name: Terraform apply
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      - name: Terraform apply production Lambda
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Show production outputs
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform output backend_function_url
+          terraform output frontend_url
