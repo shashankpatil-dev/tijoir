@@ -40,6 +40,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate AWS role secret
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ]; then
+            echo "AWS_ROLE_ARN secret is missing."
+            exit 1
+          fi
+
+          if ! printf '%s' "$AWS_ROLE_ARN" | grep -Eq '^arn:aws:iam::[0-9]{12}:role/.+'; then
+            echo "AWS_ROLE_ARN must look like arn:aws:iam::123456789012:role/role-name."
+            echo "Do not include quotes, output labels, JSON, or only the role name."
+            exit 1
+          fi
+
+          echo "AWS_ROLE_ARN shape looks valid."
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

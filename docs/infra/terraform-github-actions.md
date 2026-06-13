@@ -40,6 +40,21 @@ TF_STATE_BUCKET   S3 bucket created by infra/terraform/bootstrap
 TF_LOCK_TABLE     DynamoDB lock table created by infra/terraform/bootstrap
 ```
 
+`AWS_ROLE_ARN` must be only the raw role ARN:
+
+```text
+arn:aws:iam::123456789012:role/tijoir-github-actions-terraform
+```
+
+Do not paste:
+
+```text
+github_actions_role_arn = "arn:aws:iam::123456789012:role/tijoir-github-actions-terraform"
+"arn:aws:iam::123456789012:role/tijoir-github-actions-terraform"
+tijoir-github-actions-terraform
+null
+```
+
 `AWS_ROLE_ARN` can be created by setting this in `infra/terraform/bootstrap/terraform.tfvars`:
 
 ```hcl

@@ -25,6 +25,11 @@ variable "github_repository" {
   description = "GitHub repository in owner/repo format. Required when create_github_actions_role is true."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.github_repository == "" || can(regex("^[^/]+/[^/]+$", var.github_repository))
+    error_message = "github_repository must be in owner/repo format, for example shashankpatil-dev/tijoir."
+  }
 }
 
 variable "github_actions_role_name" {

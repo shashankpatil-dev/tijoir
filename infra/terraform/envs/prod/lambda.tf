@@ -133,12 +133,12 @@ resource "aws_lambda_function" "backend" {
 
   environment {
     variables = {
-      SPRING_PROFILES_ACTIVE        = "prod"
-      DATABASE_SECRET_ARN          = aws_secretsmanager_secret.database.arn
-      SECURITY_CONTROL_TABLE_NAME  = aws_dynamodb_table.security_control.name
-      APP_SECRET_NAME_PREFIX       = "${local.name_prefix}/app/"
-      APP_SECRETS_PLACEHOLDER_ARN  = aws_secretsmanager_secret.app_secret_prefix.arn
-      AWS_KMS_KEY_ID               = aws_kms_key.app.arn
+      SPRING_PROFILES_ACTIVE      = "prod"
+      DATABASE_SECRET_ARN         = aws_secretsmanager_secret.database.arn
+      SECURITY_CONTROL_TABLE_NAME = aws_dynamodb_table.security_control.name
+      APP_SECRET_NAME_PREFIX      = "${local.name_prefix}/app/"
+      APP_SECRETS_PLACEHOLDER_ARN = aws_secretsmanager_secret.app_secret_prefix.arn
+      AWS_KMS_KEY_ID              = aws_kms_key.app.arn
     }
   }
 
