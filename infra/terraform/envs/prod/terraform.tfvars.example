@@ -12,6 +12,7 @@ allowed_cors_origins = ["*"]
 
 database_instance_class       = "db.t4g.micro"
 database_allocated_storage    = 20
+database_backup_retention_period = 0
 database_deletion_protection  = true
 lambda_memory_size            = 1024
 lambda_timeout                = 30

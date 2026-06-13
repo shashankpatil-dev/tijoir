@@ -13,10 +13,10 @@ Lower-cost choices:
 Main unavoidable cost:
 
 - PostgreSQL is provisioned with RDS `db.t4g.micro` by default because the application needs relational metadata. Aurora Serverless v2 is more "serverless", but usually not cheaper for a small always-on portfolio project.
+- RDS automated backup retention defaults to `0` because some free-tier-restricted AWS accounts reject non-zero backup retention. Increase `database_backup_retention_period` later for real production safety.
 
 Optional cost:
 
 - Secrets Manager VPC endpoint is enabled by default so Lambda can privately access Secrets Manager without NAT. It costs money hourly. NAT Gateway usually costs more.
 
 For the cheapest experimentation, keep production destroyed when not in use and develop locally with Docker Compose.
-

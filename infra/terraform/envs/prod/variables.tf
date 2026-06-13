@@ -75,6 +75,12 @@ variable "database_allocated_storage" {
   default     = 20
 }
 
+variable "database_backup_retention_period" {
+  description = "RDS automated backup retention in days. Use 0 for free-tier-restricted accounts."
+  type        = number
+  default     = 0
+}
+
 variable "database_deletion_protection" {
   description = "Protect production DB from accidental deletion."
   type        = bool
