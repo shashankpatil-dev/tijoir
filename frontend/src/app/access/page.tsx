@@ -11,7 +11,7 @@ import {
 } from "@/lib/auth-client";
 import { AuthShell, StatusPanel } from "@/components/site-chrome";
 import { TextAreaField } from "@/components/ui/form-fields";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 export default function AccessPage() {
@@ -154,17 +154,6 @@ export default function AccessPage() {
     }
   }
 
-  const tone = message.toLowerCase().includes("successfully") ||
-    message.toLowerCase().includes("loaded") ||
-    message.toLowerCase().includes("copied")
-    ? "success"
-    : message.toLowerCase().includes("could not") ||
-        message.toLowerCase().includes("required") ||
-        message.toLowerCase().includes("invalid") ||
-        message.toLowerCase().includes("expired")
-      ? "error"
-      : "neutral";
-
   return (
     <AuthShell
       aside={
@@ -225,8 +214,6 @@ export default function AccessPage() {
             </Link>
           </div>
         </form>
-
-        <InlineMessage body={message} title="System response" tone={tone} />
 
         {metadata ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">

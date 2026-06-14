@@ -26,7 +26,7 @@ import {
 } from "@/lib/auth-client";
 import { SiteHeader, StatusPanel } from "@/components/site-chrome";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/form-fields";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 type ViewKey = "overview" | "vault" | "share" | "recipient";
@@ -833,25 +833,6 @@ function DashboardWorkspace({
               value={String(viewOncePending)}
             />
           </div>
-
-          <InlineMessage
-            body={message}
-            title="System response"
-            tone={
-              message.toLowerCase().includes("could not") ||
-              message.toLowerCase().includes("required") ||
-              message.toLowerCase().includes("expired") ||
-              message.toLowerCase().includes("invalid")
-                ? "error"
-                : message.toLowerCase().includes("loaded") ||
-                    message.toLowerCase().includes("created") ||
-                    message.toLowerCase().includes("consumed") ||
-                    message.toLowerCase().includes("rotated") ||
-                    message.toLowerCase().includes("copied")
-                  ? "success"
-                  : "neutral"
-            }
-          />
 
           {activeView === "overview" ? (
             <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">

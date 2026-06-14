@@ -17,7 +17,7 @@ import {
   StatusPanel,
 } from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 export default function LoginPage() {
@@ -68,14 +68,6 @@ export default function LoginPage() {
     }
   }
 
-  const tone = message.toLowerCase().includes("complete")
-    ? "success"
-    : message.toLowerCase().includes("error") ||
-        message.toLowerCase().includes("invalid") ||
-        message.toLowerCase().includes("required")
-      ? "error"
-      : "neutral";
-
   return (
     <GuestRoute>
       <AuthShell
@@ -124,16 +116,13 @@ export default function LoginPage() {
           <PrimaryButton busy={busy}>Sign in</PrimaryButton>
         </form>
 
-        <div className="mt-6 space-y-4">
-          <InlineMessage body={message} title="System response" tone={tone} />
-          <div className="flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">
-            <Link className="font-medium text-[var(--color-brand-strong)]" href="/signup">
-              Create account
-            </Link>
-            <Link className="font-medium text-[var(--color-brand-strong)]" href="/verify">
-              Verify token
-            </Link>
-          </div>
+        <div className="mt-6 flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">
+          <Link className="font-medium text-[var(--color-brand-strong)]" href="/signup">
+            Create account
+          </Link>
+          <Link className="font-medium text-[var(--color-brand-strong)]" href="/verify">
+            Verify token
+          </Link>
         </div>
       </AuthShell>
     </GuestRoute>

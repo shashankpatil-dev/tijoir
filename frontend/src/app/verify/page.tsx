@@ -15,7 +15,7 @@ import {
   StatusPanel,
 } from "@/components/site-chrome";
 import { PrimaryButton } from "@/components/site-chrome";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 export default function VerifyPage() {
@@ -115,14 +115,6 @@ export default function VerifyPage() {
     }
   }
 
-  const tone = message.toLowerCase().includes("complete")
-    ? "success"
-    : message.toLowerCase().includes("expired") ||
-        message.toLowerCase().includes("invalid") ||
-        message.toLowerCase().includes("error")
-      ? "error"
-      : "neutral";
-
   return (
     <GuestRoute>
       <AuthShell
@@ -183,16 +175,13 @@ export default function VerifyPage() {
           </button>
         </form>
 
-        <div className="mt-6 space-y-4">
-          <InlineMessage body={message} title="System response" tone={tone} />
-          <div className="flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">
-            <Link className="font-medium text-[var(--color-brand-strong)]" href="/signup">
-              Back to signup
-            </Link>
-            <Link className="font-medium text-[var(--color-brand-strong)]" href="/login">
-              Continue to login
-            </Link>
-          </div>
+        <div className="mt-6 flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">
+          <Link className="font-medium text-[var(--color-brand-strong)]" href="/signup">
+            Back to signup
+          </Link>
+          <Link className="font-medium text-[var(--color-brand-strong)]" href="/login">
+            Continue to login
+          </Link>
         </div>
       </AuthShell>
     </GuestRoute>

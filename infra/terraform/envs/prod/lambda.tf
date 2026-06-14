@@ -157,14 +157,6 @@ resource "aws_lambda_function_url" "backend" {
 
   function_name      = aws_lambda_function.backend[0].function_name
   authorization_type = "NONE"
-
-  cors {
-    allow_credentials = false
-    allow_headers     = ["authorization", "content-type", "x-request-id"]
-    allow_methods     = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-    allow_origins     = var.allowed_cors_origins
-    max_age           = 300
-  }
 }
 
 resource "aws_lambda_permission" "backend_function_url_public" {

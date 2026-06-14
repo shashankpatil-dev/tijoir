@@ -15,7 +15,7 @@ import {
   StatusPanel,
 } from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 export default function SignupPage() {
@@ -73,14 +73,6 @@ export default function SignupPage() {
       setBusy(false);
     }
   }
-
-  const tone = message.toLowerCase().includes("complete")
-    ? "success"
-    : message.toLowerCase().includes("already") ||
-        message.toLowerCase().includes("error") ||
-        message.toLowerCase().includes("failed")
-      ? "error"
-      : "neutral";
 
   return (
     <GuestRoute>
@@ -145,8 +137,7 @@ export default function SignupPage() {
           <PrimaryButton busy={busy}>Create organization</PrimaryButton>
         </form>
 
-        <div className="mt-6 space-y-4">
-          <InlineMessage body={message} title="System response" tone={tone} />
+        <div className="mt-6">
           <p className="text-sm text-[var(--color-muted)]">
             Already registered?{" "}
             <Link className="font-medium text-[var(--color-brand-strong)]" href="/login">

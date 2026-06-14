@@ -88,7 +88,7 @@ variable "database_deletion_protection" {
 }
 
 variable "allowed_cors_origins" {
-  description = "Allowed origins for the Lambda Function URL CORS policy."
+  description = "Allowed origins for backend application CORS responses."
   type        = list(string)
   default     = ["*"]
 }
