@@ -166,3 +166,13 @@ resource "aws_lambda_function_url" "backend" {
     max_age           = 300
   }
 }
+
+resource "aws_lambda_permission" "backend_function_url_public" {
+  count = var.enable_backend_lambda ? 1 : 0
+
+  statement_id           = "AllowPublicFunctionUrlInvoke"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.backend[0].function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
