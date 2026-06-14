@@ -16,9 +16,11 @@ import {
 } from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
 import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [organizationName, setOrganizationName] = useState("Acme Integrations");
   const [organizationEmail, setOrganizationEmail] = useState("security@acme.test");
   const [userName, setUserName] = useState("Acme Owner");
@@ -53,9 +55,20 @@ export default function SignupPage() {
       }
 
       setMessage("Registration complete. Continue to email verification.");
+      showToast({
+        title: "Signup complete",
+        description: "Organization owner created. Continue to verification.",
+        tone: "success",
+      });
       router.push("/verify");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unexpected error");
+      const text = error instanceof Error ? error.message : "Unexpected error";
+      setMessage(text);
+      showToast({
+        title: "Signup failed",
+        description: text,
+        tone: "error",
+      });
     } finally {
       setBusy(false);
     }

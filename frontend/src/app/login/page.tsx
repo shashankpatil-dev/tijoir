@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { GuestRoute } from "@/components/auth/auth-guards";
 import {
   apiRequest,
+  consumeRedirectPath,
   readRememberedEmail,
   saveSession,
   type AuthResponse,
@@ -17,9 +18,11 @@ import {
 } from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
 import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [email, setEmail] = useState("owner@acme.test");
   const [password, setPassword] = useState("StrongPass@123");
   const [message, setMessage] = useState("Login after email verification.");
@@ -44,10 +47,22 @@ export default function LoginPage() {
       });
 
       saveSession(result);
-      setMessage("Login complete. Redirecting to dashboard.");
-      router.push("/dashboard");
+      const targetPath = consumeRedirectPath("/dashboard");
+      setMessage("Login complete. Redirecting to workspace.");
+      showToast({
+        title: "Login successful",
+        description: "Session restored. Redirecting to the workspace.",
+        tone: "success",
+      });
+      router.push(targetPath);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unexpected error");
+      const text = error instanceof Error ? error.message : "Unexpected error";
+      setMessage(text);
+      showToast({
+        title: "Login failed",
+        description: text,
+        tone: "error",
+      });
     } finally {
       setBusy(false);
     }

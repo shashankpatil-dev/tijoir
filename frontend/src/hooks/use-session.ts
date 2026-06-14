@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   authenticatedApiRequest,
+  consumeRedirectPath,
   clearSession,
   readSession,
   saveSession,
@@ -67,6 +68,7 @@ export function useProtectedSession() {
     setErrorMessage,
     refresh,
     removeSession,
+    consumeRedirectPath,
   };
 }
 

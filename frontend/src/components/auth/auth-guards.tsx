@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { LoadingScreen } from "@/components/ui/feedback";
+import { saveRedirectPath } from "@/lib/auth-client";
 import { useGuestSession, useProtectedSession } from "@/hooks/use-session";
 
 export function ProtectedRoute({
@@ -16,6 +17,11 @@ export function ProtectedRoute({
 
   useEffect(() => {
     if (!sessionState.checking && !sessionState.session) {
+      if (typeof window !== "undefined") {
+        saveRedirectPath(
+          `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        );
+      }
       router.replace("/login");
     }
   }, [router, sessionState.checking, sessionState.session]);
@@ -44,16 +50,25 @@ export function ProtectedRoute({
 export function GuestRoute({
   children,
 }: {
-  children: ReactNode;
+  children: ReactNode | ((targetPath: string) => ReactNode);
 }) {
   const router = useRouter();
   const { session, checking } = useGuestSession();
+  const [targetPath, setTargetPath] = useState("/dashboard");
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setTargetPath(window.sessionStorage.getItem("tijoir.redirectPath") || "/dashboard");
+  }, []);
 
   useEffect(() => {
     if (!checking && session) {
-      router.replace("/dashboard");
+      router.replace(targetPath);
     }
-  }, [checking, router, session]);
+  }, [checking, router, session, targetPath]);
 
   if (checking) {
     return (
@@ -73,5 +88,5 @@ export function GuestRoute({
     );
   }
 
-  return <>{children}</>;
+  return <>{typeof children === "function" ? children(targetPath) : children}</>;
 }

@@ -8,6 +8,7 @@ import {
   apiRequest,
   clearPendingVerification,
   readPendingVerification,
+  savePendingVerification,
 } from "@/lib/auth-client";
 import {
   AuthShell,
@@ -15,9 +16,11 @@ import {
 } from "@/components/site-chrome";
 import { PrimaryButton } from "@/components/site-chrome";
 import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
 
 export default function VerifyPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("Complete email verification to unlock login.");
@@ -47,9 +50,20 @@ export default function VerifyPage() {
 
       clearPendingVerification();
       setMessage("Verification complete. Continue to login.");
+      showToast({
+        title: "Email verified",
+        description: "The owner account can now log in.",
+        tone: "success",
+      });
       router.push("/login");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unexpected error");
+      const text = error instanceof Error ? error.message : "Unexpected error";
+      setMessage(text);
+      showToast({
+        title: "Verification failed",
+        description: text,
+        tone: "error",
+      });
     } finally {
       setBusy(false);
     }
@@ -75,11 +89,27 @@ export default function VerifyPage() {
 
       if (result.emailVerificationToken) {
         setToken(result.emailVerificationToken);
+        savePendingVerification({
+          token: result.emailVerificationToken,
+          email,
+          expiresAt: result.emailVerificationExpiresAt,
+        });
       }
 
       setMessage("Fresh verification token issued. Submit it below.");
+      showToast({
+        title: "Verification token refreshed",
+        description: "Use the new token to complete verification.",
+        tone: "success",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not resend token");
+      const text = error instanceof Error ? error.message : "Could not resend token";
+      setMessage(text);
+      showToast({
+        title: "Resend failed",
+        description: text,
+        tone: "error",
+      });
     } finally {
       setResendBusy(false);
     }

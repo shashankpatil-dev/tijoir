@@ -4,12 +4,18 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import {
   apiRequest,
+  readLastPublicToken,
+  saveLastPublicToken,
   type ConsumeShareLinkResponse,
   type PublicShareLinkMetadataResponse,
 } from "@/lib/auth-client";
 import { AuthShell, StatusPanel } from "@/components/site-chrome";
+import { TextAreaField } from "@/components/ui/form-fields";
+import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
 
 export default function AccessPage() {
+  const { showToast } = useToast();
   const [token, setToken] = useState("");
   const [metadata, setMetadata] = useState<PublicShareLinkMetadataResponse | null>(
     null,
@@ -27,7 +33,7 @@ export default function AccessPage() {
     }
 
     const search = new URLSearchParams(window.location.search);
-    const initialToken = search.get("token");
+    const initialToken = search.get("token") || readLastPublicToken();
     if (!initialToken) {
       return;
     }
@@ -44,6 +50,11 @@ export default function AccessPage() {
   async function loadMetadata(rawToken: string) {
     if (!rawToken.trim()) {
       setMessage("Enter a share token first.");
+      showToast({
+        title: "Token required",
+        description: "Paste a share token before loading metadata.",
+        tone: "warning",
+      });
       return;
     }
 
@@ -55,11 +66,24 @@ export default function AccessPage() {
         `/api/public/share-links/${rawToken.trim()}`,
       );
 
+      saveLastPublicToken(rawToken.trim());
       setMetadata(result);
       setConsumedValue(null);
       setMessage(`Loaded metadata for ${result.secretName}.`);
+      showToast({
+        title: "Metadata loaded",
+        description: `Public metadata for ${result.secretName} is available.`,
+        tone: "success",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load share metadata");
+      const text =
+        error instanceof Error ? error.message : "Could not load share metadata";
+      setMessage(text);
+      showToast({
+        title: "Metadata load failed",
+        description: text,
+        tone: "error",
+      });
     } finally {
       setBusy(null);
     }
@@ -68,6 +92,11 @@ export default function AccessPage() {
   async function consume() {
     if (!token.trim()) {
       setMessage("Enter a share token first.");
+      showToast({
+        title: "Token required",
+        description: "Paste a share token before consuming the link.",
+        tone: "warning",
+      });
       return;
     }
 
@@ -80,10 +109,23 @@ export default function AccessPage() {
         { method: "POST" },
       );
 
+      saveLastPublicToken(token.trim());
       setConsumedValue(result);
       setMessage(`Consumed ${result.secretKey} successfully.`);
+      showToast({
+        title: "Share consumed",
+        description: `${result.secretKey} was revealed successfully.`,
+        tone: "success",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not consume share link");
+      const text =
+        error instanceof Error ? error.message : "Could not consume share link";
+      setMessage(text);
+      showToast({
+        title: "Consume failed",
+        description: text,
+        tone: "error",
+      });
     } finally {
       setBusy(null);
     }
@@ -97,10 +139,31 @@ export default function AccessPage() {
     try {
       await navigator.clipboard.writeText(consumedValue.value);
       setMessage("Secret value copied.");
+      showToast({
+        title: "Copied",
+        description: "Secret value copied to the clipboard.",
+        tone: "success",
+      });
     } catch {
       setMessage("Could not copy the secret value.");
+      showToast({
+        title: "Copy failed",
+        description: "The secret value could not be copied.",
+        tone: "error",
+      });
     }
   }
+
+  const tone = message.toLowerCase().includes("successfully") ||
+    message.toLowerCase().includes("loaded") ||
+    message.toLowerCase().includes("copied")
+    ? "success"
+    : message.toLowerCase().includes("could not") ||
+        message.toLowerCase().includes("required") ||
+        message.toLowerCase().includes("invalid") ||
+        message.toLowerCase().includes("expired")
+      ? "error"
+      : "neutral";
 
   return (
     <AuthShell
@@ -120,6 +183,11 @@ export default function AccessPage() {
       eyebrow="Public access"
       title="Consume a shared secret"
     >
+      <BusyOverlay
+        body="Working with the public share-link API and refreshing the recipient state."
+        title={busy === "consume" ? "Consuming link" : "Loading metadata"}
+        visible={busy !== null}
+      />
       <div className="space-y-6">
         <form className="space-y-4" onSubmit={handleLoadMetadata}>
           <div>
@@ -134,17 +202,12 @@ export default function AccessPage() {
             </p>
           </div>
 
-          <label className="block">
-            <span className="text-sm font-medium text-[var(--color-ink)]">
-              Share token
-            </span>
-            <textarea
-              className="mt-2 min-h-32 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
-              onChange={(event) => setToken(event.target.value)}
-              required
-              value={token}
-            />
-          </label>
+          <TextAreaField
+            label="Share token"
+            onChange={setToken}
+            rows={5}
+            value={token}
+          />
 
           <div className="flex flex-wrap gap-3">
             <button
@@ -163,7 +226,7 @@ export default function AccessPage() {
           </div>
         </form>
 
-        <StatusPanel body={message} title="System response" />
+        <InlineMessage body={message} title="System response" tone={tone} />
 
         {metadata ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">

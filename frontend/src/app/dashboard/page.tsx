@@ -8,7 +8,11 @@ import {
   apiRequest,
   apiBaseUrl,
   authenticatedApiRequest,
+  readLastPublicToken,
+  readWorkspaceCache,
+  saveLastPublicToken,
   saveSession,
+  saveWorkspaceCache,
   type AuthResponse,
   type ConsumeShareLinkResponse,
   type ContractPermission,
@@ -23,6 +27,7 @@ import {
 import { SiteHeader, StatusPanel } from "@/components/site-chrome";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/form-fields";
 import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { useToast } from "@/components/ui/toast-provider";
 
 type ViewKey = "overview" | "vault" | "share" | "recipient";
 
@@ -88,6 +93,7 @@ function DashboardWorkspace({
   removeSession: () => void;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [session, setSession] = useState<AuthResponse | null>(initialSession);
   const [activeView, setActiveView] = useState<ViewKey>("overview");
   const [message, setMessage] = useState("Loading workspace");
@@ -131,7 +137,22 @@ function DashboardWorkspace({
 
   useEffect(() => {
     setSession(initialSession);
-    setMessage("Session restored. Loading organization data.");
+    const cached = readWorkspaceCache(initialSession.organization.slug);
+    const rememberedToken = readLastPublicToken();
+
+    if (cached) {
+      setSecrets(cached.secrets);
+      setShareLinks(cached.shareLinks);
+      setSelectedSecretId(cached.selectedSecretId || "");
+      setActiveView((cached.activeView as ViewKey) || "overview");
+      setMessage("Session restored. Showing cached workspace while live data loads.");
+    } else {
+      setMessage("Session restored. Loading organization data.");
+    }
+
+    if (rememberedToken) {
+      setPublicToken(rememberedToken);
+    }
   }, [initialSession]);
 
   useEffect(() => {
@@ -169,6 +190,28 @@ function DashboardWorkspace({
 
     void loadSecretDetail(selectedSecretId, session.accessToken);
   }, [selectedSecretId, session?.accessToken]);
+
+  useEffect(() => {
+    if (!session?.organization.slug) {
+      return;
+    }
+
+    saveWorkspaceCache(session.organization.slug, {
+      secrets,
+      shareLinks,
+      selectedSecretId,
+      activeView,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [activeView, secrets, selectedSecretId, session?.organization.slug, shareLinks]);
+
+  useEffect(() => {
+    if (!publicToken.trim()) {
+      return;
+    }
+
+    saveLastPublicToken(publicToken.trim());
+  }, [publicToken]);
 
   const activeSecret = useMemo(
     () => secrets.find((secret) => secret.id === selectedSecretId) || null,
@@ -217,8 +260,18 @@ function DashboardWorkspace({
         setMessage(
           "Workspace loaded. Share-link inventory is not available for this role.",
         );
+        showToast({
+          title: "Workspace loaded",
+          description: "Vault data is live, but share-link inventory is not available for this role.",
+          tone: "warning",
+        });
       } else {
         setMessage("Workspace loaded from live backend APIs.");
+        showToast({
+          title: "Workspace loaded",
+          description: "Organization data was refreshed from the backend.",
+          tone: "success",
+        });
       }
     } catch (error) {
       handleSessionError(error, "Could not load workspace");
@@ -283,6 +336,11 @@ function DashboardWorkspace({
       setActiveView("vault");
       await loadWorkspace(session.accessToken);
       setMessage(`Secret ${created.secretKey} created.`);
+      showToast({
+        title: "Secret created",
+        description: `${created.secretKey} is now stored in the vault.`,
+        tone: "success",
+      });
     } catch (error) {
       handleSessionError(error, "Could not create secret");
     } finally {
@@ -314,6 +372,11 @@ function DashboardWorkspace({
 
       setCreateValue(result.value);
       setMessage(`Generated ${result.type} candidate with length ${result.length}.`);
+      showToast({
+        title: "Value generated",
+        description: `${result.type} candidate generated for the create form.`,
+        tone: "success",
+      });
     } catch (error) {
       handleSessionError(error, "Could not generate candidate value");
     } finally {
@@ -339,6 +402,11 @@ function DashboardWorkspace({
 
       setRevealedSecret(result);
       setMessage(`Revealed ${result.secretKey} version ${result.versionNumber}.`);
+      showToast({
+        title: "Secret revealed",
+        description: `${result.secretKey} version ${result.versionNumber} was loaded.`,
+        tone: "success",
+      });
     } catch (error) {
       handleSessionError(error, "Could not reveal secret");
     } finally {
@@ -370,6 +438,11 @@ function DashboardWorkspace({
       await loadWorkspace(session.accessToken);
       await loadSecretDetail(selectedSecretId, session.accessToken);
       setMessage("Secret rotated and active version updated.");
+      showToast({
+        title: "Secret rotated",
+        description: "The active secret version was updated successfully.",
+        tone: "success",
+      });
     } catch (error) {
       handleSessionError(error, "Could not rotate secret");
     } finally {
@@ -399,6 +472,11 @@ function DashboardWorkspace({
         await loadSecretDetail(secretId, session.accessToken);
       }
       setMessage("Secret revoked.");
+      showToast({
+        title: "Secret revoked",
+        description: "This vault secret can no longer be revealed.",
+        tone: "warning",
+      });
     } catch (error) {
       handleSessionError(error, "Could not revoke secret");
     } finally {
@@ -444,11 +522,17 @@ function DashboardWorkspace({
           consumeUrl: `${apiBaseUrl}${created.publicConsumePath || ""}`,
         });
         setPublicToken(created.shareToken);
+        saveLastPublicToken(created.shareToken);
       }
 
       await loadWorkspace(session.accessToken);
       setActiveView("share");
       setMessage(`Share link created for ${created.secretKey}.`);
+      showToast({
+        title: "Share link created",
+        description: `${created.secretKey} is ready for recipient testing.`,
+        tone: "success",
+      });
     } catch (error) {
       handleSessionError(error, "Could not create share link");
     } finally {
@@ -474,6 +558,11 @@ function DashboardWorkspace({
 
       await loadWorkspace(session.accessToken);
       setMessage("Share link revoked.");
+      showToast({
+        title: "Share link revoked",
+        description: "Recipient access for this link has been closed.",
+        tone: "warning",
+      });
     } catch (error) {
       handleSessionError(error, "Could not revoke share link");
     } finally {
@@ -485,6 +574,11 @@ function DashboardWorkspace({
     event?.preventDefault();
     if (!publicToken.trim()) {
       setMessage("Enter a share token first.");
+      showToast({
+        title: "Token required",
+        description: "Paste a share token before loading public metadata.",
+        tone: "warning",
+      });
       return;
     }
 
@@ -493,11 +587,17 @@ function DashboardWorkspace({
 
     try {
       const metadata = await authenticatedOrPublicMetadata(publicToken.trim());
+      saveLastPublicToken(publicToken.trim());
       setPublicMetadata(metadata);
       setPublicConsumedValue(null);
       setMessage(`Loaded public metadata for ${metadata.secretName}.`);
+      showToast({
+        title: "Public metadata loaded",
+        description: `${metadata.secretName} contract metadata is available.`,
+        tone: "success",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load metadata");
+      handleSessionError(error, "Could not load metadata");
     } finally {
       setActionBusy(null);
     }
@@ -506,6 +606,11 @@ function DashboardWorkspace({
   async function handleConsumePublicShare() {
     if (!publicToken.trim()) {
       setMessage("Enter a share token first.");
+      showToast({
+        title: "Token required",
+        description: "Paste a share token before consuming the link.",
+        tone: "warning",
+      });
       return;
     }
 
@@ -517,10 +622,16 @@ function DashboardWorkspace({
         `/api/public/share-links/${publicToken.trim()}/consume`,
         { method: "POST" },
       );
+      saveLastPublicToken(publicToken.trim());
       setPublicConsumedValue(result);
       setMessage(`Secret ${result.secretKey} consumed successfully.`);
+      showToast({
+        title: "Share consumed",
+        description: `${result.secretKey} was revealed through the public contract flow.`,
+        tone: "success",
+      });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not consume share link");
+      handleSessionError(error, "Could not consume share link");
     } finally {
       setActionBusy(null);
     }
@@ -541,18 +652,38 @@ function DashboardWorkspace({
       setSession(null);
       router.replace("/login");
       setMessage("Session expired. Login required.");
+      showToast({
+        title: "Session expired",
+        description: "Log in again to continue using the workspace.",
+        tone: "warning",
+      });
       return;
     }
 
     setMessage(text || fallback);
+    showToast({
+      title: "Request failed",
+      description: text || fallback,
+      tone: "error",
+    });
   }
 
   async function copyText(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value);
       setMessage(`${label} copied.`);
+      showToast({
+        title: "Copied",
+        description: `${label} copied to the clipboard.`,
+        tone: "success",
+      });
     } catch {
       setMessage(`Could not copy ${label.toLowerCase()}.`);
+      showToast({
+        title: "Copy failed",
+        description: `Could not copy ${label.toLowerCase()}.`,
+        tone: "error",
+      });
     }
   }
 
@@ -561,6 +692,11 @@ function DashboardWorkspace({
     setSession(null);
     setSecrets([]);
     setShareLinks([]);
+    showToast({
+      title: "Logged out",
+      description: "The workspace session has been cleared.",
+      tone: "info",
+    });
     router.push("/login");
   }
 

@@ -127,6 +127,14 @@ export type ConsumeShareLinkResponse = {
   status: ShareLinkStatus;
 };
 
+export type WorkspaceCache = {
+  secrets: SecretSummary[];
+  shareLinks: ShareLinkResponse[];
+  selectedSecretId?: string;
+  activeView?: string;
+  updatedAt: string;
+};
+
 export const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
   "http://localhost:8080";
@@ -134,6 +142,12 @@ export const apiBaseUrl =
 const sessionStorageKey = "tijoir.session";
 const pendingVerificationKey = "tijoir.pendingVerification";
 const rememberedEmailKey = "tijoir.lastEmail";
+const lastPublicTokenKey = "tijoir.lastPublicToken";
+const redirectPathKey = "tijoir.redirectPath";
+const sessionCookieKey = "tijoir_session";
+const rememberedEmailCookieKey = "tijoir_last_email";
+const redirectCookieKey = "tijoir_redirect";
+const workspaceCachePrefix = "tijoir.workspaceCache.";
 
 export function apiUrl(path: string): string {
   return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
@@ -149,6 +163,7 @@ export async function apiRequest<T>(
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
+    cache: options.cache ?? "no-store",
   });
 
   const text = await response.text();
@@ -170,7 +185,7 @@ export async function authenticatedApiRequest<T>(
   return apiRequest<T>(path, {
     ...options,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -181,15 +196,22 @@ export function readSession(): AuthResponse | null {
     return null;
   }
 
-  const raw = window.localStorage.getItem(sessionStorageKey);
+  const raw =
+    window.localStorage.getItem(sessionStorageKey) ||
+    readCookie(sessionCookieKey);
   if (!raw) {
     return null;
   }
 
   try {
-    return JSON.parse(raw) as AuthResponse;
+    const session = JSON.parse(raw) as AuthResponse;
+    if (new Date(session.expiresAt).getTime() <= Date.now()) {
+      clearSession();
+      return null;
+    }
+    return session;
   } catch {
-    window.localStorage.removeItem(sessionStorageKey);
+    clearSession();
     return null;
   }
 }
@@ -199,8 +221,15 @@ export function saveSession(session: AuthResponse) {
     return;
   }
 
-  window.localStorage.setItem(sessionStorageKey, JSON.stringify(session));
+  const payload = JSON.stringify(session);
+  window.localStorage.setItem(sessionStorageKey, payload);
   window.localStorage.setItem(rememberedEmailKey, session.user.email);
+  writeCookie(
+    sessionCookieKey,
+    payload,
+    toCookieExpiry(session.expiresAt),
+  );
+  writeCookie(rememberedEmailCookieKey, session.user.email, 30);
 }
 
 export function clearSession() {
@@ -209,6 +238,7 @@ export function clearSession() {
   }
 
   window.localStorage.removeItem(sessionStorageKey);
+  clearCookie(sessionCookieKey);
 }
 
 export function readRememberedEmail(): string {
@@ -216,7 +246,11 @@ export function readRememberedEmail(): string {
     return "";
   }
 
-  return window.localStorage.getItem(rememberedEmailKey) || "";
+  return (
+    window.localStorage.getItem(rememberedEmailKey) ||
+    readCookie(rememberedEmailCookieKey) ||
+    ""
+  );
 }
 
 export function savePendingVerification(payload: PendingVerification) {
@@ -229,6 +263,7 @@ export function savePendingVerification(payload: PendingVerification) {
     JSON.stringify(payload),
   );
   window.localStorage.setItem(rememberedEmailKey, payload.email);
+  writeCookie(rememberedEmailCookieKey, payload.email, 30);
 }
 
 export function readPendingVerification(): PendingVerification | null {
@@ -255,4 +290,114 @@ export function clearPendingVerification() {
   }
 
   window.sessionStorage.removeItem(pendingVerificationKey);
+}
+
+export function saveWorkspaceCache(
+  organizationSlug: string,
+  cache: WorkspaceCache,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    workspaceCachePrefix + organizationSlug,
+    JSON.stringify(cache),
+  );
+}
+
+export function readWorkspaceCache(
+  organizationSlug: string,
+): WorkspaceCache | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(workspaceCachePrefix + organizationSlug);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as WorkspaceCache;
+  } catch {
+    window.localStorage.removeItem(workspaceCachePrefix + organizationSlug);
+    return null;
+  }
+}
+
+export function saveLastPublicToken(token: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(lastPublicTokenKey, token);
+}
+
+export function readLastPublicToken(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.sessionStorage.getItem(lastPublicTokenKey) || "";
+}
+
+export function saveRedirectPath(path: string) {
+  if (typeof window === "undefined" || !path.startsWith("/")) {
+    return;
+  }
+
+  window.sessionStorage.setItem(redirectPathKey, path);
+  writeCookie(redirectCookieKey, path, 1 / 24);
+}
+
+export function consumeRedirectPath(defaultPath = "/dashboard"): string {
+  if (typeof window === "undefined") {
+    return defaultPath;
+  }
+
+  const path =
+    window.sessionStorage.getItem(redirectPathKey) ||
+    readCookie(redirectCookieKey) ||
+    defaultPath;
+
+  window.sessionStorage.removeItem(redirectPathKey);
+  clearCookie(redirectCookieKey);
+  return path.startsWith("/") ? path : defaultPath;
+}
+
+function writeCookie(name: string, value: string, expiresDays: number) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const expiry = new Date(Date.now() + expiresDays * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expiry.toUTCString()}; path=/; SameSite=Lax`;
+}
+
+function clearCookie(name: string) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+}
+
+function readCookie(name: string): string {
+  if (typeof document === "undefined") {
+    return "";
+  }
+
+  const prefix = `${name}=`;
+  const part = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(prefix));
+  return part ? decodeURIComponent(part.substring(prefix.length)) : "";
+}
+
+function toCookieExpiry(isoInstant: string): number {
+  return Math.max(
+    (new Date(isoInstant).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+    1 / 24,
+  );
 }
