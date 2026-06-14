@@ -84,9 +84,17 @@ jobs:
             echo "TF_VAR_enable_backend_lambda=true" >> "$GITHUB_ENV"
             echo "TF_VAR_backend_image_tag=${CURRENT_IMAGE_URI##*:}" >> "$GITHUB_ENV"
           else
-            echo "No deployed backend Lambda found. Using fallback workflow variables."
-            echo "TF_VAR_enable_backend_lambda=$FALLBACK_ENABLE_BACKEND_LAMBDA" >> "$GITHUB_ENV"
-            echo "TF_VAR_backend_image_tag=$FALLBACK_BACKEND_IMAGE_TAG" >> "$GITHUB_ENV"
+            echo "No deployed backend Lambda found."
+
+            if [ "$FALLBACK_ENABLE_BACKEND_LAMBDA" = "true" ] && [ "$FALLBACK_BACKEND_IMAGE_TAG" != "bootstrap" ]; then
+              echo "Using explicit backend workflow variables to recreate Lambda with image tag: $FALLBACK_BACKEND_IMAGE_TAG"
+              echo "TF_VAR_enable_backend_lambda=true" >> "$GITHUB_ENV"
+              echo "TF_VAR_backend_image_tag=$FALLBACK_BACKEND_IMAGE_TAG" >> "$GITHUB_ENV"
+            else
+              echo "No valid backend image tag configured for infra-only apply. Disabling backend Lambda in this workflow run."
+              echo "TF_VAR_enable_backend_lambda=false" >> "$GITHUB_ENV"
+              echo "TF_VAR_backend_image_tag=bootstrap" >> "$GITHUB_ENV"
+            fi
           fi
 
       - name: Setup Terraform
