@@ -137,3 +137,15 @@ jobs:
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Ensure invoke-via-Function-URL permission
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && env.TF_VAR_enable_backend_lambda == 'true'
+        run: |
+          aws lambda add-permission \
+            --function-name tijoir-prod-backend \
+            --region "$AWS_REGION" \
+            --statement-id AllowPublicInvokeViaFunctionUrl \
+            --action lambda:InvokeFunction \
+            --principal '*' \
+            --invoked-via-function-url \
+            >/dev/null 2>&1 || true

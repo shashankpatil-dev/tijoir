@@ -42,13 +42,13 @@ variable "enable_backend_lambda" {
 variable "lambda_memory_size" {
   description = "Lambda memory in MB."
   type        = number
-  default     = 1024
+  default     = 1536
 }
 
 variable "lambda_timeout" {
   description = "Lambda timeout in seconds."
   type        = number
-  default     = 30
+  default     = 60
 }
 
 variable "database_name" {
