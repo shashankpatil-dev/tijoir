@@ -27,8 +27,10 @@ tijoir:
     jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
     email-verification-expiration-minutes: ${EMAIL_VERIFICATION_EXPIRATION_MINUTES:30}
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+    local-secret-encryption-key: ${LOCAL_SECRET_ENCRYPTION_KEY:local-dev-secret-encryption-key-change-me}
   aws:
     region: ${AWS_REGION:ap-south-1}
     database-secret-arn: ${DATABASE_SECRET_ARN:}
     app-secret-name-prefix: ${APP_SECRET_NAME_PREFIX:tijoir/local/app/}
     security-control-table-name: ${SECURITY_CONTROL_TABLE_NAME:}
+    kms-key-id: ${AWS_KMS_KEY_ID:}

@@ -19,6 +19,20 @@ public final class CryptoUtil {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
+    public static String randomFromAlphabet(String alphabet, int length) {
+        if (alphabet == null || alphabet.isEmpty()) {
+            throw new IllegalArgumentException("Alphabet must not be empty");
+        }
+        if (length <= 0) {
+            throw new IllegalArgumentException("Length must be positive");
+        }
+        StringBuilder builder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            builder.append(alphabet.charAt(SECURE_RANDOM.nextInt(alphabet.length())));
+        }
+        return builder.toString();
+    }
+
     public static String sha256Hex(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -29,4 +43,3 @@ public final class CryptoUtil {
         }
     }
 }
-

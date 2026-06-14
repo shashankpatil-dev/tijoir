@@ -78,6 +78,10 @@ public class UserAccount {
         }
     }
 
+    public void changeRole(UserRole role) {
+        this.role = role;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -110,4 +114,3 @@ public class UserAccount {
         return createdAt;
     }
 }
-
