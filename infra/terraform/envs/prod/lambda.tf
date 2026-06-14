@@ -161,7 +161,7 @@ resource "aws_lambda_function_url" "backend" {
   cors {
     allow_credentials = false
     allow_headers     = ["authorization", "content-type", "x-request-id"]
-    allow_methods     = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allow_methods     = ["GET", "POST", "PUT", "PATCH", "DELETE"]
     allow_origins     = var.allowed_cors_origins
     max_age           = 300
   }
