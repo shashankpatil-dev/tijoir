@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { ProtectedRoute } from "@/components/auth/auth-guards";
 import {
   apiRequest,
   apiBaseUrl,
   authenticatedApiRequest,
-  clearSession,
-  readSession,
   saveSession,
   type AuthResponse,
   type ConsumeShareLinkResponse,
@@ -22,6 +21,8 @@ import {
   type ShareLinkResponse,
 } from "@/lib/auth-client";
 import { SiteHeader, StatusPanel } from "@/components/site-chrome";
+import { SelectField, TextAreaField, TextField } from "@/components/ui/form-fields";
+import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
 
 type ViewKey = "overview" | "vault" | "share" | "recipient";
 
@@ -67,8 +68,27 @@ type SharePreview = {
 };
 
 export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      {(sessionState) => (
+        <DashboardWorkspace
+          initialSession={sessionState.session!}
+          removeSession={sessionState.removeSession}
+        />
+      )}
+    </ProtectedRoute>
+  );
+}
+
+function DashboardWorkspace({
+  initialSession,
+  removeSession,
+}: {
+  initialSession: AuthResponse;
+  removeSession: () => void;
+}) {
   const router = useRouter();
-  const [session, setSession] = useState<AuthResponse | null>(null);
+  const [session, setSession] = useState<AuthResponse | null>(initialSession);
   const [activeView, setActiveView] = useState<ViewKey>("overview");
   const [message, setMessage] = useState("Loading workspace");
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
@@ -110,16 +130,9 @@ export default function DashboardPage() {
     useState<ConsumeShareLinkResponse | null>(null);
 
   useEffect(() => {
-    const stored = readSession();
-    if (!stored) {
-      setMessage("No stored session. Login required.");
-      router.replace("/login");
-      return;
-    }
-
-    setSession(stored);
+    setSession(initialSession);
     setMessage("Session restored. Loading organization data.");
-  }, [router]);
+  }, [initialSession]);
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -524,7 +537,7 @@ export default function DashboardPage() {
   function handleSessionError(error: unknown, fallback: string) {
     const text = error instanceof Error ? error.message : fallback;
     if (text.toLowerCase().includes("unauthorized")) {
-      clearSession();
+      removeSession();
       setSession(null);
       router.replace("/login");
       setMessage("Session expired. Login required.");
@@ -544,7 +557,7 @@ export default function DashboardPage() {
   }
 
   function logout() {
-    clearSession();
+    removeSession();
     setSession(null);
     setSecrets([]);
     setShareLinks([]);
@@ -583,6 +596,11 @@ export default function DashboardPage() {
       />
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[250px_1fr] lg:px-8">
+        <BusyOverlay
+          body="Completing the current workspace action."
+          title={loadingWorkspace ? "Refreshing workspace" : "Applying request"}
+          visible={loadingWorkspace || actionBusy !== null}
+        />
         <aside className="rounded-3xl border border-[var(--color-dashboard-border)] bg-[var(--color-sidebar)] p-5 text-white shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 border-b border-white/10 pb-5">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 text-sm font-semibold">
@@ -680,7 +698,24 @@ export default function DashboardPage() {
             />
           </div>
 
-          <StatusPanel body={message} title="System response" />
+          <InlineMessage
+            body={message}
+            title="System response"
+            tone={
+              message.toLowerCase().includes("could not") ||
+              message.toLowerCase().includes("required") ||
+              message.toLowerCase().includes("expired") ||
+              message.toLowerCase().includes("invalid")
+                ? "error"
+                : message.toLowerCase().includes("loaded") ||
+                    message.toLowerCase().includes("created") ||
+                    message.toLowerCase().includes("consumed") ||
+                    message.toLowerCase().includes("rotated") ||
+                    message.toLowerCase().includes("copied")
+                  ? "success"
+                  : "neutral"
+            }
+          />
 
           {activeView === "overview" ? (
             <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
@@ -1274,95 +1309,6 @@ function DashboardRow({ label, value }: { label: string; value: string }) {
         {value}
       </dd>
     </div>
-  );
-}
-
-function TextField({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required = true,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
-      <input
-        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
-        onChange={(event) => onChange(event.target.value)}
-        required={required}
-        type={type}
-        value={value}
-      />
-    </label>
-  );
-}
-
-function TextAreaField({
-  label,
-  value,
-  onChange,
-  rows,
-  required = true,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows: number;
-  required?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
-      <textarea
-        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
-        onChange={(event) => onChange(event.target.value)}
-        required={required}
-        rows={rows}
-        value={value}
-      />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<string | { label: string; value: string }>;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
-      <select
-        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      >
-        {options.map((option) => {
-          const normalized =
-            typeof option === "string"
-              ? { label: option, value: option }
-              : option;
-          return (
-            <option key={normalized.value} value={normalized.value}>
-              {normalized.label}
-            </option>
-          );
-        })}
-      </select>
-    </label>
   );
 }
 
