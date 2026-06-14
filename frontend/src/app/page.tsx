@@ -1,297 +1,120 @@
-"use client";
+import { SiteHeader } from "@/components/site-chrome";
 
-import { FormEvent, useMemo, useState } from "react";
+const highlights = [
+  {
+    title: "Centralize vendor credentials",
+    description:
+      "Keep operational passwords, API keys, SSH material, and future shared access contracts under one organization-owned control point.",
+  },
+  {
+    title: "Reduce unsafe sharing",
+    description:
+      "Replace scattered chat messages, spreadsheets, and ad hoc document transfers with a structured vault-first workflow.",
+  },
+  {
+    title: "Preserve auditability",
+    description:
+      "Build around verification, RBAC, append-only audit events, and controlled secret lifecycle operations from the start.",
+  },
+];
 
-type ApiError = {
-  message?: string;
-  details?: string[];
-};
-
-type AuthResponse = {
-  accessToken: string;
-  tokenType: string;
-  expiresAt: string;
-  user: {
-    name: string;
-    email: string;
-    role: string;
-    emailVerified: boolean;
-  };
-  organization: {
-    name: string;
-    slug: string;
-    email: string;
-  };
-};
-
-type RegisterResponse = {
-  emailVerificationToken?: string;
-  emailVerificationExpiresAt?: string;
-};
-
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:8080";
-
-async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const error = body as ApiError;
-    throw new Error(error.message || `Request failed with ${response.status}`);
-  }
-
-  return body as T;
-}
+const useCases = [
+  "A company needs to share SFTP or API credentials with an external vendor without losing ownership of access.",
+  "An ops team wants an org-level dashboard for who owns credentials, who accessed them, and what can be revoked.",
+  "A security-focused MVP needs auth, vault, and production deployment credibility for an SDE1-grade project.",
+];
 
 export default function HomePage() {
-  const [organizationName, setOrganizationName] = useState("Acme Integrations");
-  const [organizationEmail, setOrganizationEmail] = useState("security@acme.test");
-  const [userName, setUserName] = useState("Acme Owner");
-  const [userEmail, setUserEmail] = useState("owner@acme.test");
-  const [password, setPassword] = useState("StrongPass@123");
-  const [verificationToken, setVerificationToken] = useState("");
-  const [loginEmail, setLoginEmail] = useState("owner@acme.test");
-  const [loginPassword, setLoginPassword] = useState("StrongPass@123");
-  const [session, setSession] = useState<AuthResponse | null>(null);
-  const [message, setMessage] = useState("Ready");
-  const [busy, setBusy] = useState(false);
-
-  const status = useMemo(() => {
-    if (!session) {
-      return "Signed out";
-    }
-    return `${session.user.role} in ${session.organization.slug}`;
-  }, [session]);
-
-  async function runAction<T>(label: string, action: () => Promise<T>) {
-    setBusy(true);
-    setMessage(label);
-    try {
-      const result = await action();
-      setMessage(`${label} complete`);
-      return result;
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unexpected error");
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function register(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const result = await runAction("Registration", () =>
-      apiRequest<RegisterResponse>("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          organizationName,
-          organizationEmail,
-          userName,
-          userEmail,
-          password,
-        }),
-      }),
-    );
-
-    if (result?.emailVerificationToken) {
-      setVerificationToken(result.emailVerificationToken);
-      setLoginEmail(userEmail);
-      setLoginPassword(password);
-    }
-  }
-
-  async function verify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await runAction("Email verification", () =>
-      apiRequest("/api/auth/verify-email", {
-        method: "POST",
-        body: JSON.stringify({ token: verificationToken }),
-      }),
-    );
-  }
-
-  async function login(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const result = await runAction("Login", () =>
-      apiRequest<AuthResponse>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({
-          email: loginEmail,
-          password: loginPassword,
-        }),
-      }),
-    );
-
-    if (result) {
-      setSession(result);
-    }
-  }
-
-  async function loadMe() {
-    if (!session?.accessToken) {
-      setMessage("Login first");
-      return;
-    }
-
-    const result = await runAction("Load profile", () =>
-      apiRequest<AuthResponse>("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-      }),
-    );
-
-    if (result) {
-      setSession(result);
-    }
-  }
-
   return (
-    <main className="min-h-screen bg-[#f7f4ee] px-4 py-6 text-[#1e1c18] sm:px-6 lg:px-8">
-      <section className="mx-auto flex max-w-7xl flex-col gap-5">
-        <header className="flex flex-col gap-4 border-b border-[#d8d0c2] pb-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#42745d]">
-              Tijoir Auth Console
+    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
+      <SiteHeader />
+
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
+        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div className="space-y-6">
+            <span className="inline-flex rounded-full border border-[var(--color-brand-soft)] bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+              Secure vendor credential exchange
+            </span>
+
+            <div className="space-y-4">
+              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-[var(--color-ink-strong)] sm:text-5xl">
+                Tijoir helps organizations share vendor credentials without giving
+                up control.
+              </h1>
+              <p className="max-w-3xl text-lg leading-8 text-[var(--color-muted)]">
+                The product is built for teams that need a cleaner way to onboard
+                vendors, protect secrets, and move away from insecure credential
+                sharing through chats, docs, and manual handoffs.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-[var(--color-border)] bg-[linear-gradient(135deg,var(--color-brand-panel),white)] p-6 shadow-[var(--shadow-card)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+              What the app is about
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-              Organization access setup
-            </h1>
-          </div>
-          <div className="rounded-md border border-[#cfc7b8] bg-white px-4 py-3 text-sm shadow-sm">
-            <p className="font-medium">{status}</p>
-            <p className="mt-1 text-[#6f675c]">API: {apiBaseUrl}</p>
-          </div>
-        </header>
-
-        <div className="grid gap-5 lg:grid-cols-[1fr_1fr_0.9fr]">
-          <form onSubmit={register} className="rounded-md border border-[#d8d0c2] bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">Register owner</h2>
-              <p className="mt-1 text-sm text-[#6f675c]">
-                Creates an organization and the first ORG_OWNER account.
+            <div className="mt-4 space-y-4 text-sm leading-7 text-[var(--color-muted)]">
+              <p>
+                Tijoir is an organization-first system for secure credential
+                exchange. An organization signs up, verifies its owner account,
+                logs in, and then operates from its own dashboard like a normal
+                SaaS workspace.
+              </p>
+              <p>
+                From there, the product can manage vault secrets, access control,
+                audits, vendor sharing, and lifecycle actions such as reveal,
+                rotate, and revoke.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <Field label="Organization name" value={organizationName} onChange={setOrganizationName} />
-            <Field label="Organization email" value={organizationEmail} onChange={setOrganizationEmail} type="email" />
-            <Field label="Owner name" value={userName} onChange={setUserName} />
-            <Field label="Owner email" value={userEmail} onChange={setUserEmail} type="email" />
-            <Field label="Password" value={password} onChange={setPassword} type="password" />
-
-            <button className="mt-4 w-full rounded-md bg-[#24543e] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled={busy}>
-              Register
-            </button>
-          </form>
-
-          <form onSubmit={verify} className="rounded-md border border-[#d8d0c2] bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold">Verify email</h2>
-              <p className="mt-1 text-sm text-[#6f675c]">
-                MVP mode returns this token directly until email delivery is added.
-              </p>
-            </div>
-
-            <label className="block">
-              <span className="text-sm font-medium">Verification token</span>
-              <textarea
-                className="mt-1 min-h-32 w-full rounded-md border border-[#cfc7b8] px-3 py-2 text-sm outline-none focus:border-[#24543e]"
-                value={verificationToken}
-                onChange={(event) => setVerificationToken(event.target.value)}
-              />
-            </label>
-
-            <button className="mt-4 w-full rounded-md bg-[#24543e] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled={busy}>
-              Verify
-            </button>
-          </form>
-
-          <section className="flex flex-col gap-5">
-            <form onSubmit={login} className="rounded-md border border-[#d8d0c2] bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-lg font-semibold">Login</h2>
-              <Field label="Email" value={loginEmail} onChange={setLoginEmail} type="email" />
-              <Field label="Password" value={loginPassword} onChange={setLoginPassword} type="password" />
-              <button className="mt-4 w-full rounded-md bg-[#24543e] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled={busy}>
-                Login
-              </button>
-            </form>
-
-            <div className="rounded-md border border-[#d8d0c2] bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Session</h2>
-                <button
-                  className="rounded-md border border-[#cfc7b8] px-3 py-2 text-sm font-medium disabled:opacity-60"
-                  onClick={loadMe}
-                  disabled={busy}
-                >
-                  Refresh /me
-                </button>
+      <section className="border-t border-[var(--color-border)] bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-5 md:grid-cols-3">
+            {highlights.map((item) => (
+              <div
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]"
+                key={item.title}
+              >
+                <h2 className="text-lg font-semibold text-[var(--color-ink-strong)]">
+                  {item.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--color-muted)]">
+                  {item.description}
+                </p>
               </div>
-              <p className="mt-3 rounded-md bg-[#eef3ec] px-3 py-2 text-sm text-[#24543e]">
-                {message}
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[var(--color-surface)]">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+                Core use cases
               </p>
-              {session ? (
-                <dl className="mt-4 space-y-2 text-sm">
-                  <Row label="Name" value={session.user.name} />
-                  <Row label="Email" value={session.user.email} />
-                  <Row label="Verified" value={String(session.user.emailVerified)} />
-                  <Row label="Organization" value={session.organization.name} />
-                  <Row label="Token expires" value={new Date(session.expiresAt).toLocaleString()} />
-                </dl>
-              ) : (
-                <p className="mt-4 text-sm text-[#6f675c]">No active session.</p>
-              )}
+              <h2 className="mt-3 text-3xl font-semibold text-[var(--color-ink-strong)]">
+                Designed for teams that need secure external access workflows
+              </h2>
             </div>
-          </section>
+
+            <div className="space-y-4">
+              {useCases.map((item) => (
+                <div
+                  className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card)]"
+                  key={item}
+                >
+                  <p className="text-sm leading-7 text-[var(--color-muted)]">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </main>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  return (
-    <label className="mt-3 block">
-      <span className="text-sm font-medium">{label}</span>
-      <input
-        className="mt-1 w-full rounded-md border border-[#cfc7b8] px-3 py-2 text-sm outline-none focus:border-[#24543e]"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        type={type}
-        required
-      />
-    </label>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[8rem_1fr] gap-3">
-      <dt className="text-[#6f675c]">{label}</dt>
-      <dd className="break-words font-medium">{value}</dd>
-    </div>
   );
 }
