@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/site-chrome";
+import Link from "next/link";
 
 const highlights = [
   {
@@ -46,6 +47,21 @@ export default function HomePage() {
                 vendors, protect secrets, and move away from insecure credential
                 sharing through chats, docs, and manual handoffs.
               </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                className="rounded-2xl bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-strong)]"
+                href="/signup"
+              >
+                Create workspace
+              </Link>
+              <Link
+                className="rounded-2xl border border-[var(--color-border)] bg-white px-5 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)]"
+                href="/login"
+              >
+                Login
+              </Link>
             </div>
           </div>
 
