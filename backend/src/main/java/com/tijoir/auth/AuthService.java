@@ -7,7 +7,7 @@ import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
 import com.tijoir.auth.dto.UserSummary;
 import com.tijoir.auth.dto.VerificationResponse;
-import com.tijoir.auth.security.Service;
+import com.tijoir.auth.security.JwtService;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.organization.Organization;
@@ -33,7 +33,7 @@ public class AuthService {
     private final UserAccountRepository userAccountRepository;
     private final EmailVerificationTokenRepository verificationTokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final Service Service;
+    private final JwtService jwtService;
     private final long verificationExpirationMinutes;
 
     public AuthService(
@@ -41,14 +41,14 @@ public class AuthService {
             UserAccountRepository userAccountRepository,
             EmailVerificationTokenRepository verificationTokenRepository,
             PasswordEncoder passwordEncoder,
-            Service Service,
+            JwtService jwtService,
             @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes
     ) {
         this.organizationRepository = organizationRepository;
         this.userAccountRepository = userAccountRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.passwordEncoder = passwordEncoder;
-        this.Service = Service;
+        this.jwtService = jwtService;
         this.verificationExpirationMinutes = verificationExpirationMinutes;
     }
 
@@ -135,7 +135,7 @@ public class AuthService {
     }
 
     private AuthResponse authResponse(UserAccount user) {
-        Service.TokenResult token = Service.issueToken(user);
+        JwtService.TokenResult token = jwtService.issueToken(user);
         return new AuthResponse(
                 token.token(),
                 "Bearer",
