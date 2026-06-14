@@ -26,8 +26,8 @@ public class AuditEvent {
     @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "actor_user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_user_id")
     private UserAccount actor;
 
     @Enumerated(EnumType.STRING)
