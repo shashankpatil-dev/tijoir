@@ -1,0 +1,143 @@
+name: Frontend Production Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "scripts/deploy-frontend-static.sh"
+      - ".github/workflows/frontend-prod-deploy.yml"
+      - "infra/terraform/envs/prod/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frontend-prod-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  TF_WORKING_DIR: infra/terraform/envs/prod
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+
+jobs:
+  deploy:
+    name: Build and publish frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Validate AWS role secret
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ]; then
+            echo "AWS_ROLE_ARN secret is missing."
+            exit 1
+          fi
+
+          if ! printf '%s' "$AWS_ROLE_ARN" | grep -Eq '^arn:aws:iam::[0-9]{12}:role/.+'; then
+            echo "AWS_ROLE_ARN must look like arn:aws:iam::123456789012:role/role-name."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+
+      - name: Write backend config
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          cat > backend.tf <<EOF
+          terraform {
+            backend "s3" {
+              bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+              key            = "prod/terraform.tfstate"
+              region         = "${{ env.AWS_REGION }}"
+              dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+              encrypt        = true
+            }
+          }
+          EOF
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Resolve production outputs
+        id: prod
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          BACKEND_URL="$(terraform output -raw backend_function_url 2>/dev/null || true)"
+          BUCKET_NAME="$(terraform output -raw frontend_bucket_name)"
+          DISTRIBUTION_ID="$(terraform output -raw frontend_cloudfront_distribution_id)"
+          FRONTEND_URL="$(terraform output -raw frontend_url)"
+
+          if [ -z "$BACKEND_URL" ] || [ "$BACKEND_URL" = "null" ]; then
+            echo "backend_function_url is empty. Deploy backend first."
+            exit 1
+          fi
+
+          echo "backend_url=$BACKEND_URL" >> "$GITHUB_OUTPUT"
+          echo "bucket_name=$BUCKET_NAME" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$DISTRIBUTION_ID" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Build static frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ steps.prod.outputs.backend_url }}
+        run: npm run build
+
+      - name: Upload static site to S3
+        env:
+          BUCKET_NAME: ${{ steps.prod.outputs.bucket_name }}
+        run: aws s3 sync frontend/out "s3://$BUCKET_NAME" --delete
+
+      - name: Upload HTML with no-cache headers
+        env:
+          BUCKET_NAME: ${{ steps.prod.outputs.bucket_name }}
+        run: |
+          cd frontend/out
+          find . -name '*.html' | while IFS= read -r file; do
+            key="${file#./}"
+            aws s3 cp "$file" "s3://$BUCKET_NAME/$key" \
+              --cache-control 'no-cache, no-store, must-revalidate' \
+              --content-type 'text/html; charset=utf-8'
+          done
+
+      - name: Invalidate CloudFront
+        env:
+          DISTRIBUTION_ID: ${{ steps.prod.outputs.distribution_id }}
+        run: aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/*'
+
+      - name: Show production URLs
+        run: |
+          echo "Backend: ${{ steps.prod.outputs.backend_url }}"
+          echo "Frontend: ${{ steps.prod.outputs.frontend_url }}"

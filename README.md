@@ -100,5 +100,13 @@ pull_request:
 
 main:
   backend changes  -> backend tests, build Lambda image, push ECR, terraform apply with github.sha image tag
+  frontend changes -> frontend build, sync S3 bucket, invalidate CloudFront
   infra changes    -> terraform fmt/init/validate/plan/apply
+```
+
+The current production endpoints are:
+
+```text
+backend  -> Lambda Function URL in ap-south-1
+frontend -> CloudFront distribution backed by the frontend S3 bucket
 ```
