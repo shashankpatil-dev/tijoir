@@ -28,8 +28,6 @@ env:
   TF_IN_AUTOMATION: true
   TF_INPUT: false
   TF_VAR_aws_region: ${{ vars.AWS_REGION || 'ap-south-1' }}
-  TF_VAR_backend_image_tag: ${{ vars.BACKEND_IMAGE_TAG || 'bootstrap' }}
-  TF_VAR_enable_backend_lambda: ${{ vars.ENABLE_BACKEND_LAMBDA || 'false' }}
   TF_VAR_allowed_cors_origins: ${{ vars.ALLOWED_CORS_ORIGINS_JSON || '["*"]' }}
 
 jobs:
@@ -69,6 +67,27 @@ jobs:
           aws sts get-caller-identity
           echo "AWS_REGION=${AWS_REGION}"
           aws configure list
+
+      - name: Resolve backend deployment inputs
+        env:
+          FALLBACK_BACKEND_IMAGE_TAG: ${{ vars.BACKEND_IMAGE_TAG || 'bootstrap' }}
+          FALLBACK_ENABLE_BACKEND_LAMBDA: ${{ vars.ENABLE_BACKEND_LAMBDA || 'false' }}
+        run: |
+          CURRENT_IMAGE_URI="$(aws lambda get-function \
+            --function-name tijoir-prod-backend \
+            --region "$AWS_REGION" \
+            --query 'Code.ImageUri' \
+            --output text 2>/dev/null || true)"
+
+          if [ -n "$CURRENT_IMAGE_URI" ] && [ "$CURRENT_IMAGE_URI" != "None" ] && [ "$CURRENT_IMAGE_URI" != "null" ]; then
+            echo "Preserving deployed backend Lambda image: $CURRENT_IMAGE_URI"
+            echo "TF_VAR_enable_backend_lambda=true" >> "$GITHUB_ENV"
+            echo "TF_VAR_backend_image_tag=${CURRENT_IMAGE_URI##*:}" >> "$GITHUB_ENV"
+          else
+            echo "No deployed backend Lambda found. Using fallback workflow variables."
+            echo "TF_VAR_enable_backend_lambda=$FALLBACK_ENABLE_BACKEND_LAMBDA" >> "$GITHUB_ENV"
+            echo "TF_VAR_backend_image_tag=$FALLBACK_BACKEND_IMAGE_TAG" >> "$GITHUB_ENV"
+          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
