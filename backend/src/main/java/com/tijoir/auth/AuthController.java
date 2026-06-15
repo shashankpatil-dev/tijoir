@@ -2,6 +2,7 @@ package com.tijoir.auth;
 
 import com.tijoir.auth.dto.AuthResponse;
 import com.tijoir.auth.dto.LoginRequest;
+import com.tijoir.auth.dto.RefreshRequest;
 import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
 import com.tijoir.auth.dto.ResendVerificationRequest;
@@ -38,6 +39,11 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/refresh")
+    public AuthResponse refresh(@Valid @RequestBody RefreshRequest request) {
+        return authService.refresh(request.refreshToken());
+    }
+
     @GetMapping("/me")
     public AuthResponse me(@AuthenticationPrincipal AuthenticatedUser user) {
         return authService.currentUser(user.userId());
@@ -53,4 +59,3 @@ public class AuthController {
         return authService.resendVerification(request.email());
     }
 }
-

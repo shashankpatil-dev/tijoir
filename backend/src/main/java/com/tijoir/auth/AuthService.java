@@ -32,24 +32,30 @@ public class AuthService {
     private final OrganizationRepository organizationRepository;
     private final UserAccountRepository userAccountRepository;
     private final EmailVerificationTokenRepository verificationTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final long verificationExpirationMinutes;
+    private final long refreshTokenExpirationDays;
 
     public AuthService(
             OrganizationRepository organizationRepository,
             UserAccountRepository userAccountRepository,
             EmailVerificationTokenRepository verificationTokenRepository,
+            RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes
+            @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes,
+            @Value("${tijoir.security.refresh-token-expiration-days}") long refreshTokenExpirationDays
     ) {
         this.organizationRepository = organizationRepository;
         this.userAccountRepository = userAccountRepository;
         this.verificationTokenRepository = verificationTokenRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.verificationExpirationMinutes = verificationExpirationMinutes;
+        this.refreshTokenExpirationDays = refreshTokenExpirationDays;
     }
 
     @Transactional
@@ -85,7 +91,7 @@ public class AuthService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         UserAccount user = userAccountRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
@@ -95,14 +101,32 @@ public class AuthService {
         if (user.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
-        return authResponse(user);
+        return issueAuthResponse(user, true);
     }
 
     @Transactional(readOnly = true)
     public AuthResponse currentUser(UUID userId) {
         UserAccount user = userAccountRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
-        return authResponse(user);
+        return issueAuthResponse(user, false);
+    }
+
+    @Transactional
+    public AuthResponse refresh(String rawRefreshToken) {
+        RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(CryptoUtil.sha256Hex(rawRefreshToken))
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+
+        if (!refreshToken.isUsable(Instant.now())) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
+        }
+
+        UserAccount user = refreshToken.getUser();
+        if (user.getEmailVerifiedAt() == null) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
+        }
+
+        refreshToken.consume();
+        return issueAuthResponse(user, true);
     }
 
     @Transactional
@@ -134,12 +158,16 @@ public class AuthService {
         return new RegisterResponse(null, verification.rawToken(), verification.expiresAt());
     }
 
-    private AuthResponse authResponse(UserAccount user) {
-        JwtService.TokenResult token = jwtService.issueToken(user);
+    private AuthResponse issueAuthResponse(UserAccount user, boolean includeRefreshToken) {
+        JwtService.TokenResult accessToken = jwtService.issueToken(user);
+        RefreshTokenResult refreshToken = includeRefreshToken ? createRefreshToken(user) : null;
+
         return new AuthResponse(
-                token.token(),
+                accessToken.token(),
+                refreshToken != null ? refreshToken.rawToken() : null,
                 "Bearer",
-                token.expiresAt(),
+                accessToken.expiresAt(),
+                refreshToken != null ? refreshToken.expiresAt() : null,
                 userSummary(user),
                 organizationSummary(user.getOrganization())
         );
@@ -173,6 +201,13 @@ public class AuthService {
         return new VerificationTokenResult(rawToken, expiresAt);
     }
 
+    private RefreshTokenResult createRefreshToken(UserAccount user) {
+        String rawToken = CryptoUtil.randomUrlToken(48);
+        Instant expiresAt = Instant.now().plusSeconds(refreshTokenExpirationDays * 24 * 60 * 60);
+        refreshTokenRepository.save(new RefreshToken(user, CryptoUtil.sha256Hex(rawToken), expiresAt));
+        return new RefreshTokenResult(rawToken, expiresAt);
+    }
+
     private String uniqueSlug(String name) {
         String base = slugify(name);
         String slug = base;
@@ -201,5 +236,8 @@ public class AuthService {
     }
 
     private record VerificationTokenResult(String rawToken, Instant expiresAt) {
+    }
+
+    private record RefreshTokenResult(String rawToken, Instant expiresAt) {
     }
 }

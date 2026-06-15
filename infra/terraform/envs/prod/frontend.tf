@@ -19,6 +19,31 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_function" "frontend_route_rewrite" {
+  name    = "${local.name_prefix}-frontend-route-rewrite"
+  runtime = "cloudfront-js-1.0"
+  comment = "Rewrite clean app routes to exported HTML files"
+  publish = true
+  code    = <<-EOT
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+
+  if (uri === "/") {
+    request.uri = "/index.html";
+    return request;
+  }
+
+  if (uri.startsWith("/_next/") || uri.startsWith("/api/") || uri.indexOf(".") !== -1) {
+    return request;
+  }
+
+  request.uri = uri.replace(/\/$/, "") + ".html";
+  return request;
+}
+  EOT
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -37,6 +62,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.frontend_route_rewrite.arn
+    }
 
     forwarded_values {
       query_string = false
@@ -94,4 +124,3 @@ resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
   policy = data.aws_iam_policy_document.frontend_bucket.json
 }
-

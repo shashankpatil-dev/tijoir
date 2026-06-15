@@ -77,16 +77,26 @@ class AuthControllerIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.refreshToken").isString())
                 .andExpect(jsonPath("$.user.emailVerified").value(true))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        String loginToken = objectMapper.readTree(loginResponse).get("accessToken").asText();
+        JsonNode loginJson = objectMapper.readTree(loginResponse);
+        String loginToken = loginJson.get("accessToken").asText();
+        String refreshToken = loginJson.get("refreshToken").asText();
         mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + loginToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.organization.slug").value("acme-integrations"));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.refreshToken").isString());
     }
 
     @Test

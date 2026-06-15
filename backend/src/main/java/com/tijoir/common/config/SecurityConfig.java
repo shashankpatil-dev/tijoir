@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 "/api/health",
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/api/auth/refresh",
                                 "/api/auth/verify-email",
                                 "/api/auth/resend-verification",
                                 "/api/public/share-links/**"

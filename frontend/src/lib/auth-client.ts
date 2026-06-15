@@ -5,6 +5,16 @@ export type ApiError = {
   details?: string[];
 };
 
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
 export type SecretType =
   | "PASSWORD"
   | "API_KEY"
@@ -25,8 +35,10 @@ export type ShareLinkStatus = "ACTIVE" | "REVOKED" | "CONSUMED" | "EXPIRED";
 
 export type AuthResponse = {
   accessToken: string;
+  refreshToken?: string | null;
   tokenType: string;
   expiresAt: string;
+  refreshExpiresAt?: string | null;
   user: {
     name: string;
     email: string;
@@ -171,7 +183,10 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const error = body as ApiError;
-    throw new Error(error.message || `Request failed with ${response.status}`);
+    throw new ApiRequestError(
+      response.status,
+      error.message || `Request failed with ${response.status}`,
+    );
   }
 
   return body as T;
@@ -182,13 +197,32 @@ export async function authenticatedApiRequest<T>(
   accessToken: string,
   options: RequestInit = {},
 ): Promise<T> {
-  return apiRequest<T>(path, {
-    ...options,
-    headers: {
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
+  try {
+    return await apiRequest<T>(path, {
+      ...options,
+      headers: {
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.status !== 401) {
+      throw error;
+    }
+
+    const refreshed = await refreshSession();
+    if (!refreshed?.accessToken) {
+      throw error;
+    }
+
+    return apiRequest<T>(path, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${refreshed.accessToken}`,
+        ...(options.headers || {}),
+      },
+    });
+  }
 }
 
 export function readSession(): AuthResponse | null {
@@ -205,7 +239,10 @@ export function readSession(): AuthResponse | null {
 
   try {
     const session = JSON.parse(raw) as AuthResponse;
-    if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    if (
+      new Date(session.expiresAt).getTime() <= Date.now() &&
+      !hasUsableRefreshToken(session)
+    ) {
       clearSession();
       return null;
     }
@@ -221,15 +258,22 @@ export function saveSession(session: AuthResponse) {
     return;
   }
 
-  const payload = JSON.stringify(session);
+  const existing = readStoredSession();
+  const merged: AuthResponse = {
+    ...session,
+    refreshToken: session.refreshToken ?? existing?.refreshToken ?? null,
+    refreshExpiresAt:
+      session.refreshExpiresAt ?? existing?.refreshExpiresAt ?? null,
+  };
+  const payload = JSON.stringify(merged);
   window.localStorage.setItem(sessionStorageKey, payload);
-  window.localStorage.setItem(rememberedEmailKey, session.user.email);
+  window.localStorage.setItem(rememberedEmailKey, merged.user.email);
   writeCookie(
     sessionCookieKey,
     payload,
-    toCookieExpiry(session.expiresAt),
+    toCookieExpiry(merged.refreshExpiresAt || merged.expiresAt),
   );
-  writeCookie(rememberedEmailCookieKey, session.user.email, 30);
+  writeCookie(rememberedEmailCookieKey, merged.user.email, 30);
 }
 
 export function clearSession() {
@@ -364,6 +408,70 @@ export function consumeRedirectPath(defaultPath = "/dashboard"): string {
   window.sessionStorage.removeItem(redirectPathKey);
   clearCookie(redirectCookieKey);
   return path.startsWith("/") ? path : defaultPath;
+}
+
+export async function refreshSession(): Promise<AuthResponse | null> {
+  const current = readStoredSession();
+  if (!current?.refreshToken || !hasUsableRefreshToken(current)) {
+    clearSession();
+    return null;
+  }
+
+  try {
+    const refreshed = await apiRequest<AuthResponse>("/api/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({
+        refreshToken: current.refreshToken,
+      }),
+    });
+    saveSession(refreshed);
+    return readSession();
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+export function buildStaticAppUrl(path: string, params?: Record<string, string>): string {
+  const pathname = path === "/" ? "/" : `${path}.html`;
+  if (typeof window === "undefined") {
+    return pathname;
+  }
+
+  const url = new URL(pathname, window.location.origin);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+  }
+  return url.toString();
+}
+
+function hasUsableRefreshToken(session: AuthResponse): boolean {
+  if (!session.refreshToken || !session.refreshExpiresAt) {
+    return false;
+  }
+
+  return new Date(session.refreshExpiresAt).getTime() > Date.now();
+}
+
+function readStoredSession(): AuthResponse | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw =
+    window.localStorage.getItem(sessionStorageKey) ||
+    readCookie(sessionCookieKey);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as AuthResponse;
+  } catch {
+    return null;
+  }
 }
 
 function writeCookie(name: string, value: string, expiresDays: number) {

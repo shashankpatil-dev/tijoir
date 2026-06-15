@@ -8,6 +8,7 @@ import {
   apiRequest,
   apiBaseUrl,
   authenticatedApiRequest,
+  buildStaticAppUrl,
   readLastPublicToken,
   readWorkspaceCache,
   saveLastPublicToken,
@@ -514,7 +515,9 @@ function DashboardWorkspace({
       );
 
       if (created.shareToken && typeof window !== "undefined") {
-        const appUrl = `${window.location.origin}/access?token=${encodeURIComponent(created.shareToken)}`;
+        const appUrl = buildStaticAppUrl("/access", {
+          token: created.shareToken,
+        });
         setLastCreatedShare({
           token: created.shareToken,
           appUrl,
@@ -1163,11 +1166,11 @@ function DashboardWorkspace({
                         }
                       />
                       <div className="flex flex-wrap gap-3">
-                        <Link
-                          className="rounded-2xl bg-[var(--color-brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-strong)]"
-                          href={lastCreatedShare.appUrl}
-                          target="_blank"
-                        >
+                      <Link
+                        className="rounded-2xl bg-[var(--color-brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-strong)]"
+                        href={lastCreatedShare.appUrl}
+                        target="_blank"
+                      >
                           Open recipient page
                         </Link>
                         <button
@@ -1265,7 +1268,11 @@ function DashboardWorkspace({
                       </button>
                       <Link
                         className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)]"
-                        href={`/access${publicToken ? `?token=${encodeURIComponent(publicToken)}` : ""}`}
+                        href={
+                          publicToken
+                            ? buildStaticAppUrl("/access", { token: publicToken })
+                            : "/access.html"
+                        }
                         target="_blank"
                       >
                         Open standalone page
