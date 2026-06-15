@@ -66,7 +66,7 @@ public class AuthService {
         if (organizationRepository.existsByEmailIgnoreCase(organizationEmail)) {
             throw new ApiException(HttpStatus.CONFLICT, "Organization email is already registered");
         }
-        if (userAccountRepository.existsByEmailIgnoreCase(userEmail)) {
+        if (userAccountRepository.existsByEmailIgnoreCaseAndDeactivatedAtIsNull(userEmail)) {
             throw new ApiException(HttpStatus.CONFLICT, "User email is already registered");
         }
 
@@ -93,7 +93,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        UserAccount user = userAccountRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
+        UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(request.email()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
@@ -101,12 +101,22 @@ public class AuthService {
         if (user.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
+        ensureActive(user);
+        return issueAuthResponse(user, true);
+    }
+
+    @Transactional
+    public AuthResponse issueSessionForUser(UserAccount user) {
+        if (user.getEmailVerifiedAt() == null) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
+        }
+        ensureActive(user);
         return issueAuthResponse(user, true);
     }
 
     @Transactional(readOnly = true)
     public AuthResponse currentUser(UUID userId) {
-        UserAccount user = userAccountRepository.findById(userId)
+        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
         return issueAuthResponse(user, false);
     }
@@ -124,6 +134,7 @@ public class AuthService {
         if (user.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
+        ensureActive(user);
 
         refreshToken.consume();
         return issueAuthResponse(user, true);
@@ -149,7 +160,7 @@ public class AuthService {
 
     @Transactional
     public RegisterResponse resendVerification(String email) {
-        UserAccount user = userAccountRepository.findByEmailIgnoreCase(normalizeEmail(email))
+        UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(email))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         if (user.getEmailVerifiedAt() != null) {
             return new RegisterResponse(null, null, null);
@@ -159,6 +170,7 @@ public class AuthService {
     }
 
     private AuthResponse issueAuthResponse(UserAccount user, boolean includeRefreshToken) {
+        ensureActive(user);
         JwtService.TokenResult accessToken = jwtService.issueToken(user);
         RefreshTokenResult refreshToken = includeRefreshToken ? createRefreshToken(user) : null;
 
@@ -233,6 +245,12 @@ public class AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void ensureActive(UserAccount user) {
+        if (!user.isActive()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists");
+        }
     }
 
     private record VerificationTokenResult(String rawToken, Instant expiresAt) {

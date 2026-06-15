@@ -40,6 +40,8 @@ public class UserAccount {
 
     private Instant emailVerifiedAt;
 
+    private Instant deactivatedAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -82,6 +84,12 @@ public class UserAccount {
         this.role = role;
     }
 
+    public void deactivate() {
+        if (deactivatedAt == null) {
+            deactivatedAt = Instant.now();
+        }
+    }
+
     public UUID getId() {
         return id;
     }
@@ -112,5 +120,13 @@ public class UserAccount {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getDeactivatedAt() {
+        return deactivatedAt;
+    }
+
+    public boolean isActive() {
+        return deactivatedAt == null;
     }
 }

@@ -164,7 +164,7 @@ class ShareLinkControllerIntegrationTest {
         String ownerToken = registerVerifyAndLogin("Acme Expired", ownerEmail);
         String secretId = createSecret(ownerToken, "Expired Password", "PASSWORD", "ExpiredPass@123");
 
-        UserAccount owner = userAccountRepository.findByEmailIgnoreCase(ownerEmail).orElseThrow();
+        UserAccount owner = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(ownerEmail).orElseThrow();
         VaultSecret secret = vaultSecretRepository.findById(UUID.fromString(secretId)).orElseThrow();
         String rawToken = "expired-public-token";
         shareLinkRepository.save(new ShareLink(
@@ -193,7 +193,7 @@ class ShareLinkControllerIntegrationTest {
         String ownerToken = registerVerifyAndLogin("Acme Share Viewer", ownerEmail);
         String secretId = createSecret(ownerToken, "Viewer Blocked Secret", "API_KEY", "blocked-value");
 
-        UserAccount owner = userAccountRepository.findByEmailIgnoreCase(ownerEmail).orElseThrow();
+        UserAccount owner = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(ownerEmail).orElseThrow();
         UserAccount viewer = new UserAccount(
                 organizationRepository.findById(owner.getOrganization().getId()).orElseThrow(),
                 "Viewer User",

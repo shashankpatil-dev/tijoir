@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
                                 "/api/auth/verify-email",
                                 "/api/auth/resend-verification",
+                                "/api/organization/invites/accept",
                                 "/api/public/share-links/**"
                         ).permitAll()
                         .anyRequest().authenticated()

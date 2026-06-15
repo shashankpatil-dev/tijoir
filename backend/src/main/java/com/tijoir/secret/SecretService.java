@@ -7,9 +7,9 @@ import com.tijoir.audit.AuditEventRepository;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
+import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
-import com.tijoir.organization.UserRole;
 import com.tijoir.secret.dto.CreateSecretRequest;
 import com.tijoir.secret.dto.GenerateSecretRequest;
 import com.tijoir.secret.dto.GeneratedSecretResponse;
@@ -33,6 +33,7 @@ public class SecretService {
     private final VaultSecretRepository vaultSecretRepository;
     private final SecretVersionRepository secretVersionRepository;
     private final UserAccountRepository userAccountRepository;
+    private final OrganizationAuthorizationService authorizationService;
     private final SecretPayloadStore secretPayloadStore;
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
@@ -41,6 +42,7 @@ public class SecretService {
             VaultSecretRepository vaultSecretRepository,
             SecretVersionRepository secretVersionRepository,
             UserAccountRepository userAccountRepository,
+            OrganizationAuthorizationService authorizationService,
             SecretPayloadStore secretPayloadStore,
             AuditEventRepository auditEventRepository,
             ObjectMapper objectMapper
@@ -48,6 +50,7 @@ public class SecretService {
         this.vaultSecretRepository = vaultSecretRepository;
         this.secretVersionRepository = secretVersionRepository;
         this.userAccountRepository = userAccountRepository;
+        this.authorizationService = authorizationService;
         this.secretPayloadStore = secretPayloadStore;
         this.auditEventRepository = auditEventRepository;
         this.objectMapper = objectMapper;
@@ -55,7 +58,7 @@ public class SecretService {
 
     @Transactional
     public SecretDetailResponse create(AuthenticatedUser principal, CreateSecretRequest request) {
-        requireSecretManagerRole(principal.role());
+        authorizationService.requireSecretManager(principal.role());
 
         UserAccount actor = findActor(principal);
         String secretKey = uniqueSecretKey(principal.organizationId(), request.name());
@@ -105,7 +108,7 @@ public class SecretService {
 
     @Transactional(readOnly = true)
     public GeneratedSecretResponse generate(AuthenticatedUser principal, GenerateSecretRequest request) {
-        requireSecretManagerRole(principal.role());
+        authorizationService.requireSecretManager(principal.role());
         int length = request.length() == null ? defaultLength(request.type()) : request.length();
         return new GeneratedSecretResponse(request.type(), length, generatedValue(request.type(), length));
     }
@@ -119,7 +122,7 @@ public class SecretService {
 
     @Transactional(readOnly = true)
     public RevealSecretResponse reveal(AuthenticatedUser principal, UUID secretId) {
-        requireSecretManagerRole(principal.role());
+        authorizationService.requireSecretManager(principal.role());
         UserAccount actor = findActor(principal);
         VaultSecret secret = findSecret(principal.organizationId(), secretId);
         if (secret.getStatus() == SecretStatus.REVOKED) {
@@ -152,7 +155,7 @@ public class SecretService {
 
     @Transactional
     public SecretDetailResponse revoke(AuthenticatedUser principal, UUID secretId) {
-        requireSecretManagerRole(principal.role());
+        authorizationService.requireSecretManager(principal.role());
         UserAccount actor = findActor(principal);
         VaultSecret secret = findSecret(principal.organizationId(), secretId);
         if (secret.getStatus() != SecretStatus.REVOKED) {
@@ -174,7 +177,7 @@ public class SecretService {
 
     @Transactional
     public SecretDetailResponse rotate(AuthenticatedUser principal, UUID secretId, RotateSecretRequest request) {
-        requireSecretManagerRole(principal.role());
+        authorizationService.requireSecretManager(principal.role());
         UserAccount actor = findActor(principal);
         VaultSecret secret = findSecret(principal.organizationId(), secretId);
 
@@ -209,15 +212,7 @@ public class SecretService {
     }
 
     private UserAccount findActor(AuthenticatedUser principal) {
-        return userAccountRepository.findById(principal.userId())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
-    }
-
-    private void requireSecretManagerRole(UserRole role) {
-        if (role == UserRole.ORG_OWNER || role == UserRole.ADMIN || role == UserRole.MEMBER) {
-            return;
-        }
-        throw new ApiException(HttpStatus.FORBIDDEN, "You do not have permission to manage secrets");
+        return authorizationService.requireActor(principal);
     }
 
     private SecretSummaryResponse summary(VaultSecret secret) {

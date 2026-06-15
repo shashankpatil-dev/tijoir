@@ -8,9 +8,9 @@ import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.contract.ContractPermission;
+import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
-import com.tijoir.organization.UserRole;
 import com.tijoir.secret.SecretPayloadStore;
 import com.tijoir.secret.SecretStatus;
 import com.tijoir.secret.SecretVersion;
@@ -39,6 +39,7 @@ public class ShareLinkService {
     private final SecretVersionRepository secretVersionRepository;
     private final SecretPayloadStore secretPayloadStore;
     private final UserAccountRepository userAccountRepository;
+    private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
 
@@ -48,6 +49,7 @@ public class ShareLinkService {
             SecretVersionRepository secretVersionRepository,
             SecretPayloadStore secretPayloadStore,
             UserAccountRepository userAccountRepository,
+            OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
             ObjectMapper objectMapper
     ) {
@@ -56,13 +58,14 @@ public class ShareLinkService {
         this.secretVersionRepository = secretVersionRepository;
         this.secretPayloadStore = secretPayloadStore;
         this.userAccountRepository = userAccountRepository;
+        this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
         this.objectMapper = objectMapper;
     }
 
     @Transactional
     public ShareLinkResponse create(AuthenticatedUser principal, CreateShareLinkRequest request) {
-        requireShareManagerRole(principal.role());
+        authorizationService.requireShareManager(principal.role());
         UserAccount actor = findActor(principal);
         VaultSecret secret = findSecret(principal.organizationId(), request.secretId());
         if (secret.getStatus() != SecretStatus.ACTIVE) {
@@ -99,7 +102,7 @@ public class ShareLinkService {
 
     @Transactional(readOnly = true)
     public List<ShareLinkResponse> list(AuthenticatedUser principal) {
-        requireShareManagerRole(principal.role());
+        authorizationService.requireShareManager(principal.role());
         Instant now = Instant.now();
         return shareLinkRepository.findAllByOrganizationIdOrderByCreatedAtDesc(principal.organizationId())
                 .stream()
@@ -109,7 +112,7 @@ public class ShareLinkService {
 
     @Transactional
     public ShareLinkResponse revoke(AuthenticatedUser principal, UUID shareLinkId) {
-        requireShareManagerRole(principal.role());
+        authorizationService.requireShareManager(principal.role());
         UserAccount actor = findActor(principal);
         ShareLink shareLink = findShareLink(principal.organizationId(), shareLinkId);
         expireIfNeeded(shareLink, Instant.now());
@@ -200,8 +203,7 @@ public class ShareLinkService {
     }
 
     private UserAccount findActor(AuthenticatedUser principal) {
-        return userAccountRepository.findById(principal.userId())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+        return authorizationService.requireActor(principal);
     }
 
     private VaultSecret findSecret(UUID organizationId, UUID secretId) {
@@ -218,13 +220,6 @@ public class ShareLinkService {
         String tokenHash = CryptoUtil.sha256Hex(rawToken);
         return (forUpdate ? shareLinkRepository.findByTokenHashForUpdate(tokenHash) : shareLinkRepository.findByTokenHash(tokenHash))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Share link not found"));
-    }
-
-    private void requireShareManagerRole(UserRole role) {
-        if (role == UserRole.ORG_OWNER || role == UserRole.ADMIN || role == UserRole.MEMBER) {
-            return;
-        }
-        throw new ApiException(HttpStatus.FORBIDDEN, "You do not have permission to manage share links");
     }
 
     private void validateExpiry(Instant expiresAt) {

@@ -38,6 +38,8 @@ import {
   type ConsumeShareLinkResponse,
   type ContractPermission,
   type GeneratedSecretResponse,
+  type InviteSummary,
+  type MemberSummary,
   type PublicShareLinkMetadataResponse,
   type RevealSecretResponse,
   type SecretDetail,
@@ -47,13 +49,23 @@ import {
 } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast-provider";
 
-export type DashboardViewKey = "overview" | "vault" | "share" | "recipient";
+export type DashboardViewKey =
+  | "overview"
+  | "vault"
+  | "share"
+  | "members"
+  | "recipient";
 
 type SharePreview = {
   token: string;
   appUrl: string;
   metadataUrl: string;
   consumeUrl: string;
+};
+
+type InvitePreview = {
+  token: string;
+  appUrl: string;
 };
 
 const secretTypes: SecretType[] = [
@@ -102,26 +114,42 @@ export function DashboardWorkspaceApp({
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [shareLinksAvailable, setShareLinksAvailable] = useState(true);
+  const [membersAvailable, setMembersAvailable] = useState(true);
 
   const [secrets, setSecrets] = useState<SecretSummary[]>([]);
+  const [shareLinks, setShareLinks] = useState<ShareLinkResponse[]>([]);
+  const [members, setMembers] = useState<MemberSummary[]>([]);
+  const [invites, setInvites] = useState<InviteSummary[]>([]);
+
   const [selectedSecretId, setSelectedSecretId] = useState("");
   const [selectedSecretDetail, setSelectedSecretDetail] =
     useState<SecretDetail | null>(null);
   const [revealedSecret, setRevealedSecret] =
     useState<RevealSecretResponse | null>(null);
-  const [shareLinks, setShareLinks] = useState<ShareLinkResponse[]>([]);
   const [lastCreatedShare, setLastCreatedShare] = useState<SharePreview | null>(
+    null,
+  );
+  const [lastCreatedInvite, setLastCreatedInvite] = useState<InvitePreview | null>(
     null,
   );
 
   const [createSecretOpen, setCreateSecretOpen] = useState(false);
   const [rotateDialogOpen, setRotateDialogOpen] = useState(false);
   const [createShareOpen, setCreateShareOpen] = useState(false);
+  const [createInviteOpen, setCreateInviteOpen] = useState(false);
+  const [memberRoleDialogOpen, setMemberRoleDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<MemberSummary | null>(null);
   const [secretRevokeTarget, setSecretRevokeTarget] = useState<SecretSummary | null>(
     null,
   );
   const [shareRevokeTarget, setShareRevokeTarget] =
     useState<ShareLinkResponse | null>(null);
+  const [inviteRevokeTarget, setInviteRevokeTarget] = useState<InviteSummary | null>(
+    null,
+  );
+  const [memberRemoveTarget, setMemberRemoveTarget] = useState<MemberSummary | null>(
+    null,
+  );
 
   const [createName, setCreateName] = useState("Vendor API Key");
   const [createType, setCreateType] = useState<SecretType>("API_KEY");
@@ -140,6 +168,10 @@ export function DashboardWorkspaceApp({
     useState<ContractPermission>("VIEW_ONCE");
   const [shareExpiry, setShareExpiry] = useState("");
 
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("MEMBER");
+  const [memberRoleValue, setMemberRoleValue] = useState("MEMBER");
+
   const [publicToken, setPublicToken] = useState("");
   const [publicMetadata, setPublicMetadata] =
     useState<PublicShareLinkMetadataResponse | null>(null);
@@ -156,6 +188,14 @@ export function DashboardWorkspaceApp({
   const [sharePermissionFilter, setSharePermissionFilter] = useState("ALL");
   const [sharePage, setSharePage] = useState(1);
 
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberRoleFilter, setMemberRoleFilter] = useState("ALL");
+  const [memberPage, setMemberPage] = useState(1);
+
+  const [inviteSearch, setInviteSearch] = useState("");
+  const [inviteStatusFilter, setInviteStatusFilter] = useState("ALL");
+  const [invitePage, setInvitePage] = useState(1);
+
   useEffect(() => {
     setSession(initialSession);
     const cached = readWorkspaceCache(initialSession.organization.slug);
@@ -164,6 +204,8 @@ export function DashboardWorkspaceApp({
     if (cached) {
       setSecrets(cached.secrets);
       setShareLinks(cached.shareLinks);
+      setMembers(cached.members || []);
+      setInvites(cached.invites || []);
       setSelectedSecretId(cached.selectedSecretId || "");
       setMessage("Session restored. Showing cached workspace while live data loads.");
     } else {
@@ -219,11 +261,21 @@ export function DashboardWorkspaceApp({
     saveWorkspaceCache(session.organization.slug, {
       secrets,
       shareLinks,
+      members,
+      invites,
       selectedSecretId,
       activeView,
       updatedAt: new Date().toISOString(),
     });
-  }, [activeView, secrets, selectedSecretId, session?.organization.slug, shareLinks]);
+  }, [
+    activeView,
+    invites,
+    members,
+    secrets,
+    selectedSecretId,
+    session?.organization.slug,
+    shareLinks,
+  ]);
 
   useEffect(() => {
     if (!publicToken.trim()) {
@@ -241,6 +293,20 @@ export function DashboardWorkspaceApp({
     setSharePage(1);
   }, [sharePermissionFilter, shareSearch, shareStatusFilter]);
 
+  useEffect(() => {
+    setMemberPage(1);
+  }, [memberRoleFilter, memberSearch]);
+
+  useEffect(() => {
+    setInvitePage(1);
+  }, [inviteSearch, inviteStatusFilter]);
+
+  const isOrganizationManager = useMemo(
+    () =>
+      session?.user.role === "ORG_OWNER" || session?.user.role === "ADMIN",
+    [session?.user.role],
+  );
+
   const activeSecret = useMemo(
     () => secrets.find((secret) => secret.id === selectedSecretId) || null,
     [secrets, selectedSecretId],
@@ -249,6 +315,11 @@ export function DashboardWorkspaceApp({
   const activeShareLinks = useMemo(
     () => shareLinks.filter((shareLink) => shareLink.status === "ACTIVE").length,
     [shareLinks],
+  );
+
+  const pendingInvites = useMemo(
+    () => invites.filter((invite) => invite.status === "PENDING").length,
+    [invites],
   );
 
   const viewOncePending = useMemo(
@@ -260,8 +331,8 @@ export function DashboardWorkspaceApp({
     [shareLinks],
   );
 
-  const navigationItems = useMemo<DashboardNavItem[]>(
-    () => [
+  const navigationItems = useMemo<DashboardNavItem[]>(() => {
+    const baseItems: DashboardNavItem[] = [
       { id: "overview", label: "Overview", note: "Workspace status" },
       {
         id: "vault",
@@ -275,10 +346,25 @@ export function DashboardWorkspaceApp({
         note: "Vendor access contracts",
         badge: String(activeShareLinks),
       },
-      { id: "recipient", label: "Recipient View", note: "Public consume test" },
-    ],
-    [activeShareLinks, secrets.length],
-  );
+    ];
+
+    if (isOrganizationManager) {
+      baseItems.push({
+        id: "members",
+        label: "Members",
+        note: "Invites and roles",
+        badge: String(members.length),
+      });
+    }
+
+    baseItems.push({
+      id: "recipient",
+      label: "Recipient View",
+      note: "Public consume test",
+    });
+
+    return baseItems;
+  }, [activeShareLinks, isOrganizationManager, members.length, secrets.length]);
 
   const filteredSecrets = useMemo(() => {
     const query = vaultSearch.trim().toLowerCase();
@@ -314,10 +400,48 @@ export function DashboardWorkspaceApp({
     });
   }, [shareLinks, sharePermissionFilter, shareSearch, shareStatusFilter]);
 
+  const filteredMembers = useMemo(() => {
+    const query = memberSearch.trim().toLowerCase();
+    return members.filter((member) => {
+      const matchesQuery =
+        !query ||
+        member.name.toLowerCase().includes(query) ||
+        member.email.toLowerCase().includes(query);
+      const matchesRole =
+        memberRoleFilter === "ALL" || member.role === memberRoleFilter;
+      return matchesQuery && matchesRole;
+    });
+  }, [memberRoleFilter, memberSearch, members]);
+
+  const filteredInvites = useMemo(() => {
+    const query = inviteSearch.trim().toLowerCase();
+    return invites.filter((invite) => {
+      const matchesQuery =
+        !query ||
+        invite.email.toLowerCase().includes(query) ||
+        invite.role.toLowerCase().includes(query);
+      const matchesStatus =
+        inviteStatusFilter === "ALL" || invite.status === inviteStatusFilter;
+      return matchesQuery && matchesStatus;
+    });
+  }, [inviteSearch, inviteStatusFilter, invites]);
+
   const paginatedSecrets = paginate(filteredSecrets, vaultPage, ITEMS_PER_PAGE);
   const paginatedShareLinks = paginate(filteredShareLinks, sharePage, ITEMS_PER_PAGE);
+  const paginatedMembers = paginate(filteredMembers, memberPage, ITEMS_PER_PAGE);
+  const paginatedInvites = paginate(filteredInvites, invitePage, ITEMS_PER_PAGE);
   const vaultPageCount = pageCount(filteredSecrets.length, ITEMS_PER_PAGE);
   const sharePageCount = pageCount(filteredShareLinks.length, ITEMS_PER_PAGE);
+  const memberPageCount = pageCount(filteredMembers.length, ITEMS_PER_PAGE);
+  const invitePageCount = pageCount(filteredInvites.length, ITEMS_PER_PAGE);
+
+  const assignableRoles = useMemo(
+    () =>
+      session?.user.role === "ORG_OWNER"
+        ? ["ADMIN", "MEMBER", "VIEWER", "AUDITOR"]
+        : ["MEMBER", "VIEWER", "AUDITOR"],
+    [session?.user.role],
+  );
 
   const secretColumns = useMemo<DataTableColumn<SecretSummary>[]>(
     () => [
@@ -429,14 +553,150 @@ export function DashboardWorkspaceApp({
     [],
   );
 
+  const memberColumns = useMemo<DataTableColumn<MemberSummary>[]>(
+    () => [
+      {
+        key: "identity",
+        label: "Member",
+        render: (member) => (
+          <div className="space-y-1">
+            <p className="font-semibold text-[var(--color-ink-strong)]">
+              {member.name}
+            </p>
+            <p className="text-xs text-[var(--color-muted)]">{member.email}</p>
+          </div>
+        ),
+      },
+      {
+        key: "role",
+        label: "Role",
+        render: (member) => <Badge tone="info">{member.role}</Badge>,
+      },
+      {
+        key: "verified",
+        label: "Verified",
+        render: (member) => (
+          <Badge tone={member.emailVerified ? "success" : "warning"}>
+            {member.emailVerified ? "Verified" : "Pending"}
+          </Badge>
+        ),
+      },
+      {
+        key: "createdAt",
+        label: "Joined",
+        render: (member) => formatInstant(member.createdAt),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (member) => (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={!canEditMember(session?.user.role || "", member, session?.user.email || "")}
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedMember(member);
+                setMemberRoleValue(member.role);
+                setMemberRoleDialogOpen(true);
+              }}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Change role
+            </Button>
+            <Button
+              disabled={!canRemoveMember(session?.user.role || "", member, session?.user.email || "")}
+              onClick={(event) => {
+                event.stopPropagation();
+                setMemberRemoveTarget(member);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Remove
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [session?.user.email, session?.user.role],
+  );
+
+  const inviteColumns = useMemo<DataTableColumn<InviteSummary>[]>(
+    () => [
+      {
+        key: "email",
+        label: "Invitee",
+        render: (invite) => (
+          <div className="space-y-1">
+            <p className="font-semibold text-[var(--color-ink-strong)]">
+              {invite.email}
+            </p>
+            <p className="text-xs text-[var(--color-muted)]">
+              Invited by {invite.invitedByName}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "role",
+        label: "Role",
+        render: (invite) => <Badge tone="info">{invite.role}</Badge>,
+      },
+      {
+        key: "status",
+        label: "Status",
+        render: (invite) => (
+          <Badge tone={statusTone(invite.status)}>{invite.status}</Badge>
+        ),
+      },
+      {
+        key: "expiresAt",
+        label: "Expiry",
+        render: (invite) => formatInstant(invite.expiresAt),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (invite) => (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={invite.status !== "PENDING"}
+              onClick={(event) => {
+                event.stopPropagation();
+                setInviteRevokeTarget(invite);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Revoke
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
+
   async function loadWorkspace(accessToken: string) {
     setLoadingWorkspace(true);
 
     try {
-      const [meResult, secretsResult, shareLinksResult] = await Promise.allSettled([
+      const [
+        meResult,
+        secretsResult,
+        shareLinksResult,
+        membersResult,
+        invitesResult,
+      ] = await Promise.allSettled([
         authenticatedApiRequest<AuthResponse>("/api/auth/me", accessToken),
         authenticatedApiRequest<SecretSummary[]>("/api/secrets", accessToken),
         authenticatedApiRequest<ShareLinkResponse[]>("/api/share-links", accessToken),
+        authenticatedApiRequest<MemberSummary[]>("/api/organization/members", accessToken),
+        authenticatedApiRequest<InviteSummary[]>("/api/organization/invites", accessToken),
       ]);
 
       if (meResult.status === "rejected") {
@@ -450,20 +710,21 @@ export function DashboardWorkspaceApp({
       setSession(meResult.value);
       setSecrets(secretsResult.value);
       setShareLinksAvailable(shareLinksResult.status === "fulfilled");
+      setMembersAvailable(
+        membersResult.status === "fulfilled" && invitesResult.status === "fulfilled",
+      );
       setShareLinks(
         shareLinksResult.status === "fulfilled" ? shareLinksResult.value : [],
       );
+      setMembers(membersResult.status === "fulfilled" ? membersResult.value : []);
+      setInvites(invitesResult.status === "fulfilled" ? invitesResult.value : []);
 
-      if (shareLinksResult.status === "rejected") {
-        setMessage(
-          "Workspace loaded. Share-link inventory is not available for this role.",
-        );
-        showToast({
-          title: "Workspace loaded",
-          description:
-            "Vault data is live, but share-link inventory is not available for this role.",
-          tone: "warning",
-        });
+      if (shareLinksResult.status === "rejected" && membersResult.status === "rejected") {
+        setMessage("Workspace loaded. Vault data is live, but role-restricted sections are unavailable for this account.");
+      } else if (shareLinksResult.status === "rejected") {
+        setMessage("Workspace loaded. Share-link inventory is not available for this role.");
+      } else if (membersResult.status === "rejected") {
+        setMessage("Workspace loaded. Member management is not available for this role.");
       } else {
         setMessage("Workspace loaded from live backend APIs.");
       }
@@ -762,6 +1023,150 @@ export function DashboardWorkspaceApp({
     }
   }
 
+  async function handleCreateInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session?.accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    setActionBusy("create-invite");
+    setMessage("Creating organization invite");
+
+    try {
+      const created = await authenticatedApiRequest<InviteSummary>(
+        "/api/organization/invites",
+        session.accessToken,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: inviteEmail,
+            role: inviteRole,
+          }),
+        },
+      );
+
+      if (created.inviteToken && created.acceptPath) {
+        setLastCreatedInvite({
+          token: created.inviteToken,
+          appUrl: buildStaticAppUrl(created.acceptPath, {
+            token: created.inviteToken,
+          }),
+        });
+      }
+
+      setInviteEmail("");
+      setInviteRole(assignableRoles[0] || "MEMBER");
+      setCreateInviteOpen(false);
+      router.push("/dashboard/members");
+      await loadWorkspace(session.accessToken);
+      setMessage(`Invite created for ${created.email}.`);
+      showToast({
+        title: "Invite created",
+        description: `${created.email} can now accept the organization invite.`,
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not create invite");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleUpdateMemberRole(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session?.accessToken || !selectedMember) {
+      return;
+    }
+
+    setActionBusy(`member-role-${selectedMember.id}`);
+    setMessage("Updating member role");
+
+    try {
+      await authenticatedApiRequest<MemberSummary>(
+        `/api/organization/members/${selectedMember.id}/role`,
+        session.accessToken,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ role: memberRoleValue }),
+        },
+      );
+
+      setMemberRoleDialogOpen(false);
+      await loadWorkspace(session.accessToken);
+      setMessage("Member role updated.");
+      showToast({
+        title: "Member updated",
+        description: "The organization role was updated successfully.",
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not update member role");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (!session?.accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    setActionBusy(`remove-member-${memberId}`);
+    setMessage("Removing member");
+
+    try {
+      await authenticatedApiRequest<void>(
+        `/api/organization/members/${memberId}`,
+        session.accessToken,
+        { method: "DELETE" },
+      );
+
+      await loadWorkspace(session.accessToken);
+      setMessage("Member removed.");
+      showToast({
+        title: "Member removed",
+        description: "The organization member has been removed.",
+        tone: "warning",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not remove member");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRevokeInvite(inviteId: string) {
+    if (!session?.accessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    setActionBusy(`revoke-invite-${inviteId}`);
+    setMessage("Revoking invite");
+
+    try {
+      await authenticatedApiRequest<InviteSummary>(
+        `/api/organization/invites/${inviteId}/revoke`,
+        session.accessToken,
+        { method: "POST" },
+      );
+
+      await loadWorkspace(session.accessToken);
+      setMessage("Invite revoked.");
+      showToast({
+        title: "Invite revoked",
+        description: "The organization invite is no longer usable.",
+        tone: "warning",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not revoke invite");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   async function handleLoadPublicMetadata(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!publicToken.trim()) {
@@ -881,6 +1286,8 @@ export function DashboardWorkspaceApp({
     setSession(null);
     setSecrets([]);
     setShareLinks([]);
+    setMembers([]);
+    setInvites([]);
     showToast({
       title: "Logged out",
       description: "The workspace session has been cleared.",
@@ -922,6 +1329,18 @@ export function DashboardWorkspaceApp({
           >
             Share Access
           </Button>
+          {isOrganizationManager ? (
+            <Button
+              onClick={() => {
+                router.push("/dashboard/members");
+                setCreateInviteOpen(true);
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Invite Member
+            </Button>
+          ) : null}
           <Button onClick={refreshWorkspace} type="button" variant="secondary">
             {loadingWorkspace ? "Refreshing..." : "Refresh"}
           </Button>
@@ -957,7 +1376,7 @@ export function DashboardWorkspaceApp({
 
       <section className="space-y-5">
         <DashboardSectionHeader
-          description="Manage organization secrets, create contract-scoped share links, and test the public recipient flow from one operational workspace."
+          description="Manage organization secrets, contract-scoped share links, member invitations, and the public recipient flow from one operational workspace."
           title={titleForView(activeView)}
         />
 
@@ -979,9 +1398,9 @@ export function DashboardWorkspaceApp({
             value={String(activeShareLinks)}
           />
           <StatCard
-            label="View-once pending"
-            note="Links waiting for one-time consumption"
-            value={String(viewOncePending)}
+            label="Pending invites"
+            note="Organization users still waiting to join"
+            value={String(pendingInvites)}
           />
           <StatCard
             label="Access expires"
@@ -1037,14 +1456,18 @@ export function DashboardWorkspaceApp({
                     }
                   />
                   <SurfaceNote
-                    label="Suggested path"
-                    value="Create or rotate a secret, then issue a contract-scoped share link."
+                    label="Member operations"
+                    value={
+                      isOrganizationManager
+                        ? `${members.length} members and ${pendingInvites} pending invites in the workspace.`
+                        : "Member management is reserved for organization managers."
+                    }
                   />
                 </div>
               </PageSection>
 
               <PageSection
-                description="Fast entry points for the two current product workflows."
+                description="Fast entry points for the current product workflows."
                 title="Quick actions"
               >
                 <div className="flex flex-wrap gap-3">
@@ -1067,13 +1490,18 @@ export function DashboardWorkspaceApp({
                   >
                     Create share link
                   </Button>
-                  <Button
-                    onClick={() => router.push("/dashboard/recipient")}
-                    type="button"
-                    variant="outline"
-                  >
-                    Open recipient test
-                  </Button>
+                  {isOrganizationManager ? (
+                    <Button
+                      onClick={() => {
+                        router.push("/dashboard/members");
+                        setCreateInviteOpen(true);
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      Invite member
+                    </Button>
+                  ) : null}
                 </div>
               </PageSection>
             </div>
@@ -1373,6 +1801,162 @@ export function DashboardWorkspaceApp({
           </div>
         ) : null}
 
+        {activeView === "members" ? (
+          <div className="space-y-5">
+            {!membersAvailable ? (
+              <InlineMessage
+                body="Only organization managers can view member inventory, role changes, and invite flows."
+                title="Member management unavailable"
+                tone="warning"
+              />
+            ) : (
+              <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="space-y-5">
+                  <PageSection
+                    description="Current organization users and their assigned roles."
+                    title="Members"
+                  >
+                    <div className="space-y-4">
+                      <TableToolbar
+                        actions={
+                          <Button onClick={() => setCreateInviteOpen(true)} type="button">
+                            Invite member
+                          </Button>
+                        }
+                      >
+                        <SearchInput
+                          onChange={setMemberSearch}
+                          placeholder="Search by name or email"
+                          value={memberSearch}
+                        />
+                        <FilterSelect
+                          onChange={setMemberRoleFilter}
+                          options={[
+                            { label: "All roles", value: "ALL" },
+                            { label: "ORG_OWNER", value: "ORG_OWNER" },
+                            { label: "ADMIN", value: "ADMIN" },
+                            { label: "MEMBER", value: "MEMBER" },
+                            { label: "VIEWER", value: "VIEWER" },
+                            { label: "AUDITOR", value: "AUDITOR" },
+                          ]}
+                          value={memberRoleFilter}
+                        />
+                      </TableToolbar>
+
+                      <DataTable
+                        columns={memberColumns}
+                        data={paginatedMembers}
+                        emptyDescription="Invite the next workspace user to move beyond the single-owner setup."
+                        emptyTitle="No members match the current filters"
+                        loading={loadingWorkspace && membersAvailable && !members.length}
+                        rowKey={(member) => member.id}
+                      />
+
+                      <PaginationControls
+                        currentPage={memberPage}
+                        itemLabel="members"
+                        onPageChange={setMemberPage}
+                        pageCount={memberPageCount}
+                        totalItems={filteredMembers.length}
+                      />
+                    </div>
+                  </PageSection>
+
+                  <PageSection
+                    description="Issued invites stay here until accepted, revoked, or expired."
+                    title="Invites"
+                  >
+                    <div className="space-y-4">
+                      <TableToolbar>
+                        <SearchInput
+                          onChange={setInviteSearch}
+                          placeholder="Search by invite email or role"
+                          value={inviteSearch}
+                        />
+                        <FilterSelect
+                          onChange={setInviteStatusFilter}
+                          options={[
+                            { label: "All statuses", value: "ALL" },
+                            { label: "Pending", value: "PENDING" },
+                            { label: "Accepted", value: "ACCEPTED" },
+                            { label: "Revoked", value: "REVOKED" },
+                            { label: "Expired", value: "EXPIRED" },
+                          ]}
+                          value={inviteStatusFilter}
+                        />
+                      </TableToolbar>
+
+                      <DataTable
+                        columns={inviteColumns}
+                        data={paginatedInvites}
+                        emptyDescription="No invite records match the current filters."
+                        emptyTitle="No invites to show"
+                        loading={loadingWorkspace && membersAvailable && !invites.length}
+                        rowKey={(invite) => invite.id}
+                      />
+
+                      <PaginationControls
+                        currentPage={invitePage}
+                        itemLabel="invites"
+                        onPageChange={setInvitePage}
+                        pageCount={invitePageCount}
+                        totalItems={filteredInvites.length}
+                      />
+                    </div>
+                  </PageSection>
+                </div>
+
+                <div className="space-y-5">
+                  <PageSection
+                    description="The newest invite package is staged here so the owner or admin can hand it to the recipient while email delivery remains out of scope."
+                    title="Latest invite package"
+                  >
+                    {lastCreatedInvite ? (
+                      <div className="space-y-4">
+                        <SharePreviewItem
+                          label="Invite accept URL"
+                          value={lastCreatedInvite.appUrl}
+                          onCopy={() => void copyText(lastCreatedInvite.appUrl, "Invite URL")}
+                        />
+                        <SharePreviewItem
+                          label="Invite token"
+                          value={lastCreatedInvite.token}
+                          onCopy={() => void copyText(lastCreatedInvite.token, "Invite token")}
+                        />
+                      </div>
+                    ) : (
+                      <EmptyState
+                        description="Create an invite to stage the member onboarding URL and token."
+                        title="No invite package yet"
+                      />
+                    )}
+                  </PageSection>
+
+                  <PageSection
+                    description="Current role boundaries in this workspace."
+                    title="RBAC summary"
+                  >
+                    <div className="space-y-3">
+                      <SurfaceNote
+                        label="ORG_OWNER"
+                        value="Organization-level control, including member and admin management."
+                      />
+                      <SurfaceNote
+                        label="ADMIN"
+                        value="Can manage members except owners and other admins, and can operate vault and share workflows."
+                      />
+                      <SurfaceNote
+                        label="MEMBER / VIEWER / AUDITOR"
+                        value="Operational or read-focused roles without organization-user administration."
+                      />
+                    </div>
+                  </PageSection>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {activeView === "recipient" ? (
           <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
             <PageSection
@@ -1619,6 +2203,65 @@ export function DashboardWorkspaceApp({
         </form>
       </Dialog>
 
+      <Dialog
+        description="Create a new organization invite and stage the accept URL for the recipient."
+        onClose={() => setCreateInviteOpen(false)}
+        open={createInviteOpen}
+        title="Invite member"
+      >
+        <form className="space-y-4" onSubmit={handleCreateInvite}>
+          <TextField
+            hint="The invite token and accept URL are generated for this email."
+            label="Invitee email"
+            onChange={setInviteEmail}
+            type="email"
+            value={inviteEmail}
+          />
+          <SelectField
+            label="Role"
+            onChange={setInviteRole}
+            options={assignableRoles}
+            value={inviteRole}
+          />
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setCreateInviteOpen(false)} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button disabled={actionBusy !== null || !inviteEmail.trim()} type="submit">
+              {actionBusy === "create-invite" ? "Creating..." : "Create invite"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        description={
+          selectedMember
+            ? `Update the workspace role for ${selectedMember.email}.`
+            : "Update the member role."
+        }
+        onClose={() => setMemberRoleDialogOpen(false)}
+        open={memberRoleDialogOpen}
+        title="Change member role"
+      >
+        <form className="space-y-4" onSubmit={handleUpdateMemberRole}>
+          <SelectField
+            label="Role"
+            onChange={setMemberRoleValue}
+            options={assignableRoles}
+            value={memberRoleValue}
+          />
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setMemberRoleDialogOpen(false)} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <Button disabled={actionBusy !== null} type="submit">
+              {actionBusy?.startsWith("member-role-") ? "Updating..." : "Update role"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
       <ConfirmDialog
         confirmLabel="Revoke secret"
         description={
@@ -1653,6 +2296,42 @@ export function DashboardWorkspaceApp({
         }}
         open={Boolean(shareRevokeTarget)}
         title="Revoke share link"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Revoke invite"
+        description={
+          inviteRevokeTarget
+            ? `Revoke the invite for ${inviteRevokeTarget.email}. The accept token should stop working immediately.`
+            : ""
+        }
+        onClose={() => setInviteRevokeTarget(null)}
+        onConfirm={() => {
+          if (inviteRevokeTarget) {
+            void handleRevokeInvite(inviteRevokeTarget.id);
+          }
+          setInviteRevokeTarget(null);
+        }}
+        open={Boolean(inviteRevokeTarget)}
+        title="Revoke invite"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Remove member"
+        description={
+          memberRemoveTarget
+            ? `Remove ${memberRemoveTarget.email} from the organization.`
+            : ""
+        }
+        onClose={() => setMemberRemoveTarget(null)}
+        onConfirm={() => {
+          if (memberRemoveTarget) {
+            void handleRemoveMember(memberRemoveTarget.id);
+          }
+          setMemberRemoveTarget(null);
+        }}
+        open={Boolean(memberRemoveTarget)}
+        title="Remove member"
       />
     </DashboardShell>
   );
@@ -1730,6 +2409,9 @@ function viewFromPath(pathname: string): DashboardViewKey {
   if (pathname.includes("/dashboard/share-links")) {
     return "share";
   }
+  if (pathname.includes("/dashboard/members")) {
+    return "members";
+  }
   if (pathname.includes("/dashboard/recipient")) {
     return "recipient";
   }
@@ -1742,6 +2424,8 @@ function viewPath(view: DashboardViewKey) {
       return "/dashboard/vault";
     case "share":
       return "/dashboard/share-links";
+    case "members":
+      return "/dashboard/members";
     case "recipient":
       return "/dashboard/recipient";
     default:
@@ -1755,6 +2439,8 @@ function titleForView(view: DashboardViewKey) {
       return "Vault";
     case "share":
       return "Share Links";
+    case "members":
+      return "Members";
     case "recipient":
       return "Recipient View";
     default:
@@ -1769,4 +2455,30 @@ function pageCount(totalItems: number, perPage: number) {
 function paginate<T>(items: T[], page: number, perPage: number) {
   const start = (page - 1) * perPage;
   return items.slice(start, start + perPage);
+}
+
+function canEditMember(actorRole: string, member: MemberSummary, actorEmail: string) {
+  if (member.email === actorEmail || member.role === "ORG_OWNER") {
+    return false;
+  }
+  if (actorRole === "ORG_OWNER") {
+    return true;
+  }
+  if (actorRole === "ADMIN") {
+    return member.role !== "ADMIN";
+  }
+  return false;
+}
+
+function canRemoveMember(actorRole: string, member: MemberSummary, actorEmail: string) {
+  if (member.email === actorEmail || member.role === "ORG_OWNER") {
+    return false;
+  }
+  if (actorRole === "ORG_OWNER") {
+    return true;
+  }
+  if (actorRole === "ADMIN") {
+    return member.role !== "ADMIN";
+  }
+  return false;
 }

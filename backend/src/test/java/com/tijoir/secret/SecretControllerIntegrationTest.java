@@ -143,7 +143,7 @@ class SecretControllerIntegrationTest {
     void viewerCannotCreateSecrets() throws Exception {
         String ownerEmail = "owner@acme-viewer.test";
         String ownerToken = registerVerifyAndLogin("Acme Viewer", ownerEmail);
-        UserAccount owner = userAccountRepository.findByEmailIgnoreCase(ownerEmail).orElseThrow();
+        UserAccount owner = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(ownerEmail).orElseThrow();
         Organization organization = organizationRepository.findById(owner.getOrganization().getId()).orElseThrow();
 
         UserAccount viewer = new UserAccount(
@@ -213,6 +213,15 @@ class SecretControllerIntegrationTest {
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
+
+        mockMvc.perform(get("/api/secrets")
+                        .header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+
+        mockMvc.perform(get("/api/secrets/00000000-0000-0000-0000-000000000001")
+                        .header("Authorization", "Bearer " + viewerToken))
+                .andExpect(status().isNotFound());
     }
 
     private String registerVerifyAndLogin(String organizationName, String ownerEmail) throws Exception {

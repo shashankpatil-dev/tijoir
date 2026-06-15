@@ -32,6 +32,7 @@ export type ContractPermission =
   | "VIEW_UNTIL_REVOKED"
   | "ROTATION_NOTIFY_ONLY";
 export type ShareLinkStatus = "ACTIVE" | "REVOKED" | "CONSUMED" | "EXPIRED";
+export type InviteStatus = "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
 
 export type AuthResponse = {
   accessToken: string;
@@ -142,9 +143,33 @@ export type ConsumeShareLinkResponse = {
 export type WorkspaceCache = {
   secrets: SecretSummary[];
   shareLinks: ShareLinkResponse[];
+  members?: MemberSummary[];
+  invites?: InviteSummary[];
   selectedSecretId?: string;
   activeView?: string;
   updatedAt: string;
+};
+
+export type MemberSummary = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  emailVerified: boolean;
+  createdAt: string;
+};
+
+export type InviteSummary = {
+  id: string;
+  email: string;
+  role: string;
+  status: InviteStatus;
+  invitedByName: string;
+  expiresAt: string;
+  acceptedAt?: string | null;
+  createdAt: string;
+  inviteToken?: string | null;
+  acceptPath?: string | null;
 };
 
 export const apiBaseUrl =
