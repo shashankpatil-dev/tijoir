@@ -23,8 +23,8 @@ import { useToast } from "@/components/ui/toast-provider";
 export default function LoginPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [email, setEmail] = useState("owner@acme.test");
-  const [password, setPassword] = useState("StrongPass@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("Login after email verification.");
   const [busy, setBusy] = useState(false);
 
@@ -47,7 +47,7 @@ export default function LoginPage() {
       });
 
       saveSession(result);
-      const targetPath = consumeRedirectPath("/dashboard");
+      const targetPath = consumeRedirectPath("/dashboard/overview");
       setMessage("Login complete. Redirecting to workspace.");
       showToast({
         title: "Login successful",
@@ -75,15 +75,15 @@ export default function LoginPage() {
           <div className="space-y-4">
             <StatusPanel
               title="Session persistence"
-              body="A valid session is kept in local storage, and protected routes now redirect unauthenticated users before the dashboard renders."
+              body="A valid session is persisted in browser storage with refresh-token recovery so the workspace survives reloads and short-lived access expiry."
             />
             <StatusPanel
-              title="Before login"
-              body="The owner account must be verified first. If the user already exists, use the verify route or resend the verification token."
+              title="Expected flow"
+              body="Signup creates the owner account, verification unlocks access, and login sends the user directly into the organization workspace."
             />
           </div>
         }
-        description="Authenticate into the workspace after verification and move into the SaaS-style dashboard shell."
+        description="Authenticate into the organization workspace after verification and continue into the operational dashboard."
         eyebrow="Workspace access"
         title="Sign in to the secure workspace"
       >
@@ -101,11 +101,17 @@ export default function LoginPage() {
               Continue into the dashboard
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-              Use the verified owner account to enter the workspace.
+              Use the verified account for this organization. After sign-in, the dashboard restores the intended route automatically.
             </p>
           </div>
 
-          <TextField label="Email" onChange={setEmail} type="email" value={email} />
+          <TextField
+            hint="Use the verified owner or member email for this organization."
+            label="Email"
+            onChange={setEmail}
+            type="email"
+            value={email}
+          />
           <PasswordField
             hint="Passwords stay masked by default. Use Show only when needed."
             label="Password"

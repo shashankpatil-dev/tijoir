@@ -21,11 +21,11 @@ import { useToast } from "@/components/ui/toast-provider";
 export default function SignupPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [organizationName, setOrganizationName] = useState("Acme Integrations");
-  const [organizationEmail, setOrganizationEmail] = useState("security@acme.test");
-  const [userName, setUserName] = useState("Acme Owner");
-  const [userEmail, setUserEmail] = useState("owner@acme.test");
-  const [password, setPassword] = useState("StrongPass@123");
+  const [organizationName, setOrganizationName] = useState("");
+  const [organizationEmail, setOrganizationEmail] = useState("");
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("Create your organization owner account.");
   const [busy, setBusy] = useState(false);
 
@@ -81,15 +81,15 @@ export default function SignupPage() {
           <div className="space-y-4">
             <StatusPanel
               title="Why this flow exists"
-              body="The first user becomes ORG_OWNER, which is the basis for vault ownership, RBAC, and future vendor sharing."
+              body="The first user becomes ORG_OWNER. That role anchors vault ownership, future invites, RBAC, and contract-scoped sharing."
             />
             <StatusPanel
-              title="Important production note"
-              body="A 409 response here means the organization email or owner email already exists in production. Use a fresh email pair or resend verification for the existing user."
+              title="Production constraint"
+              body="A 409 response here means the organization email or owner email already exists. Use a fresh pair or move to verification for an existing unverified owner."
             />
           </div>
         }
-        description="Start with the first organization owner account, then move into verification and dashboard access."
+        description="Create the organization and first owner account, then complete verification before the workspace can be used."
         eyebrow="Organization onboarding"
         title="Set up the first secure workspace"
       >
@@ -107,11 +107,16 @@ export default function SignupPage() {
               Create the initial owner account
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-              This creates the organization and the first `ORG_OWNER`.
+              This creates the organization identity and its first owner.
             </p>
           </div>
 
-          <TextField label="Organization name" onChange={setOrganizationName} value={organizationName} />
+          <TextField
+            hint="This is the primary organization name shown in the dashboard."
+            label="Organization name"
+            onChange={setOrganizationName}
+            value={organizationName}
+          />
           <TextField
             hint="Must be unique across organizations."
             label="Organization email"

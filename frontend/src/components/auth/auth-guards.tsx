@@ -54,14 +54,17 @@ export function GuestRoute({
 }) {
   const router = useRouter();
   const { session, checking } = useGuestSession();
-  const [targetPath, setTargetPath] = useState("/dashboard");
+  const [targetPath, setTargetPath] = useState("/dashboard/overview");
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    setTargetPath(window.sessionStorage.getItem("tijoir.redirectPath") || "/dashboard");
+    setTargetPath(
+      window.sessionStorage.getItem("tijoir.redirectPath") ||
+        "/dashboard/overview",
+    );
   }, []);
 
   useEffect(() => {

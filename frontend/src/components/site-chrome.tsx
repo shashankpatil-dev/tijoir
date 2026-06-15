@@ -86,12 +86,12 @@ export function AuthShell({
   aside: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,var(--color-surface)_48%,#edf4ff_100%)] text-[var(--color-ink)]">
       <SiteHeader />
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-14">
-        <div className="space-y-6">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-12">
+        <div className="space-y-5">
           <PageIntro badge={eyebrow} description={description} title={title} />
-          {aside}
+          <div className="space-y-4">{aside}</div>
         </div>
 
         <section className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] sm:p-8">

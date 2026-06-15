@@ -395,7 +395,7 @@ export function saveRedirectPath(path: string) {
   writeCookie(redirectCookieKey, path, 1 / 24);
 }
 
-export function consumeRedirectPath(defaultPath = "/dashboard"): string {
+export function consumeRedirectPath(defaultPath = "/dashboard/overview"): string {
   if (typeof window === "undefined") {
     return defaultPath;
   }

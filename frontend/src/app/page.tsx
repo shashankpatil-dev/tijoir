@@ -1,136 +1,179 @@
-import { SiteHeader } from "@/components/site-chrome";
 import Link from "next/link";
-
-const highlights = [
+import { SiteHeader } from "@/components/site-chrome";
+import { Badge } from "@/components/ui/badge";
+const capabilityCards = [
   {
-    title: "Centralize vendor credentials",
+    title: "Vault-first secret control",
     description:
-      "Keep operational passwords, API keys, SSH material, and future shared access contracts under one organization-owned control point.",
+      "Store operational passwords, API keys, webhook secrets, SSH material, and typed secret payloads under one organization-owned workspace.",
   },
   {
-    title: "Reduce unsafe sharing",
+    title: "Contract-scoped vendor sharing",
     description:
-      "Replace scattered chat messages, spreadsheets, and ad hoc document transfers with a structured vault-first workflow.",
+      "Issue public recipient links with explicit contract permissions like view once, until revoked, or notify-only rotation handling.",
   },
   {
-    title: "Preserve auditability",
+    title: "Security lifecycle operations",
     description:
-      "Build around verification, RBAC, append-only audit events, and controlled secret lifecycle operations from the start.",
+      "Reveal, rotate, revoke, and audit secret usage from the same dashboard instead of relying on chat messages or scattered documents.",
   },
 ];
 
-const useCases = [
-  "A company needs to share SFTP or API credentials with an external vendor without losing ownership of access.",
-  "An ops team wants an org-level dashboard for who owns credentials, who accessed them, and what can be revoked.",
-  "A security-focused MVP needs auth, vault, and production deployment credibility for an SDE1-grade project.",
+const workflowSteps = [
+  "Create the organization owner account and verify email access.",
+  "Add or generate secrets inside the vault and review current versions.",
+  "Issue a public share link for a vendor or external operator.",
+  "Track recipient access, revoke contracts, and rotate secrets when needed.",
+];
+
+const productSignals = [
+  { label: "Current backend slice", value: "Auth, vault, and share links" },
+  { label: "Production model", value: "CloudFront, Lambda URL, AWS Secrets Manager" },
+  { label: "Primary use case", value: "Secure credential exchange with external vendors" },
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_38%,#edf4ff_100%)] text-[var(--color-ink)]">
       <SiteHeader />
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
-        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+        <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
           <div className="space-y-6">
-            <span className="inline-flex rounded-full border border-[var(--color-brand-soft)] bg-[var(--color-brand-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
-              Secure vendor credential exchange
-            </span>
+            <Badge tone="brand">Secure vendor credential exchange</Badge>
 
             <div className="space-y-4">
-              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-[var(--color-ink-strong)] sm:text-5xl">
-                Tijoir helps organizations share vendor credentials without giving
-                up control.
+              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-[var(--color-ink-strong)] sm:text-5xl lg:text-[3.4rem]">
+                Tijoir gives organizations a cleaner way to share secrets without
+                giving up control.
               </h1>
               <p className="max-w-3xl text-lg leading-8 text-[var(--color-muted)]">
-                The product is built for teams that need a cleaner way to onboard
-                vendors, protect secrets, and move away from insecure credential
-                sharing through chats, docs, and manual handoffs.
+                Built as an operations-facing SaaS workspace, Tijoir replaces
+                unsafe credential handoffs with organization login, vault storage,
+                contract-scoped public share links, and explicit lifecycle actions.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                className="rounded-2xl bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-strong)]"
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-brand)] bg-[var(--color-brand)] px-5 py-3.5 text-sm font-medium text-white transition hover:border-[var(--color-brand-strong)] hover:bg-[var(--color-brand-strong)]"
                 href="/signup"
               >
                 Create workspace
               </Link>
               <Link
-                className="rounded-2xl border border-[var(--color-border)] bg-white px-5 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)]"
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-5 py-3.5 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)]"
                 href="/login"
               >
                 Login
               </Link>
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {productSignals.map((item) => (
+                <div
+                  className="rounded-2xl border border-[var(--color-border)] bg-white/88 p-4 shadow-[var(--shadow-card)]"
+                  key={item.label}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-[var(--color-border)] bg-[linear-gradient(135deg,var(--color-brand-panel),white)] p-6 shadow-[var(--shadow-card)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
-              What the app is about
-            </p>
-            <div className="mt-4 space-y-4 text-sm leading-7 text-[var(--color-muted)]">
-              <p>
-                Tijoir is an organization-first system for secure credential
-                exchange. An organization signs up, verifies its owner account,
-                logs in, and then operates from its own dashboard like a normal
-                SaaS workspace.
+          <div className="rounded-[28px] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)]">
+            <div className="rounded-3xl border border-[var(--color-dashboard-border)] bg-[linear-gradient(135deg,var(--color-brand-panel),#ffffff)] p-5">
+              <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+                Product flow
               </p>
-              <p>
-                From there, the product can manage vault secrets, access control,
-                audits, vendor sharing, and lifecycle actions such as reveal,
-                rotate, and revoke.
-              </p>
+              <h2 className="mt-3 text-2xl font-semibold text-[var(--color-ink-strong)]">
+                Designed like an operational SaaS workspace
+              </h2>
+              <div className="mt-5 space-y-3">
+                {workflowSteps.map((step, index) => (
+                  <div
+                    className="flex gap-3 rounded-2xl border border-white/70 bg-white/80 p-4"
+                    key={step}
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand)] text-sm font-semibold text-white">
+                      {index + 1}
+                    </div>
+                    <p className="text-sm leading-6 text-[var(--color-ink)]">{step}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-t border-[var(--color-border)] bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <section className="border-y border-[var(--color-border)] bg-white/80">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mb-6 space-y-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+              What the product does
+            </p>
+            <h2 className="text-3xl font-semibold text-[var(--color-ink-strong)]">
+              Frontend and backend are aligned around the current working platform
+            </h2>
+          </div>
           <div className="grid gap-5 md:grid-cols-3">
-            {highlights.map((item) => (
-              <div
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]"
+            {capabilityCards.map((item) => (
+              <article
+                className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]"
                 key={item.title}
               >
-                <h2 className="text-lg font-semibold text-[var(--color-ink-strong)]">
+                <h3 className="text-lg font-semibold text-[var(--color-ink-strong)]">
                   {item.title}
-                </h2>
+                </h3>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-muted)]">
                   {item.description}
                 </p>
-              </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[var(--color-surface)]">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
-                Core use cases
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold text-[var(--color-ink-strong)]">
-                Designed for teams that need secure external access workflows
-              </h2>
-            </div>
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+        <div className="grid gap-5 rounded-[28px] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+              Built for this workflow
+            </p>
+            <h2 className="text-3xl font-semibold text-[var(--color-ink-strong)]">
+              This is not a generic password manager pitch
+            </h2>
+            <p className="text-sm leading-7 text-[var(--color-muted)]">
+              Tijoir is shaped around vendor onboarding, external operators, and
+              revocable access contracts. The core experience starts with a clean
+              organization dashboard, not a landing-page-only story.
+            </p>
+          </div>
 
-            <div className="space-y-4">
-              {useCases.map((item) => (
-                <div
-                  className="rounded-2xl border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card)]"
-                  key={item}
-                >
-                  <p className="text-sm leading-7 text-[var(--color-muted)]">{item}</p>
-                </div>
-              ))}
-            </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SignalCard title="Auth" value="Owner signup, verification, login, refresh session" />
+            <SignalCard title="Vault" value="Create, reveal, rotate, revoke, typed secret handling" />
+            <SignalCard title="Sharing" value="Public share token metadata and consume flow" />
           </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function SignalCard({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+        {title}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">{value}</p>
+    </div>
   );
 }

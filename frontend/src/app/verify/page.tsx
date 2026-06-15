@@ -122,7 +122,7 @@ export default function VerifyPage() {
           <div className="space-y-4">
             <StatusPanel
               title="MVP token delivery"
-              body="SES is not wired yet, so the verification token is returned by the backend and staged into session storage for this flow."
+              body="SES is not wired yet, so the backend returns the verification token and the frontend stages it locally for this step."
             />
             <StatusPanel
               title="Owner email"
@@ -130,7 +130,7 @@ export default function VerifyPage() {
             />
           </div>
         }
-        description="Use the token returned by signup to activate the owner account, then continue to login."
+        description="Submit the verification token to activate the owner account, then continue into login and the organization dashboard."
         eyebrow="Email verification"
         title="Verify the first owner account"
       >
@@ -148,7 +148,7 @@ export default function VerifyPage() {
               Confirm the registration token
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-              Verification must succeed before the account can log in.
+              Verification must succeed before login and share-link creation are available.
             </p>
           </div>
 
