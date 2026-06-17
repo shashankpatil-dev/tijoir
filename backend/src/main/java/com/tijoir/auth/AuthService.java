@@ -92,7 +92,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request) {
+    public IssuedSession login(LoginRequest request) {
         UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(request.email()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
@@ -106,7 +106,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse issueSessionForUser(UserAccount user) {
+    public IssuedSession issueSessionForUser(UserAccount user) {
         if (user.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
@@ -118,11 +118,11 @@ public class AuthService {
     public AuthResponse currentUser(UUID userId) {
         UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
-        return issueAuthResponse(user, false);
+        return issueAuthResponse(user, false).authResponse();
     }
 
     @Transactional
-    public AuthResponse refresh(String rawRefreshToken) {
+    public IssuedSession refresh(String rawRefreshToken) {
         RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(CryptoUtil.sha256Hex(rawRefreshToken))
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
 
@@ -169,20 +169,20 @@ public class AuthService {
         return new RegisterResponse(null, verification.rawToken(), verification.expiresAt());
     }
 
-    private AuthResponse issueAuthResponse(UserAccount user, boolean includeRefreshToken) {
+    private IssuedSession issueAuthResponse(UserAccount user, boolean includeRefreshToken) {
         ensureActive(user);
         JwtService.TokenResult accessToken = jwtService.issueToken(user);
         RefreshTokenResult refreshToken = includeRefreshToken ? createRefreshToken(user) : null;
 
-        return new AuthResponse(
+        return new IssuedSession(new AuthResponse(
                 accessToken.token(),
-                refreshToken != null ? refreshToken.rawToken() : null,
+                null,
                 "Bearer",
                 accessToken.expiresAt(),
                 refreshToken != null ? refreshToken.expiresAt() : null,
                 userSummary(user),
                 organizationSummary(user.getOrganization())
-        );
+        ), refreshToken != null ? refreshToken.rawToken() : null);
     }
 
     private UserSummary userSummary(UserAccount user) {
@@ -257,5 +257,8 @@ public class AuthService {
     }
 
     private record RefreshTokenResult(String rawToken, Instant expiresAt) {
+    }
+
+    public record IssuedSession(AuthResponse authResponse, String rawRefreshToken) {
     }
 }

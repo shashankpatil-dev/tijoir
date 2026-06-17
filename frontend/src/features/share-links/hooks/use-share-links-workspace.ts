@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiBaseUrl } from "@/lib/api/client";
 import { buildStaticAppUrl } from "@/lib/auth-client";
 import {
@@ -12,6 +13,8 @@ import {
   createShareLink,
   revokeShareLink,
 } from "@/features/share-links/api/share-links.api";
+import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
+import { useShareLinkFormState } from "@/features/share-links/hooks/use-share-link-form-state";
 import type {
   ContractPermission,
   ShareLinkResponse,
@@ -44,16 +47,10 @@ export function useShareLinksWorkspace({
   shareLinks: ShareLinkResponse[];
   showToast: ShowToast;
 }) {
+  const queryClient = useQueryClient();
   const [lastCreatedShare, setLastCreatedShare] = useState<SharePreview | null>(null);
-  const [createShareOpen, setCreateShareOpen] = useState(false);
   const [shareRevokeTarget, setShareRevokeTarget] = useState<ShareLinkResponse | null>(null);
-  const [shareSecretId, setShareSecretId] = useState("");
-  const [shareRecipientLabel, setShareRecipientLabel] = useState(
-    "Primary vendor operator",
-  );
-  const [sharePermission, setSharePermission] =
-    useState<ContractPermission>("VIEW_ONCE");
-  const [shareExpiry, setShareExpiry] = useState("");
+  const formState = useShareLinkFormState(secrets);
   const [shareSearch, setShareSearch] = useState("");
   const [shareStatusFilter, setShareStatusFilter] = useState("ALL");
   const [sharePermissionFilter, setSharePermissionFilter] = useState("ALL");
@@ -62,16 +59,6 @@ export function useShareLinksWorkspace({
   useEffect(() => {
     setSharePage(1);
   }, [sharePermissionFilter, shareSearch, shareStatusFilter]);
-
-  useEffect(() => {
-    if (!secrets.length) {
-      setShareSecretId("");
-      return;
-    }
-    setShareSecretId((current) =>
-      current && secrets.some((secret) => secret.id === current) ? current : secrets[0].id,
-    );
-  }, [secrets]);
 
   const filteredShareLinks = useMemo(() => {
     const query = shareSearch.trim().toLowerCase();
@@ -101,13 +88,26 @@ export function useShareLinksWorkspace({
     [copyText],
   );
 
+  const createShareLinkMutation = useMutation({
+    mutationFn: (payload: {
+      secretId: string;
+      recipientLabel: string | null;
+      permission: ContractPermission;
+      expiresAt: string | null;
+    }) => createShareLink(sessionAccessToken as string, payload),
+  });
+
+  const revokeShareLinkMutation = useMutation({
+    mutationFn: (shareLinkId: string) => revokeShareLink(shareLinkId, sessionAccessToken as string),
+  });
+
   async function handleCreateShareLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sessionAccessToken) {
       router.replace("/login");
       return;
     }
-    if (!shareSecretId) {
+    if (!formState.shareSecretId) {
       setMessage("Select a secret before creating a share link.");
       return;
     }
@@ -116,11 +116,11 @@ export function useShareLinksWorkspace({
     setMessage("Creating share link");
 
     try {
-      const created = await createShareLink(sessionAccessToken, {
-        secretId: shareSecretId,
-        recipientLabel: shareRecipientLabel || null,
-        permission: sharePermission,
-        expiresAt: shareExpiry ? new Date(shareExpiry).toISOString() : null,
+      const created = await createShareLinkMutation.mutateAsync({
+        secretId: formState.shareSecretId,
+        recipientLabel: formState.shareRecipientLabel || null,
+        permission: formState.sharePermission,
+        expiresAt: formState.shareExpiry ? new Date(formState.shareExpiry).toISOString() : null,
       });
 
       if (created.shareToken && typeof window !== "undefined") {
@@ -134,9 +134,11 @@ export function useShareLinksWorkspace({
         setPublicToken(created.shareToken);
       }
 
-      setCreateShareOpen(false);
+      formState.setCreateShareOpen(false);
       router.push("/dashboard/share-links");
-      await loadWorkspace(sessionAccessToken);
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.shareLinks(sessionAccessToken),
+      });
       setMessage(`Share link created for ${created.secretKey}.`);
       showToast({
         title: "Share link created",
@@ -160,8 +162,10 @@ export function useShareLinksWorkspace({
     setMessage("Revoking share link");
 
     try {
-      await revokeShareLink(shareLinkId, sessionAccessToken);
-      await loadWorkspace(sessionAccessToken);
+      await revokeShareLinkMutation.mutateAsync(shareLinkId);
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.shareLinks(sessionAccessToken),
+      });
       setMessage("Share link revoked.");
       showToast({
         title: "Share link revoked",
@@ -177,37 +181,28 @@ export function useShareLinksWorkspace({
 
   function openCreateShareLink() {
     router.push("/dashboard/share-links");
-    setCreateShareOpen(true);
+    formState.setCreateShareOpen(true);
   }
 
   return {
-    createShareOpen,
+    ...formState,
     filteredShareLinks,
     handleCreateShareLink,
     handleRevokeShareLink,
     lastCreatedShare,
     openCreateShareLink,
     paginatedShareLinks,
-    setCreateShareOpen,
-    setShareExpiry,
     setSharePage,
-    setSharePermission,
     setSharePermissionFilter,
-    setShareRecipientLabel,
     setShareRevokeTarget,
     setShareSearch,
-    setShareSecretId,
     setShareStatusFilter,
     shareColumns,
-    shareExpiry,
     sharePage,
     sharePageCount,
-    sharePermission,
     sharePermissionFilter,
-    shareRecipientLabel,
     shareRevokeTarget,
     shareSearch,
-    shareSecretId,
     shareStatusFilter,
   };
 }

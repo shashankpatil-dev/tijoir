@@ -1,6 +1,8 @@
 package com.tijoir.sharelink;
 
 import com.tijoir.auth.security.AuthenticatedUser;
+import com.tijoir.common.paging.PageResponse;
+import com.tijoir.contract.ContractPermission;
 import com.tijoir.sharelink.dto.CreateShareLinkRequest;
 import com.tijoir.sharelink.dto.ShareLinkResponse;
 import jakarta.validation.Valid;
@@ -14,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,8 +37,15 @@ public class ShareLinkController {
     }
 
     @GetMapping
-    public List<ShareLinkResponse> list(@AuthenticationPrincipal AuthenticatedUser user) {
-        return shareLinkService.list(user);
+    public PageResponse<ShareLinkResponse> list(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer page,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer size,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String query,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) ContractPermission permission,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) ShareLinkStatus status
+    ) {
+        return shareLinkService.list(user, page, size, query, permission, status);
     }
 
     @PostMapping("/{shareLinkId}/revoke")

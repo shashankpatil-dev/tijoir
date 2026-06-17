@@ -5,15 +5,21 @@ import com.tijoir.audit.AuditAction;
 import com.tijoir.audit.AuditEvent;
 import com.tijoir.audit.AuditEventRepository;
 import com.tijoir.auth.AuthService;
-import com.tijoir.auth.dto.AuthResponse;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
+import com.tijoir.common.paging.PageRequestFactory;
+import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
 import com.tijoir.organization.dto.MemberResponse;
 import com.tijoir.organization.dto.UpdateMemberRoleRequest;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -58,22 +63,35 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberResponse> listMembers(AuthenticatedUser principal) {
+    public PageResponse<MemberResponse> listMembers(
+            AuthenticatedUser principal,
+            Integer page,
+            Integer size,
+            String query,
+            UserRole role
+    ) {
         authorizationService.requireOrganizationManager(principal.role());
-        return userAccountRepository.findAllByOrganizationIdAndDeactivatedAtIsNullOrderByCreatedAtAsc(principal.organizationId())
-                .stream()
-                .map(this::toMemberResponse)
-                .toList();
+        PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
+        Page<MemberResponse> results = userAccountRepository.findAll(memberSpec(principal.organizationId(), query, role), pageRequest)
+                .map(this::toMemberResponse);
+        return PageResponse.from(results);
     }
 
     @Transactional(readOnly = true)
-    public List<InviteResponse> listInvites(AuthenticatedUser principal) {
+    public PageResponse<InviteResponse> listInvites(
+            AuthenticatedUser principal,
+            Integer page,
+            Integer size,
+            String query,
+            UserRole role,
+            OrganizationInviteStatus status
+    ) {
         authorizationService.requireOrganizationManager(principal.role());
         Instant now = Instant.now();
-        return organizationInviteRepository.findAllByOrganizationIdOrderByCreatedAtDesc(principal.organizationId())
-                .stream()
-                .map(invite -> toInviteResponse(invite, null, now))
-                .toList();
+        PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<InviteResponse> results = organizationInviteRepository.findAll(inviteSpec(principal.organizationId(), query, role, status, now), pageRequest)
+                .map(invite -> toInviteResponse(invite, null, now));
+        return PageResponse.from(results);
     }
 
     @Transactional
@@ -146,7 +164,7 @@ public class OrganizationService {
     }
 
     @Transactional
-    public AuthResponse acceptInvite(AcceptInviteRequest request) {
+    public AuthService.IssuedSession acceptInvite(AcceptInviteRequest request) {
         OrganizationInvite invite = organizationInviteRepository.findByTokenHash(CryptoUtil.sha256Hex(request.token()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Invite not found"));
 
@@ -278,5 +296,70 @@ public class OrganizationService {
         } catch (Exception ex) {
             throw new IllegalStateException("Could not serialize audit payload", ex);
         }
+    }
+
+    private Specification<UserAccount> memberSpec(UUID organizationId, String query, UserRole role) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(root.get("organization").get("id"), organizationId);
+            predicate = criteriaBuilder.and(predicate, criteriaBuilder.isNull(root.get("deactivatedAt")));
+
+            if (query != null && !query.isBlank()) {
+                String pattern = "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern)
+                ));
+            }
+            if (role != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("role"), role));
+            }
+            return predicate;
+        };
+    }
+
+    private Specification<OrganizationInvite> inviteSpec(
+            UUID organizationId,
+            String query,
+            UserRole role,
+            OrganizationInviteStatus status,
+            Instant now
+    ) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(root.get("organization").get("id"), organizationId);
+
+            if (query != null && !query.isBlank()) {
+                String pattern = "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern));
+            }
+            if (role != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("role"), role));
+            }
+            if (status != null) {
+                predicate = criteriaBuilder.and(predicate, inviteStatusPredicate(root, criteriaBuilder, status, now));
+            }
+            return predicate;
+        };
+    }
+
+    private Predicate inviteStatusPredicate(
+            jakarta.persistence.criteria.Root<OrganizationInvite> root,
+            jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder,
+            OrganizationInviteStatus status,
+            Instant now
+    ) {
+        return switch (status) {
+            case REVOKED -> criteriaBuilder.isNotNull(root.get("revokedAt"));
+            case ACCEPTED -> criteriaBuilder.isNotNull(root.get("acceptedAt"));
+            case EXPIRED -> criteriaBuilder.and(
+                    criteriaBuilder.isNull(root.get("revokedAt")),
+                    criteriaBuilder.isNull(root.get("acceptedAt")),
+                    criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), now)
+            );
+            case PENDING -> criteriaBuilder.and(
+                    criteriaBuilder.isNull(root.get("revokedAt")),
+                    criteriaBuilder.isNull(root.get("acceptedAt")),
+                    criteriaBuilder.greaterThan(root.get("expiresAt"), now)
+            );
+        };
     }
 }

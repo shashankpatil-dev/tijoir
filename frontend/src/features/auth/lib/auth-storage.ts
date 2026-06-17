@@ -12,7 +12,6 @@ const sessionStorageKey = "tijoir.session";
 const pendingVerificationKey = "tijoir.pendingVerification";
 const rememberedEmailKey = "tijoir.lastEmail";
 const redirectPathKey = "tijoir.redirectPath";
-const sessionCookieKey = "tijoir_session";
 const rememberedEmailCookieKey = "tijoir_last_email";
 const redirectCookieKey = "tijoir_redirect";
 
@@ -21,9 +20,7 @@ export function readSession(): AuthResponse | null {
     return null;
   }
 
-  const raw =
-    window.localStorage.getItem(sessionStorageKey) ||
-    readCookie(sessionCookieKey);
+  const raw = window.localStorage.getItem(sessionStorageKey);
   if (!raw) {
     return null;
   }
@@ -52,18 +49,12 @@ export function saveSession(session: AuthResponse) {
   const existing = readStoredSession();
   const merged: AuthResponse = {
     ...session,
-    refreshToken: session.refreshToken ?? existing?.refreshToken ?? null,
     refreshExpiresAt:
       session.refreshExpiresAt ?? existing?.refreshExpiresAt ?? null,
   };
   const payload = JSON.stringify(merged);
   window.localStorage.setItem(sessionStorageKey, payload);
   window.localStorage.setItem(rememberedEmailKey, merged.user.email);
-  writeCookie(
-    sessionCookieKey,
-    payload,
-    toCookieExpiry(merged.refreshExpiresAt || merged.expiresAt),
-  );
   writeCookie(rememberedEmailCookieKey, merged.user.email, 30);
 }
 
@@ -73,7 +64,6 @@ export function clearSession() {
   }
 
   window.localStorage.removeItem(sessionStorageKey);
-  clearCookie(sessionCookieKey);
 }
 
 export function readRememberedEmail(): string {
@@ -153,13 +143,13 @@ export function consumeRedirectPath(defaultPath = "/dashboard/overview"): string
 
 export async function refreshSession(): Promise<AuthResponse | null> {
   const current = readStoredSession();
-  if (!current?.refreshToken || !hasUsableRefreshToken(current)) {
+  if (!current || !hasUsableRefreshToken(current)) {
     clearSession();
     return null;
   }
 
   try {
-    const refreshed = await refreshRequest(current.refreshToken);
+    const refreshed = await refreshRequest();
     saveSession(refreshed);
     return readSession();
   } catch {
@@ -202,7 +192,7 @@ export async function authenticatedApiRequest<T>(
 }
 
 function hasUsableRefreshToken(session: AuthResponse): boolean {
-  if (!session.refreshToken || !session.refreshExpiresAt) {
+  if (!session.refreshExpiresAt) {
     return false;
   }
 
@@ -214,9 +204,7 @@ function readStoredSession(): AuthResponse | null {
     return null;
   }
 
-  const raw =
-    window.localStorage.getItem(sessionStorageKey) ||
-    readCookie(sessionCookieKey);
+  const raw = window.localStorage.getItem(sessionStorageKey);
   if (!raw) {
     return null;
   }

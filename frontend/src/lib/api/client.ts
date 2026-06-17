@@ -21,6 +21,7 @@ export async function apiRequest<T>(
       ...(options.headers || {}),
     },
     cache: options.cache ?? "no-store",
+    credentials: options.credentials ?? "include",
   });
 
   const text = await response.text();

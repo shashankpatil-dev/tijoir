@@ -70,7 +70,7 @@ class SecretControllerIntegrationTest {
         mockMvc.perform(get("/api/secrets")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].secretKey").value("primary-sftp-password"));
+                .andExpect(jsonPath("$.items[0].secretKey").value("primary-sftp-password"));
 
         mockMvc.perform(get("/api/secrets/" + secretId)
                         .header("Authorization", "Bearer " + ownerToken))
@@ -212,16 +212,53 @@ class SecretControllerIntegrationTest {
         mockMvc.perform(get("/api/secrets")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.items.length()").value(1));
 
         mockMvc.perform(get("/api/secrets")
                         .header("Authorization", "Bearer " + viewerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.items.length()").value(1));
 
         mockMvc.perform(get("/api/secrets/00000000-0000-0000-0000-000000000001")
                         .header("Authorization", "Bearer " + viewerToken))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void secretListSupportsPaginationAndFilters() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Filter Vault", "owner@acme-filter-vault.test");
+
+        mockMvc.perform(post("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Vendor Webhook Secret",
+                                  "type": "WEBHOOK_SECRET",
+                                  "value": "vendor-secret"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Internal API Key",
+                                  "type": "API_KEY",
+                                  "value": "internal-api-key"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/secrets?page=0&size=1&query=vendor&type=WEBHOOK_SECRET")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.items[0].name").value("Vendor Webhook Secret"));
     }
 
     private String registerVerifyAndLogin(String organizationName, String ownerEmail) throws Exception {

@@ -1,23 +1,26 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
+import type { PageResponse } from "@/lib/api/types";
 import type {
   InviteSummary,
   MemberSummary,
 } from "@/features/members/types/members.types";
 
 export async function fetchMembers(accessToken: string) {
-  return authenticatedApiRequest<MemberSummary[]>(
-    "/api/organization/members",
+  const page = await authenticatedApiRequest<PageResponse<MemberSummary>>(
+    "/api/organization/members?page=0&size=100",
     accessToken,
   );
+  return page.items;
 }
 
 export async function fetchInvites(accessToken: string) {
-  return authenticatedApiRequest<InviteSummary[]>(
-    "/api/organization/invites",
+  const page = await authenticatedApiRequest<PageResponse<InviteSummary>>(
+    "/api/organization/invites?page=0&size=100",
     accessToken,
   );
+  return page.items;
 }
 
 export async function createInvite(

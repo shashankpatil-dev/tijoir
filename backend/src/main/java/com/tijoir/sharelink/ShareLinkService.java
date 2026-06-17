@@ -6,6 +6,8 @@ import com.tijoir.audit.AuditEvent;
 import com.tijoir.audit.AuditEventRepository;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
+import com.tijoir.common.paging.PageRequestFactory;
+import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.contract.ContractPermission;
 import com.tijoir.organization.OrganizationAuthorizationService;
@@ -21,12 +23,18 @@ import com.tijoir.sharelink.dto.ConsumeShareLinkResponse;
 import com.tijoir.sharelink.dto.CreateShareLinkRequest;
 import com.tijoir.sharelink.dto.PublicShareLinkMetadataResponse;
 import com.tijoir.sharelink.dto.ShareLinkResponse;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,6 +50,7 @@ public class ShareLinkService {
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
+    private final ShareLinkConsumeGuard shareLinkConsumeGuard;
 
     public ShareLinkService(
             ShareLinkRepository shareLinkRepository,
@@ -51,7 +60,8 @@ public class ShareLinkService {
             UserAccountRepository userAccountRepository,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ShareLinkConsumeGuard shareLinkConsumeGuard
     ) {
         this.shareLinkRepository = shareLinkRepository;
         this.vaultSecretRepository = vaultSecretRepository;
@@ -61,6 +71,7 @@ public class ShareLinkService {
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
         this.objectMapper = objectMapper;
+        this.shareLinkConsumeGuard = shareLinkConsumeGuard;
     }
 
     @Transactional
@@ -101,13 +112,23 @@ public class ShareLinkService {
     }
 
     @Transactional(readOnly = true)
-    public List<ShareLinkResponse> list(AuthenticatedUser principal) {
+    public PageResponse<ShareLinkResponse> list(
+            AuthenticatedUser principal,
+            Integer page,
+            Integer size,
+            String query,
+            ContractPermission permission,
+            ShareLinkStatus status
+    ) {
         authorizationService.requireShareManager(principal.role());
         Instant now = Instant.now();
-        return shareLinkRepository.findAllByOrganizationIdOrderByCreatedAtDesc(principal.organizationId())
-                .stream()
-                .map(shareLink -> toResponse(shareLink, null, effectiveStatus(shareLink, now)))
-                .toList();
+        PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<ShareLinkResponse> results = shareLinkRepository.findAll(
+                        shareLinkListSpec(principal.organizationId(), query, permission, status, now),
+                        pageRequest
+                )
+                .map(shareLink -> toResponse(shareLink, null, effectiveStatus(shareLink, now)));
+        return PageResponse.from(results);
     }
 
     @Transactional
@@ -158,48 +179,51 @@ public class ShareLinkService {
 
     @Transactional
     public ConsumeShareLinkResponse consume(String rawToken) {
-        ShareLink shareLink = findShareLinkByToken(rawToken, true);
-        Instant now = Instant.now();
-        expireIfNeeded(shareLink, now);
-        ensureConsumable(shareLink);
+        String tokenHash = CryptoUtil.sha256Hex(rawToken);
+        try (ShareLinkConsumeGuard.GuardLease ignored = shareLinkConsumeGuard.acquire(tokenHash)) {
+            ShareLink shareLink = findShareLinkByTokenHash(tokenHash, true);
+            Instant now = Instant.now();
+            expireIfNeeded(shareLink, now);
+            ensureConsumable(shareLink);
 
-        VaultSecret secret = shareLink.getSecret();
-        if (secret.getStatus() != SecretStatus.ACTIVE) {
-            throw new ApiException(HttpStatus.GONE, "The underlying secret is no longer available");
+            VaultSecret secret = shareLink.getSecret();
+            if (secret.getStatus() != SecretStatus.ACTIVE) {
+                throw new ApiException(HttpStatus.GONE, "The underlying secret is no longer available");
+            }
+
+            SecretVersion version = secretVersionRepository.findBySecretIdAndVersionNumber(secret.getId(), secret.getCurrentVersionNumber())
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Secret version not found"));
+
+            if (shareLink.getContractPermission() == ContractPermission.VIEW_ONCE) {
+                shareLink.consume();
+            }
+
+            auditEventRepository.save(new AuditEvent(
+                    shareLink.getOrganization(),
+                    null,
+                    AuditAction.SHARE_LINK_CONSUMED,
+                    "SHARE_LINK",
+                    shareLink.getId(),
+                    toJson(Map.of(
+                            "secretId", secret.getId(),
+                            "secretKey", secret.getSecretKey(),
+                            "permission", shareLink.getContractPermission().name(),
+                            "version", version.getVersionNumber(),
+                            "publicAccess", true
+                    ))
+            ));
+
+            return new ConsumeShareLinkResponse(
+                    shareLink.getId(),
+                    secret.getName(),
+                    secret.getSecretKey(),
+                    secret.getSecretType(),
+                    version.getVersionNumber(),
+                    secretPayloadStore.reveal(version),
+                    shareLink.getContractPermission(),
+                    shareLink.getStatus()
+            );
         }
-
-        SecretVersion version = secretVersionRepository.findBySecretIdAndVersionNumber(secret.getId(), secret.getCurrentVersionNumber())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Secret version not found"));
-
-        if (shareLink.getContractPermission() == ContractPermission.VIEW_ONCE) {
-            shareLink.consume();
-        }
-
-        auditEventRepository.save(new AuditEvent(
-                shareLink.getOrganization(),
-                null,
-                AuditAction.SHARE_LINK_CONSUMED,
-                "SHARE_LINK",
-                shareLink.getId(),
-                toJson(Map.of(
-                        "secretId", secret.getId(),
-                        "secretKey", secret.getSecretKey(),
-                        "permission", shareLink.getContractPermission().name(),
-                        "version", version.getVersionNumber(),
-                        "publicAccess", true
-                ))
-        ));
-
-        return new ConsumeShareLinkResponse(
-                shareLink.getId(),
-                secret.getName(),
-                secret.getSecretKey(),
-                secret.getSecretType(),
-                version.getVersionNumber(),
-                secretPayloadStore.reveal(version),
-                shareLink.getContractPermission(),
-                shareLink.getStatus()
-        );
     }
 
     private UserAccount findActor(AuthenticatedUser principal) {
@@ -217,7 +241,10 @@ public class ShareLinkService {
     }
 
     private ShareLink findShareLinkByToken(String rawToken, boolean forUpdate) {
-        String tokenHash = CryptoUtil.sha256Hex(rawToken);
+        return findShareLinkByTokenHash(CryptoUtil.sha256Hex(rawToken), forUpdate);
+    }
+
+    private ShareLink findShareLinkByTokenHash(String tokenHash, boolean forUpdate) {
         return (forUpdate ? shareLinkRepository.findByTokenHashForUpdate(tokenHash) : shareLinkRepository.findByTokenHash(tokenHash))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Share link not found"));
     }
@@ -288,5 +315,60 @@ public class ShareLinkService {
         } catch (Exception ex) {
             throw new IllegalStateException("Could not serialize audit details", ex);
         }
+    }
+
+    private Specification<ShareLink> shareLinkListSpec(
+            UUID organizationId,
+            String query,
+            ContractPermission permission,
+            ShareLinkStatus status,
+            Instant now
+    ) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(root.get("organization").get("id"), organizationId);
+
+            if (query != null && !query.isBlank()) {
+                String pattern = "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
+                var secretJoin = root.join("secret", JoinType.INNER);
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("recipientLabel"), "")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(secretJoin.get("name")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(secretJoin.get("secretKey")), pattern)
+                ));
+            }
+            if (permission != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("contractPermission"), permission));
+            }
+            if (status != null) {
+                predicate = criteriaBuilder.and(predicate, statusPredicate(root, criteriaBuilder, status, now));
+            }
+            return predicate;
+        };
+    }
+
+    private Predicate statusPredicate(
+            jakarta.persistence.criteria.Root<ShareLink> root,
+            jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder,
+            ShareLinkStatus status,
+            Instant now
+    ) {
+        return switch (status) {
+            case ACTIVE -> criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("status"), ShareLinkStatus.ACTIVE),
+                    criteriaBuilder.or(
+                            criteriaBuilder.isNull(root.get("expiresAt")),
+                            criteriaBuilder.greaterThan(root.get("expiresAt"), now)
+                    )
+            );
+            case EXPIRED -> criteriaBuilder.or(
+                    criteriaBuilder.equal(root.get("status"), ShareLinkStatus.EXPIRED),
+                    criteriaBuilder.and(
+                            criteriaBuilder.equal(root.get("status"), ShareLinkStatus.ACTIVE),
+                            criteriaBuilder.isNotNull(root.get("expiresAt")),
+                            criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), now)
+                    )
+            );
+            case CONSUMED, REVOKED -> criteriaBuilder.equal(root.get("status"), status);
+        };
     }
 }

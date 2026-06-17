@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   consumePublicShare,
   fetchPublicShareMetadata,
@@ -22,11 +23,25 @@ export function useRecipientWorkspace({
   setMessage: (value: string) => void;
   showToast: ShowToast;
 }) {
+  const queryClient = useQueryClient();
   const [publicToken, setPublicToken] = useState("");
   const [publicMetadata, setPublicMetadata] =
     useState<PublicShareLinkMetadataResponse | null>(null);
   const [publicConsumedValue, setPublicConsumedValue] =
     useState<ConsumeShareLinkResponse | null>(null);
+
+  const loadMetadataMutation = useMutation({
+    mutationFn: (token: string) =>
+      queryClient.fetchQuery({
+        queryKey: ["public-share-metadata", token],
+        queryFn: () => fetchPublicShareMetadata(token),
+        staleTime: 30_000,
+      }),
+  });
+
+  const consumeShareMutation = useMutation({
+    mutationFn: (token: string) => consumePublicShare(token),
+  });
 
   useEffect(() => {
     const rememberedToken = readLastPublicToken();
@@ -58,7 +73,7 @@ export function useRecipientWorkspace({
     setMessage("Loading public share metadata");
 
     try {
-      const metadata = await fetchPublicShareMetadata(publicToken.trim());
+      const metadata = await loadMetadataMutation.mutateAsync(publicToken.trim());
       saveLastPublicToken(publicToken.trim());
       setPublicMetadata(metadata);
       setPublicConsumedValue(null);
@@ -90,7 +105,7 @@ export function useRecipientWorkspace({
     setMessage("Consuming public share link");
 
     try {
-      const result = await consumePublicShare(publicToken.trim());
+      const result = await consumeShareMutation.mutateAsync(publicToken.trim());
       saveLastPublicToken(publicToken.trim());
       setPublicConsumedValue(result);
       setMessage(`Secret ${result.secretKey} consumed successfully.`);

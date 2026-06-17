@@ -1,6 +1,7 @@
 package com.tijoir.secret;
 
 import com.tijoir.auth.security.AuthenticatedUser;
+import com.tijoir.common.paging.PageResponse;
 import com.tijoir.secret.dto.CreateSecretRequest;
 import com.tijoir.secret.dto.GenerateSecretRequest;
 import com.tijoir.secret.dto.GeneratedSecretResponse;
@@ -19,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -49,8 +49,15 @@ public class SecretController {
     }
 
     @GetMapping
-    public List<SecretSummaryResponse> list(@AuthenticationPrincipal AuthenticatedUser user) {
-        return secretService.list(user);
+    public PageResponse<SecretSummaryResponse> list(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            org.springframework.web.bind.annotation.RequestParam(required = false) Integer page,
+            org.springframework.web.bind.annotation.RequestParam(required = false) Integer size,
+            org.springframework.web.bind.annotation.RequestParam(required = false) String query,
+            org.springframework.web.bind.annotation.RequestParam(required = false) SecretType type,
+            org.springframework.web.bind.annotation.RequestParam(required = false) SecretStatus status
+    ) {
+        return secretService.list(user, page, size, query, type, status);
     }
 
     @GetMapping("/{secretId}")

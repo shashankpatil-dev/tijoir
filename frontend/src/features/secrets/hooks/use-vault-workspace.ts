@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DataTableColumn } from "@/components/ui/data-table";
 import {
   buildSecretColumns,
@@ -16,6 +17,8 @@ import {
   revokeSecret,
   rotateSecret,
 } from "@/features/secrets/api/secrets.api";
+import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
+import { useSecretFormState } from "@/features/secrets/hooks/use-secret-form-state";
 import type {
   RevealSecretResponse,
   SecretDetail,
@@ -47,20 +50,10 @@ export function useVaultWorkspace({
   setSelectedSecretId: (value: string) => void;
   showToast: ShowToast;
 }) {
-  const [selectedSecretDetail, setSelectedSecretDetail] = useState<SecretDetail | null>(null);
+  const queryClient = useQueryClient();
   const [revealedSecret, setRevealedSecret] = useState<RevealSecretResponse | null>(null);
-  const [createSecretOpen, setCreateSecretOpen] = useState(false);
-  const [rotateDialogOpen, setRotateDialogOpen] = useState(false);
   const [secretRevokeTarget, setSecretRevokeTarget] = useState<SecretSummary | null>(null);
-
-  const [createName, setCreateName] = useState("Vendor API Key");
-  const [createType, setCreateType] = useState<SecretType>("API_KEY");
-  const [createDescription, setCreateDescription] = useState(
-    "Used by the primary integration vendor",
-  );
-  const [createValue, setCreateValue] = useState("");
-  const [generateLength, setGenerateLength] = useState("32");
-  const [rotateValue, setRotateValue] = useState("");
+  const formState = useSecretFormState();
 
   const [vaultSearch, setVaultSearch] = useState("");
   const [vaultStatusFilter, setVaultStatusFilter] = useState("ALL");
@@ -70,7 +63,6 @@ export function useVaultWorkspace({
   useEffect(() => {
     if (!secrets.length) {
       setSelectedSecretId("");
-      setSelectedSecretDetail(null);
       setRevealedSecret(null);
       return;
     }
@@ -84,7 +76,8 @@ export function useVaultWorkspace({
     if (!sessionAccessToken || !selectedSecretId) {
       return;
     }
-    void loadSecretDetail(selectedSecretId, sessionAccessToken);
+    setRevealedSecret((current) => (current?.id === selectedSecretId ? current : null));
+    formState.setRotateValue("");
   }, [selectedSecretId, sessionAccessToken]);
 
   useEffect(() => {
@@ -113,17 +106,39 @@ export function useVaultWorkspace({
   const paginatedSecrets = paginate(filteredSecrets, vaultPage, DASHBOARD_ITEMS_PER_PAGE);
   const vaultPageCount = pageCount(filteredSecrets.length, DASHBOARD_ITEMS_PER_PAGE);
   const secretColumns = useMemo<DataTableColumn<SecretSummary>[]>(() => buildSecretColumns(), []);
+  const secretDetailQuery = useQuery({
+    queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, selectedSecretId),
+    queryFn: () => fetchSecretDetail(selectedSecretId, sessionAccessToken as string),
+    enabled: Boolean(sessionAccessToken && selectedSecretId),
+  });
+  const selectedSecretDetail: SecretDetail | null = secretDetailQuery.data ?? null;
 
-  async function loadSecretDetail(secretId: string, accessToken: string) {
-    try {
-      const detail = await fetchSecretDetail(secretId, accessToken);
-      setSelectedSecretDetail(detail);
-      setRevealedSecret((current) => (current?.id === secretId ? current : null));
-      setRotateValue("");
-    } catch (error) {
-      handleSessionError(error, "Could not load secret details");
-    }
-  }
+  const createSecretMutation = useMutation({
+    mutationFn: (payload: {
+      name: string;
+      type: SecretType;
+      description: string | null;
+      value: string;
+    }) => createSecret(sessionAccessToken as string, payload),
+  });
+
+  const generateSecretMutation = useMutation({
+    mutationFn: (payload: { type: SecretType; length: number }) =>
+      generateSecretValue(sessionAccessToken as string, payload),
+  });
+
+  const revealSecretMutation = useMutation({
+    mutationFn: (secretId: string) => revealSecret(secretId, sessionAccessToken as string),
+  });
+
+  const rotateSecretMutation = useMutation({
+    mutationFn: (payload: { secretId: string; value: string }) =>
+      rotateSecret(payload.secretId, sessionAccessToken as string, payload.value),
+  });
+
+  const revokeSecretMutation = useMutation({
+    mutationFn: (secretId: string) => revokeSecret(secretId, sessionAccessToken as string),
+  });
 
   async function handleCreateSecret(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -136,18 +151,20 @@ export function useVaultWorkspace({
     setMessage("Creating secret");
 
     try {
-      const created = await createSecret(sessionAccessToken, {
-        name: createName,
-        type: createType,
-        description: createDescription || null,
-        value: createValue,
+      const created = await createSecretMutation.mutateAsync({
+        name: formState.createName,
+        type: formState.createType,
+        description: formState.createDescription || null,
+        value: formState.createValue,
       });
 
-      setCreateValue("");
-      setCreateSecretOpen(false);
+      formState.setCreateValue("");
+      formState.setCreateSecretOpen(false);
       setSelectedSecretId(created.id);
       router.push("/dashboard/vault");
-      await loadWorkspace(sessionAccessToken);
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.secrets(sessionAccessToken),
+      });
       setMessage(`Secret ${created.secretKey} created.`);
       showToast({
         title: "Secret created",
@@ -171,12 +188,12 @@ export function useVaultWorkspace({
     setMessage("Generating candidate value");
 
     try {
-      const result = await generateSecretValue(sessionAccessToken, {
-        type: createType,
-        length: Number.parseInt(generateLength, 10),
+      const result = await generateSecretMutation.mutateAsync({
+        type: formState.createType,
+        length: Number.parseInt(formState.generateLength, 10),
       });
 
-      setCreateValue(result.value);
+      formState.setCreateValue(result.value);
       setMessage(`Generated ${result.type} candidate with length ${result.length}.`);
       showToast({
         title: "Value generated",
@@ -200,7 +217,7 @@ export function useVaultWorkspace({
     setMessage("Revealing current secret version");
 
     try {
-      const result = await revealSecret(secretId, sessionAccessToken);
+      const result = await revealSecretMutation.mutateAsync(secretId);
       setRevealedSecret(result);
       setMessage(`Revealed ${result.secretKey} version ${result.versionNumber}.`);
       showToast({
@@ -225,12 +242,21 @@ export function useVaultWorkspace({
     setMessage("Rotating secret");
 
     try {
-      await rotateSecret(selectedSecretId, sessionAccessToken, rotateValue);
-      setRotateValue("");
-      setRotateDialogOpen(false);
+      await rotateSecretMutation.mutateAsync({
+        secretId: selectedSecretId,
+        value: formState.rotateValue,
+      });
+      formState.setRotateValue("");
+      formState.setRotateDialogOpen(false);
       setRevealedSecret(null);
-      await loadWorkspace(sessionAccessToken);
-      await loadSecretDetail(selectedSecretId, sessionAccessToken);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.secrets(sessionAccessToken),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, selectedSecretId),
+        }),
+      ]);
       setMessage("Secret rotated and active version updated.");
       showToast({
         title: "Secret rotated",
@@ -254,12 +280,16 @@ export function useVaultWorkspace({
     setMessage("Revoking secret");
 
     try {
-      await revokeSecret(secretId, sessionAccessToken);
+      await revokeSecretMutation.mutateAsync(secretId);
       setRevealedSecret(null);
-      await loadWorkspace(sessionAccessToken);
-      if (secretId === selectedSecretId) {
-        await loadSecretDetail(secretId, sessionAccessToken);
-      }
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.secrets(sessionAccessToken),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, secretId),
+        }),
+      ]);
       setMessage("Secret revoked.");
       showToast({
         title: "Secret revoked",
@@ -275,18 +305,13 @@ export function useVaultWorkspace({
 
   function openCreateSecret() {
     router.push("/dashboard/vault");
-    setCreateSecretOpen(true);
+    formState.setCreateSecretOpen(true);
   }
 
   return {
     activeSecret,
-    createDescription,
-    createName,
-    createSecretOpen,
-    createType,
-    createValue,
+    ...formState,
     filteredSecrets,
-    generateLength,
     handleCreateSecret,
     handleGenerateSecret,
     handleRevealSecret,
@@ -295,19 +320,9 @@ export function useVaultWorkspace({
     openCreateSecret,
     paginatedSecrets,
     revealedSecret,
-    rotateDialogOpen,
-    rotateValue,
     secretColumns,
     secretRevokeTarget,
     selectedSecretDetail,
-    setCreateDescription,
-    setCreateName,
-    setCreateSecretOpen,
-    setCreateType,
-    setCreateValue,
-    setGenerateLength,
-    setRotateDialogOpen,
-    setRotateValue,
     setSecretRevokeTarget,
     setSelectedSecretId,
     setVaultPage,

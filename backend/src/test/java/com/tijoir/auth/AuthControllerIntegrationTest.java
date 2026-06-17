@@ -8,10 +8,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,7 +69,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.verified").value(true));
 
-        String loginResponse = mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -77,26 +79,25 @@ class AuthControllerIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(jsonPath("$.refreshToken").isString())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.user.emailVerified").value(true))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                .andExpect(cookie().exists("tijoir_refresh"))
+                .andReturn();
 
+        String loginResponse = loginResult.getResponse().getContentAsString();
         JsonNode loginJson = objectMapper.readTree(loginResponse);
         String loginToken = loginJson.get("accessToken").asText();
-        String refreshToken = loginJson.get("refreshToken").asText();
         mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + loginToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.organization.slug").value("acme-integrations"));
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                        .cookie(loginResult.getResponse().getCookie("tijoir_refresh")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(jsonPath("$.refreshToken").isString());
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(cookie().exists("tijoir_refresh"));
     }
 
     @Test

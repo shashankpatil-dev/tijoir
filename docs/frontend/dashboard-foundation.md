@@ -35,10 +35,14 @@ Public routes:
 Protected routes:
 
 - `/dashboard`
+- `/dashboard/overview`
 - `/dashboard/vault`
 - `/dashboard/share-links`
+- `/dashboard/members`
+- `/dashboard/recipient`
 
-Immediate implementation may keep the current single `/dashboard` route while structuring the UI internally around these sections. The component architecture should assume the split routes will follow.
+This route split is now implemented. The remaining work is improving how much
+data each route owns independently.
 
 ## Dashboard Information Architecture
 
@@ -223,20 +227,61 @@ Required behavior:
 
 ## State Management
 
-Short term:
+Current status:
 
-- keep existing local React state where it is already working
-- centralize session behavior through the existing auth client and hooks
-- centralize layout and view state at the dashboard shell level
+- session behavior is centralized through auth hooks and storage helpers
+- dashboard shell state is separated from feature hooks
+- feature hooks exist for:
+  - workspace core
+  - vault
+  - share links
+  - members
+  - recipient access
+- React Query is now onboarded
 
-Near-term improvement:
+Current caching model:
 
-- move feature state into section-specific hooks:
-  - `useVaultWorkspace`
-  - `useShareLinksWorkspace`
-- introduce query-style caching only when the current local model becomes a bottleneck
+- dashboard read datasets are query-backed
+- major vault/share/member writes are mutation-backed
+- local storage cache still exists as a restore fallback, not the final truth model
 
-Given the current project size, adding a new state library right now is unnecessary. Structure and component reuse should be fixed first.
+Remaining improvements:
+
+- make route-level query ownership stronger
+- reduce broad shared workspace coupling
+- move remaining feature data reads away from broad shared orchestration
+- improve auth/session storage security model
+
+So the frontend is past the “just local React state” stage now. The next work is
+refinement, not first adoption.
+
+## Current Gaps
+
+- backend still lacks paginated list APIs
+- frontend tables still filter/paginate client-side
+- route ownership is better, but not fully isolated per route yet
+- no optimistic updates yet
+- no production timing instrumentation yet
+
+## Latest Progress Snapshot
+
+Completed:
+
+- dashboard shell and shared primitives
+- feature-first folder structure
+- route-specific dashboard pages
+- workspace provider/context
+- query provider
+- query-backed dashboard reads
+- mutation-backed core operational actions
+- extracted form state hooks
+
+Still pending:
+
+- server-backed pagination
+- more route-local query ownership
+- stronger session storage model
+- performance verification against production interactions
 
 ## Styling Strategy
 

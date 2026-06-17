@@ -1,6 +1,7 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
+import type { PageResponse } from "@/lib/api/types";
 import type {
   GeneratedSecretResponse,
   RevealSecretResponse,
@@ -10,7 +11,11 @@ import type {
 } from "@/features/secrets/types/secrets.types";
 
 export async function fetchSecrets(accessToken: string) {
-  return authenticatedApiRequest<SecretSummary[]>("/api/secrets", accessToken);
+  const page = await authenticatedApiRequest<PageResponse<SecretSummary>>(
+    "/api/secrets?page=0&size=100",
+    accessToken,
+  );
+  return page.items;
 }
 
 export async function fetchSecretDetail(secretId: string, accessToken: string) {

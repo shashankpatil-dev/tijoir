@@ -225,6 +225,44 @@ class ShareLinkControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("You do not have permission to manage share links"));
     }
 
+    @Test
+    void shareLinkListSupportsPaginationAndFilters() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Share Filters", "owner@acme-share-filters.test");
+        String secretId = createSecret(ownerToken, "Vendor Shared Secret", "API_KEY", "shared-secret-value");
+
+        mockMvc.perform(post("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "recipientLabel": "Primary vendor",
+                                  "permission": "VIEW_ONCE"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "recipientLabel": "Backup vendor",
+                                  "permission": "VIEW_UNTIL_REVOKED"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/share-links?page=0&size=1&query=primary&permission=VIEW_ONCE")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].permission").value("VIEW_ONCE"))
+                .andExpect(jsonPath("$.items[0].recipientLabel").value("Primary vendor"));
+    }
+
     private String createSecret(String ownerToken, String name, String type, String value) throws Exception {
         String createResponse = mockMvc.perform(post("/api/secrets")
                         .header("Authorization", "Bearer " + ownerToken)

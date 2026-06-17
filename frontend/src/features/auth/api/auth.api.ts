@@ -43,9 +43,8 @@ export async function currentUserRequest(accessToken: string) {
   });
 }
 
-export async function refreshRequest(refreshToken: string) {
+export async function refreshRequest() {
   return apiRequest<AuthResponse>("/api/auth/refresh", {
     method: "POST",
-    body: JSON.stringify({ refreshToken }),
   });
 }

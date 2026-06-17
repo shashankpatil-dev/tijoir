@@ -29,6 +29,9 @@ tijoir:
     email-verification-expiration-minutes: ${EMAIL_VERIFICATION_EXPIRATION_MINUTES:30}
     organization-invite-expiration-hours: ${ORGANIZATION_INVITE_EXPIRATION_HOURS:72}
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+    refresh-cookie-name: ${REFRESH_COOKIE_NAME:tijoir_refresh}
+    refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:false}
+    refresh-cookie-same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
     local-secret-encryption-key: ${LOCAL_SECRET_ENCRYPTION_KEY:local-dev-secret-encryption-key-change-me}
   aws:
     region: ${AWS_REGION:ap-south-1}

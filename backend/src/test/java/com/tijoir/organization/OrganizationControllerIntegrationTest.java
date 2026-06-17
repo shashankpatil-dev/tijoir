@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,19 +62,27 @@ class OrganizationControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.role").value("MEMBER"))
                 .andExpect(jsonPath("$.organization.slug").value("acme-members"))
-                .andExpect(jsonPath("$.refreshToken").isString());
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(cookie().exists("tijoir_refresh"));
 
         mockMvc.perform(get("/api/organization/members")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].role").value("ORG_OWNER"))
-                .andExpect(jsonPath("$[1].role").value("MEMBER"));
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].role").value("ORG_OWNER"))
+                .andExpect(jsonPath("$.items[1].role").value("MEMBER"));
 
         mockMvc.perform(get("/api/organization/invites")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("ACCEPTED"));
+                .andExpect(jsonPath("$.items[0].status").value("ACCEPTED"));
+
+        mockMvc.perform(get("/api/organization/members?page=0&size=1&query=member&role=MEMBER")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.items[0].email").value("member@acme-members.test"));
 
         String invitedUserToken = login("member@acme-members.test", "MemberPass@123");
         mockMvc.perform(get("/api/auth/me")
@@ -211,7 +220,7 @@ class OrganizationControllerIntegrationTest {
         mockMvc.perform(get("/api/organization/members")
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.items.length()").value(2));
     }
 
     private String inviteAndAccept(

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { buildStaticAppUrl } from "@/lib/auth-client";
 import {
   DASHBOARD_ITEMS_PER_PAGE,
@@ -16,6 +17,8 @@ import {
   revokeInvite,
   updateMemberRole,
 } from "@/features/members/api/members.api";
+import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
+import { useMembersFormState } from "@/features/members/hooks/use-members-form-state";
 import type {
   InviteSummary,
   MemberSummary,
@@ -47,15 +50,9 @@ export function useMembersWorkspace({
   showToast: ShowToast;
   invites: InviteSummary[];
 }) {
+  const queryClient = useQueryClient();
   const [lastCreatedInvite, setLastCreatedInvite] = useState<InvitePreview | null>(null);
-  const [createInviteOpen, setCreateInviteOpen] = useState(false);
-  const [memberRoleDialogOpen, setMemberRoleDialogOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<MemberSummary | null>(null);
-  const [inviteRevokeTarget, setInviteRevokeTarget] = useState<InviteSummary | null>(null);
-  const [memberRemoveTarget, setMemberRemoveTarget] = useState<MemberSummary | null>(null);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("MEMBER");
-  const [memberRoleValue, setMemberRoleValue] = useState("MEMBER");
+  const formState = useMembersFormState();
   const [memberSearch, setMemberSearch] = useState("");
   const [memberRoleFilter, setMemberRoleFilter] = useState("ALL");
   const [memberPage, setMemberPage] = useState(1);
@@ -115,11 +112,11 @@ export function useMembersWorkspace({
         actorEmail: sessionUserEmail || "",
         actorRole: sessionUserRole || "",
         onChangeRole: (member) => {
-          setSelectedMember(member);
-          setMemberRoleValue(member.role);
-          setMemberRoleDialogOpen(true);
+          formState.setSelectedMember(member);
+          formState.setMemberRoleValue(member.role);
+          formState.setMemberRoleDialogOpen(true);
         },
-        onRemove: (member) => setMemberRemoveTarget(member),
+        onRemove: (member) => formState.setMemberRemoveTarget(member),
       }),
     [sessionUserEmail, sessionUserRole],
   );
@@ -127,10 +124,28 @@ export function useMembersWorkspace({
   const inviteColumns = useMemo<DataTableColumn<InviteSummary>[]>(
     () =>
       buildInviteColumns({
-        onRevoke: (invite) => setInviteRevokeTarget(invite),
+        onRevoke: (invite) => formState.setInviteRevokeTarget(invite),
       }),
     [],
   );
+
+  const createInviteMutation = useMutation({
+    mutationFn: (payload: { email: string; role: string }) =>
+      createInvite(sessionAccessToken as string, payload),
+  });
+
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: (payload: { memberId: string; role: string }) =>
+      updateMemberRole(sessionAccessToken as string, payload.memberId, payload.role),
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (memberId: string) => removeMember(sessionAccessToken as string, memberId),
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (inviteId: string) => revokeInvite(sessionAccessToken as string, inviteId),
+  });
 
   async function handleCreateInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,9 +158,9 @@ export function useMembersWorkspace({
     setMessage("Creating organization invite");
 
     try {
-      const created = await createInvite(sessionAccessToken, {
-        email: inviteEmail,
-        role: inviteRole,
+      const created = await createInviteMutation.mutateAsync({
+        email: formState.inviteEmail,
+        role: formState.inviteRole,
       });
 
       if (created.inviteToken && created.acceptPath) {
@@ -157,11 +172,18 @@ export function useMembersWorkspace({
         });
       }
 
-      setInviteEmail("");
-      setInviteRole(assignableRoles[0] || "MEMBER");
-      setCreateInviteOpen(false);
+      formState.setInviteEmail("");
+      formState.setInviteRole(assignableRoles[0] || "MEMBER");
+      formState.setCreateInviteOpen(false);
       router.push("/dashboard/members");
-      await loadWorkspace(sessionAccessToken);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.members(sessionAccessToken),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.invites(sessionAccessToken),
+        }),
+      ]);
       setMessage(`Invite created for ${created.email}.`);
       showToast({
         title: "Invite created",
@@ -177,17 +199,22 @@ export function useMembersWorkspace({
 
   async function handleUpdateMemberRole(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!sessionAccessToken || !selectedMember) {
+    if (!sessionAccessToken || !formState.selectedMember) {
       return;
     }
 
-    setActionBusy(`member-role-${selectedMember.id}`);
+    setActionBusy(`member-role-${formState.selectedMember.id}`);
     setMessage("Updating member role");
 
     try {
-      await updateMemberRole(sessionAccessToken, selectedMember.id, memberRoleValue);
-      setMemberRoleDialogOpen(false);
-      await loadWorkspace(sessionAccessToken);
+      await updateMemberRoleMutation.mutateAsync({
+        memberId: formState.selectedMember.id,
+        role: formState.memberRoleValue,
+      });
+      formState.setMemberRoleDialogOpen(false);
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.members(sessionAccessToken),
+      });
       setMessage("Member role updated.");
       showToast({
         title: "Member updated",
@@ -211,8 +238,10 @@ export function useMembersWorkspace({
     setMessage("Removing member");
 
     try {
-      await removeMember(sessionAccessToken, memberId);
-      await loadWorkspace(sessionAccessToken);
+      await removeMemberMutation.mutateAsync(memberId);
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.members(sessionAccessToken),
+      });
       setMessage("Member removed.");
       showToast({
         title: "Member removed",
@@ -236,8 +265,10 @@ export function useMembersWorkspace({
     setMessage("Revoking invite");
 
     try {
-      await revokeInvite(sessionAccessToken, inviteId);
-      await loadWorkspace(sessionAccessToken);
+      await revokeInviteMutation.mutateAsync(inviteId);
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.invites(sessionAccessToken),
+      });
       setMessage("Invite revoked.");
       showToast({
         title: "Invite revoked",
@@ -253,12 +284,12 @@ export function useMembersWorkspace({
 
   function openCreateInvite() {
     router.push("/dashboard/members");
-    setCreateInviteOpen(true);
+    formState.setCreateInviteOpen(true);
   }
 
   return {
     assignableRoles,
-    createInviteOpen,
+    ...formState,
     filteredInvites,
     filteredMembers,
     handleCreateInvite,
@@ -266,39 +297,24 @@ export function useMembersWorkspace({
     handleRevokeInvite,
     handleUpdateMemberRole,
     inviteColumns,
-    inviteEmail,
     invitePage,
     invitePageCount,
-    inviteRevokeTarget,
-    inviteRole,
     inviteSearch,
     inviteStatusFilter,
     lastCreatedInvite,
     memberColumns,
     memberPage,
     memberPageCount,
-    memberRemoveTarget,
-    memberRoleDialogOpen,
     memberRoleFilter,
-    memberRoleValue,
     memberSearch,
     openCreateInvite,
     paginatedInvites,
     paginatedMembers,
-    selectedMember,
-    setCreateInviteOpen,
-    setInviteEmail,
     setInvitePage,
-    setInviteRevokeTarget,
-    setInviteRole,
     setInviteSearch,
     setInviteStatusFilter,
     setMemberPage,
-    setMemberRemoveTarget,
-    setMemberRoleDialogOpen,
     setMemberRoleFilter,
-    setMemberRoleValue,
     setMemberSearch,
-    setSelectedMember,
   };
 }

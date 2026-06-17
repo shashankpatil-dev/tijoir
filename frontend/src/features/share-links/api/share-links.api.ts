@@ -1,16 +1,18 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
+import type { PageResponse } from "@/lib/api/types";
 import type {
   ContractPermission,
   ShareLinkResponse,
 } from "@/features/share-links/types/share-links.types";
 
 export async function fetchShareLinks(accessToken: string) {
-  return authenticatedApiRequest<ShareLinkResponse[]>(
-    "/api/share-links",
+  const page = await authenticatedApiRequest<PageResponse<ShareLinkResponse>>(
+    "/api/share-links?page=0&size=100",
     accessToken,
   );
+  return page.items;
 }
 
 export async function createShareLink(

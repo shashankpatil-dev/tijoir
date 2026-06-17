@@ -6,6 +6,8 @@ import com.tijoir.audit.AuditEvent;
 import com.tijoir.audit.AuditEventRepository;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
+import com.tijoir.common.paging.PageRequestFactory;
+import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.UserAccount;
@@ -17,13 +19,17 @@ import com.tijoir.secret.dto.RevealSecretResponse;
 import com.tijoir.secret.dto.RotateSecretRequest;
 import com.tijoir.secret.dto.SecretDetailResponse;
 import com.tijoir.secret.dto.SecretSummaryResponse;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.util.Base64;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -99,11 +105,18 @@ public class SecretService {
     }
 
     @Transactional(readOnly = true)
-    public List<SecretSummaryResponse> list(AuthenticatedUser principal) {
-        return vaultSecretRepository.findAllByOrganizationIdOrderByCreatedAtDesc(principal.organizationId())
-                .stream()
-                .map(this::summary)
-                .toList();
+    public PageResponse<SecretSummaryResponse> list(
+            AuthenticatedUser principal,
+            Integer page,
+            Integer size,
+            String query,
+            SecretType type,
+            SecretStatus status
+    ) {
+        PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<SecretSummaryResponse> results = vaultSecretRepository.findAll(secretListSpec(principal.organizationId(), query, type, status), pageRequest)
+                .map(this::summary);
+        return PageResponse.from(results);
     }
 
     @Transactional(readOnly = true)
@@ -356,5 +369,32 @@ public class SecretService {
         } catch (IllegalArgumentException ignored) {
         }
         throw new ApiException(HttpStatus.BAD_REQUEST, "Certificate must be PEM or Base64 DER encoded");
+    }
+
+    private Specification<VaultSecret> secretListSpec(
+            UUID organizationId,
+            String query,
+            SecretType type,
+            SecretStatus status
+    ) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(root.get("organization").get("id"), organizationId);
+
+            if (query != null && !query.isBlank()) {
+                String pattern = "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("secretKey")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(criteriaBuilder.coalesce(root.get("description"), "")), pattern)
+                ));
+            }
+            if (type != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("secretType"), type));
+            }
+            if (status != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("status"), status));
+            }
+            return predicate;
+        };
     }
 }
