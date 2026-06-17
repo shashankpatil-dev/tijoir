@@ -1,11 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildStaticAppUrl } from "@/lib/auth-client";
-import {
-  DASHBOARD_ITEMS_PER_PAGE,
-  pageCount,
-  paginate,
-} from "@/features/dashboard/lib/dashboard-pagination";
+import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
 import {
   buildInviteColumns,
   buildMemberColumns,
@@ -351,16 +347,16 @@ export function useMembersWorkspace({
     inviteColumns,
     invitePage,
     invitePageCount,
+    invitesTotal: invitesPageQuery.data?.totalElements ?? invites.length,
     inviteSearch,
     inviteStatusFilter,
-    invitesTotal: invitesPageQuery.data?.totalElements ?? invites.length,
     lastCreatedInvite,
     memberColumns,
     memberPage,
     memberPageCount,
+    membersTotal: membersPageQuery.data?.totalElements ?? members.length,
     memberRoleFilter,
     memberSearch,
-    membersTotal: membersPageQuery.data?.totalElements ?? members.length,
     openCreateInvite,
     paginatedInvites,
     paginatedMembers,

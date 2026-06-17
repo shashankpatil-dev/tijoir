@@ -13,6 +13,16 @@ export const dashboardQueryKeys = {
     accessToken: string | undefined,
     params: { page: number; size: number; query: string; permission: string; status: string },
   ) => ["dashboard", "share-links-page", accessToken, params] as const,
+  vendors: (accessToken?: string) => ["dashboard", "vendors", accessToken] as const,
+  vendorsPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; query: string; status: string },
+  ) => ["dashboard", "vendors-page", accessToken, params] as const,
+  vendorContractsPage: (
+    accessToken: string | undefined,
+    vendorId: string | undefined,
+    params: { page: number; size: number; status: string },
+  ) => ["dashboard", "vendor-contracts-page", accessToken, vendorId, params] as const,
   members: (accessToken?: string) => ["dashboard", "members", accessToken] as const,
   membersPage: (
     accessToken: string | undefined,

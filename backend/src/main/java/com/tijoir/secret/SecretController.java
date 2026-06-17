@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -51,11 +52,11 @@ public class SecretController {
     @GetMapping
     public PageResponse<SecretSummaryResponse> list(
             @AuthenticationPrincipal AuthenticatedUser user,
-            org.springframework.web.bind.annotation.RequestParam(required = false) Integer page,
-            org.springframework.web.bind.annotation.RequestParam(required = false) Integer size,
-            org.springframework.web.bind.annotation.RequestParam(required = false) String query,
-            org.springframework.web.bind.annotation.RequestParam(required = false) SecretType type,
-            org.springframework.web.bind.annotation.RequestParam(required = false) SecretStatus status
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) SecretType type,
+            @RequestParam(required = false) SecretStatus status
     ) {
         return secretService.list(user, page, size, query, type, status);
     }

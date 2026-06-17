@@ -28,6 +28,7 @@ export default function DashboardShareLinksPage() {
       sharePermissionFilter={workspace.sharePermissionFilter}
       shareSearch={workspace.shareSearch}
       shareStatusFilter={workspace.shareStatusFilter}
+      shareTotal={workspace.shareLinksTotal}
     />
   );
 }

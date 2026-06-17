@@ -5,6 +5,8 @@ import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 export function useShareLinkFormState(secrets: SecretSummary[]) {
   const [createShareOpen, setCreateShareOpen] = useState(false);
   const [shareSecretId, setShareSecretId] = useState("");
+  const [shareVendorId, setShareVendorId] = useState("");
+  const [shareContractId, setShareContractId] = useState("");
   const [shareRecipientLabel, setShareRecipientLabel] = useState(
     "Primary vendor operator",
   );
@@ -25,13 +27,17 @@ export function useShareLinkFormState(secrets: SecretSummary[]) {
   return {
     createShareOpen,
     setCreateShareOpen,
+    setShareContractId,
     setShareExpiry,
     setSharePermission,
     setShareRecipientLabel,
     setShareSecretId,
+    setShareVendorId,
+    shareContractId,
     shareExpiry,
     sharePermission,
     shareRecipientLabel,
     shareSecretId,
+    shareVendorId,
   };
 }

@@ -42,6 +42,7 @@ export function ShareLinksView({
   sharePermissionFilter,
   shareSearch,
   shareStatusFilter,
+  shareTotal,
 }: {
   contractPermissions: ContractPermission[];
   copyText: (value: string, label: string) => Promise<void>;
@@ -62,6 +63,7 @@ export function ShareLinksView({
   sharePermissionFilter: string;
   shareSearch: string;
   shareStatusFilter: string;
+  shareTotal: number;
 }) {
   return (
     <div className="space-y-5">
@@ -125,12 +127,12 @@ export function ShareLinksView({
             />
 
             <PaginationControls
-              currentPage={sharePage}
-              itemLabel="share links"
-              onPageChange={setSharePage}
-              pageCount={sharePageCount}
-              totalItems={filteredShareLinksLength}
-            />
+                  currentPage={sharePage}
+                  itemLabel="share links"
+                  onPageChange={setSharePage}
+                  pageCount={sharePageCount}
+                  totalItems={shareTotal || filteredShareLinksLength}
+                />
           </div>
         </PageSection>
 

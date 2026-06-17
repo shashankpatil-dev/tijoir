@@ -35,6 +35,8 @@ export default function DashboardMembersPage() {
       setMemberPage={workspace.setMemberPage}
       setMemberRoleFilter={workspace.setMemberRoleFilter}
       setMemberSearch={workspace.setMemberSearch}
+      totalInvites={workspace.invitesTotal}
+      totalMembers={workspace.membersTotal}
     />
   );
 }

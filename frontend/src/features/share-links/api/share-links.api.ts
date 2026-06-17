@@ -41,6 +41,8 @@ export async function createShareLink(
     recipientLabel?: string | null;
     permission: ContractPermission;
     expiresAt?: string | null;
+    vendorId?: string | null;
+    contractId?: string | null;
   },
 ) {
   return authenticatedApiRequest<ShareLinkResponse>(

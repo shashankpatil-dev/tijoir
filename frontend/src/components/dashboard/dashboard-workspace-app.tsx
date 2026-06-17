@@ -15,6 +15,8 @@ import { CreateShareLinkDialog } from "@/features/share-links/components/create-
 import { CONTRACT_PERMISSIONS } from "@/features/share-links/types/share-links.types";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { viewPath, type DashboardViewKey } from "@/features/dashboard/lib/dashboard-routing";
+import { CreateVendorContractDialog } from "@/features/vendors/components/create-vendor-contract-dialog";
+import { CreateVendorDialog } from "@/features/vendors/components/create-vendor-dialog";
 import { apiBaseUrl } from "@/lib/api/client";
 
 export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
@@ -39,6 +41,11 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
           <Button onClick={workspace.openCreateShareLink} type="button" variant="secondary">
             Share Access
           </Button>
+          {workspace.vendorsAvailable ? (
+            <Button onClick={workspace.openCreateVendor} type="button" variant="secondary">
+              New Vendor
+            </Button>
+          ) : null}
           {workspace.isOrganizationManager ? (
             <Button onClick={workspace.openCreateInvite} type="button" variant="secondary">
               Invite Member
@@ -79,7 +86,7 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
 
       <section className="space-y-5">
         <DashboardSectionHeader
-          description="Manage organization secrets, contract-scoped share links, member invitations, and the public recipient flow from one operational workspace."
+          description="Manage organization secrets, vendor entities, contract-scoped share links, member invitations, and the public recipient flow from one operational workspace."
           title={workspace.title}
         />
 
@@ -89,7 +96,7 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
           tone={workspace.message.toLowerCase().includes("could not") ? "error" : "neutral"}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard
             label="Vault objects"
             note="Secrets available to this organization"
@@ -104,6 +111,11 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
             label="Pending invites"
             note="Organization users still waiting to join"
             value={String(workspace.pendingInvites)}
+          />
+          <StatCard
+            label="Vendors"
+            note="Tracked external entities"
+            value={String(workspace.vendors.length)}
           />
           <StatCard
             label="Access expires"
@@ -152,20 +164,57 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
       />
 
       <CreateShareLinkDialog
+        activeVendorContracts={workspace.vendorContractsForShare}
         actionBusy={workspace.actionBusy}
         contractPermissions={CONTRACT_PERMISSIONS}
         onClose={() => workspace.setCreateShareOpen(false)}
         onSubmit={workspace.handleCreateShareLink}
         open={workspace.createShareOpen}
         secrets={workspace.secrets}
+        setShareContractId={workspace.setShareContractId}
         setShareExpiry={workspace.setShareExpiry}
         setSharePermission={workspace.setSharePermission}
         setShareRecipientLabel={workspace.setShareRecipientLabel}
         setShareSecretId={workspace.setShareSecretId}
+        setShareVendorId={workspace.setShareVendorId}
+        shareContractId={workspace.shareContractId}
         shareExpiry={workspace.shareExpiry}
         sharePermission={workspace.sharePermission}
         shareRecipientLabel={workspace.shareRecipientLabel}
         shareSecretId={workspace.shareSecretId}
+        shareVendorId={workspace.shareVendorId}
+        vendors={workspace.vendors}
+      />
+
+      <CreateVendorDialog
+        actionBusy={workspace.actionBusy}
+        contactEmail={workspace.vendorContactEmail}
+        contactName={workspace.vendorContactName}
+        name={workspace.vendorName}
+        notes={workspace.vendorNotes}
+        onClose={() => workspace.setCreateVendorOpen(false)}
+        onSubmit={workspace.handleCreateVendor}
+        open={workspace.createVendorOpen}
+        setContactEmail={workspace.setVendorContactEmail}
+        setContactName={workspace.setVendorContactName}
+        setName={workspace.setVendorName}
+        setNotes={workspace.setVendorNotes}
+      />
+
+      <CreateVendorContractDialog
+        actionBusy={workspace.actionBusy}
+        contractExpiry={workspace.contractExpiry}
+        contractPermission={workspace.contractPermission}
+        contractPermissions={CONTRACT_PERMISSIONS}
+        contractSecretId={workspace.contractSecretId}
+        onClose={() => workspace.setCreateContractOpen(false)}
+        onSubmit={workspace.handleCreateVendorContract}
+        open={workspace.createContractOpen}
+        secrets={workspace.secrets}
+        selectedVendor={workspace.selectedVendor}
+        setContractExpiry={workspace.setContractExpiry}
+        setContractPermission={workspace.setContractPermission}
+        setContractSecretId={workspace.setContractSecretId}
       />
 
       <CreateInviteDialog
@@ -225,6 +274,42 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
         }}
         open={Boolean(workspace.shareRevokeTarget)}
         title="Revoke share link"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Revoke contract"
+        description={
+          workspace.contractRevokeTarget
+            ? `Revoke the contract for ${workspace.contractRevokeTarget.secretKey}. Future vendor-linked access should stop immediately.`
+            : ""
+        }
+        onClose={() => workspace.setContractRevokeTarget(null)}
+        onConfirm={() => {
+          if (workspace.contractRevokeTarget) {
+            void workspace.handleRevokeVendorContract();
+          }
+          workspace.setContractRevokeTarget(null);
+        }}
+        open={Boolean(workspace.contractRevokeTarget)}
+        title="Revoke vendor contract"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Offboard vendor"
+        description={
+          workspace.vendorOffboardTarget
+            ? `Offboard ${workspace.vendorOffboardTarget.name}. Active contracts and vendor-linked share links should be revoked.`
+            : ""
+        }
+        onClose={() => workspace.setVendorOffboardTarget(null)}
+        onConfirm={() => {
+          if (workspace.vendorOffboardTarget) {
+            void workspace.handleOffboardVendor();
+          }
+          workspace.setVendorOffboardTarget(null);
+        }}
+        open={Boolean(workspace.vendorOffboardTarget)}
+        title="Offboard vendor"
       />
 
       <ConfirmDialog

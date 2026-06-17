@@ -14,6 +14,8 @@ import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import { fetchSecrets } from "@/features/secrets/api/secrets.api";
 import { fetchShareLinks } from "@/features/share-links/api/share-links.api";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
+import { fetchVendors } from "@/features/vendors/api/vendors.api";
+import type { VendorResponse } from "@/features/vendors/types/vendors.types";
 import type { DashboardNavItem } from "@/components/dashboard/dashboard-shell";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import { viewFromPath } from "@/features/dashboard/lib/dashboard-routing";
@@ -36,11 +38,13 @@ export function useWorkspaceCore({
   const [cachedWorkspace, setCachedWorkspace] = useState<{
     secrets: SecretSummary[];
     shareLinks: ShareLinkResponse[];
+    vendors: VendorResponse[];
     members: MemberSummary[];
     invites: InviteSummary[];
   }>({
     secrets: [],
     shareLinks: [],
+    vendors: [],
     members: [],
     invites: [],
   });
@@ -54,6 +58,7 @@ export function useWorkspaceCore({
       setCachedWorkspace({
         secrets: cached.secrets,
         shareLinks: cached.shareLinks,
+        vendors: cached.vendors || [],
         members: cached.members || [],
         invites: cached.invites || [],
       });
@@ -111,7 +116,7 @@ export function useWorkspaceCore({
     }
   }
 
-  const [meQuery, secretsQuery, shareLinksQuery, membersQuery, invitesQuery] = useQueries({
+  const [meQuery, secretsQuery, vendorsQuery, shareLinksQuery, membersQuery, invitesQuery] = useQueries({
     queries: [
       {
         queryKey: dashboardQueryKeys.me(accessToken),
@@ -121,6 +126,11 @@ export function useWorkspaceCore({
       {
         queryKey: dashboardQueryKeys.secrets(accessToken),
         queryFn: () => fetchSecrets(accessToken as string),
+        enabled: Boolean(accessToken),
+      },
+      {
+        queryKey: dashboardQueryKeys.vendors(accessToken),
+        queryFn: () => fetchVendors(accessToken as string),
         enabled: Boolean(accessToken),
       },
       {
@@ -143,7 +153,7 @@ export function useWorkspaceCore({
 
   useEffect(() => {
     setLoadingWorkspace(
-      [meQuery, secretsQuery, shareLinksQuery, membersQuery, invitesQuery].some(
+      [meQuery, secretsQuery, vendorsQuery, shareLinksQuery, membersQuery, invitesQuery].some(
         (query) => query.isFetching,
       ),
     );
@@ -153,6 +163,7 @@ export function useWorkspaceCore({
     membersQuery.isFetching,
     secretsQuery.isFetching,
     shareLinksQuery.isFetching,
+    vendorsQuery.isFetching,
   ]);
 
   useEffect(() => {
@@ -177,7 +188,15 @@ export function useWorkspaceCore({
     saveSession(meQuery.data);
     setSession(meQuery.data);
 
-    if (shareLinksQuery.error && membersQuery.error) {
+    if (vendorsQuery.error && shareLinksQuery.error && membersQuery.error) {
+      setMessage(
+        "Workspace loaded. Vendor, share, and membership inventory are not available for this account.",
+      );
+    } else if (vendorsQuery.error && shareLinksQuery.error) {
+      setMessage("Workspace loaded. Vendor and share-link inventory are not available for this role.");
+    } else if (vendorsQuery.error) {
+      setMessage("Workspace loaded. Vendor inventory is not available for this role.");
+    } else if (shareLinksQuery.error && membersQuery.error) {
       setMessage(
         "Workspace loaded. Vault data is live, but role-restricted sections are unavailable for this account.",
       );
@@ -200,12 +219,15 @@ export function useWorkspaceCore({
     secretsQuery.error,
     shareLinksQuery.data,
     shareLinksQuery.error,
+    vendorsQuery.error,
   ]);
 
   const secrets = secretsQuery.data ?? cachedWorkspace.secrets;
+  const vendors = vendorsQuery.data ?? cachedWorkspace.vendors;
   const shareLinks = shareLinksQuery.data ?? cachedWorkspace.shareLinks;
   const members = membersQuery.data ?? cachedWorkspace.members;
   const invites = invitesQuery.data ?? cachedWorkspace.invites;
+  const vendorsAvailable = !accessToken || !vendorsQuery.error;
   const shareLinksAvailable = !accessToken || !shareLinksQuery.error;
   const membersAvailable = !accessToken || (!membersQuery.error && !invitesQuery.error);
 
@@ -217,13 +239,14 @@ export function useWorkspaceCore({
     saveWorkspaceCache(session.organization.slug, {
       secrets,
       shareLinks,
+      vendors,
       members,
       invites,
       selectedSecretId,
       activeView,
       updatedAt: new Date().toISOString(),
     });
-  }, [activeView, invites, members, secrets, selectedSecretId, session?.organization.slug, shareLinks]);
+  }, [activeView, invites, members, secrets, selectedSecretId, session?.organization.slug, shareLinks, vendors]);
 
   const isOrganizationManager = useMemo(
     () => session?.user.role === "ORG_OWNER" || session?.user.role === "ADMIN",
@@ -250,6 +273,12 @@ export function useWorkspaceCore({
         badge: String(secrets.length),
       },
       {
+        id: "vendors",
+        label: "Vendors",
+        note: "Entities and contracts",
+        badge: String(vendors.length),
+      },
+      {
         id: "share",
         label: "Share Links",
         note: "Vendor access contracts",
@@ -273,7 +302,7 @@ export function useWorkspaceCore({
     });
 
     return items;
-  }, [activeShareLinks, isOrganizationManager, members.length, secrets.length]);
+  }, [activeShareLinks, isOrganizationManager, members.length, secrets.length, vendors.length]);
 
   async function loadWorkspace(_accessToken: string) {
     if (!accessToken) {
@@ -284,6 +313,7 @@ export function useWorkspaceCore({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.me(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.secrets(accessToken) }),
+      queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.vendors(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.shareLinks(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.members(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.invites(accessToken) }),
@@ -307,7 +337,7 @@ export function useWorkspaceCore({
     } finally {
       removeSession();
       setSession(null);
-      setCachedWorkspace({ secrets: [], shareLinks: [], members: [], invites: [] });
+      setCachedWorkspace({ secrets: [], shareLinks: [], vendors: [], members: [], invites: [] });
       showToast({
         title: "Logged out",
         description: "The workspace session has been cleared.",
@@ -343,6 +373,8 @@ export function useWorkspaceCore({
     setSession,
     shareLinks,
     shareLinksAvailable,
+    vendors,
+    vendorsAvailable,
     loadWorkspace,
   };
 }

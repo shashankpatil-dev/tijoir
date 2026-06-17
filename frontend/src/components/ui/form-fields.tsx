@@ -7,6 +7,7 @@ type BaseFieldProps = {
   value: string;
   required?: boolean;
   hint?: string;
+  disabled?: boolean;
 };
 
 export function TextField({
@@ -16,6 +17,7 @@ export function TextField({
   type = "text",
   required = true,
   hint,
+  disabled = false,
 }: BaseFieldProps & {
   onChange: (value: string) => void;
   type?: string;
@@ -25,6 +27,7 @@ export function TextField({
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       <input
         className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
         type={type}
@@ -45,6 +48,7 @@ export function PasswordField({
   onChange,
   required = true,
   hint,
+  disabled = false,
 }: BaseFieldProps & {
   onChange: (value: string) => void;
 }) {
@@ -56,6 +60,7 @@ export function PasswordField({
       <div className="mt-2 flex overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white focus-within:border-[var(--color-brand)] focus-within:ring-4 focus-within:ring-[var(--color-brand-ring)]">
         <input
           className="w-full border-0 bg-transparent px-4 py-3 text-sm outline-none"
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           required={required}
           type={revealed ? "text" : "password"}
@@ -85,6 +90,7 @@ export function TextAreaField({
   rows,
   required = true,
   hint,
+  disabled = false,
 }: BaseFieldProps & {
   onChange: (value: string) => void;
   rows: number;
@@ -94,6 +100,7 @@ export function TextAreaField({
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       <textarea
         className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
         rows={rows}
@@ -114,6 +121,7 @@ export function SelectField({
   onChange,
   options,
   hint,
+  disabled = false,
 }: BaseFieldProps & {
   onChange: (value: string) => void;
   options: Array<string | { label: string; value: string }>;
@@ -123,6 +131,7 @@ export function SelectField({
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       <select
         className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >

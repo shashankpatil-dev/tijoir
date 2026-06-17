@@ -13,6 +13,9 @@ export type ShareLinkResponse = {
   secretName: string;
   secretKey: string;
   secretType: SecretType;
+  vendorId?: string | null;
+  vendorName?: string | null;
+  contractId?: string | null;
   recipientLabel?: string | null;
   permission: ContractPermission;
   status: ShareLinkStatus;

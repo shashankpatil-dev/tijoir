@@ -3,10 +3,12 @@
 import type { InviteSummary, MemberSummary } from "@/features/members/types/members.types";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
+import type { VendorResponse } from "@/features/vendors/types/vendors.types";
 
 export type WorkspaceCache = {
   secrets: SecretSummary[];
   shareLinks: ShareLinkResponse[];
+  vendors?: VendorResponse[];
   members?: MemberSummary[];
   invites?: InviteSummary[];
   selectedSecretId?: string;

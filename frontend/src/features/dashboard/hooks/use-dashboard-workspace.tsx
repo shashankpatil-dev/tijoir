@@ -6,6 +6,7 @@ import { useMembersWorkspace } from "@/features/members/hooks/use-members-worksp
 import { useRecipientWorkspace } from "@/features/recipient-access/hooks/use-recipient-workspace";
 import { useVaultWorkspace } from "@/features/secrets/hooks/use-vault-workspace";
 import { useShareLinksWorkspace } from "@/features/share-links/hooks/use-share-links-workspace";
+import { useVendorsWorkspace } from "@/features/vendors/hooks/use-vendors-workspace";
 
 export function useDashboardWorkspace(args: DashboardHookArgs) {
   const core = useWorkspaceCore(args);
@@ -30,6 +31,17 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
     showToast: args.showToast,
   });
 
+  const vendors = useVendorsWorkspace({
+    handleSessionError: core.handleSessionError,
+    router: args.router,
+    secrets: core.secrets,
+    sessionAccessToken: core.session?.accessToken,
+    setActionBusy: core.setActionBusy,
+    setMessage: core.setMessage,
+    showToast: args.showToast,
+    vendors: core.vendors,
+  });
+
   const shareLinks = useShareLinksWorkspace({
     copyText: core.copyText,
     handleSessionError: core.handleSessionError,
@@ -42,6 +54,7 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
     setPublicToken: recipient.setPublicToken,
     shareLinks: core.shareLinks,
     showToast: args.showToast,
+    vendors: core.vendors,
   });
 
   const members = useMembersWorkspace({
@@ -63,6 +76,7 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
   return {
     ...core,
     ...vault,
+    ...vendors,
     ...shareLinks,
     ...members,
     ...recipient,

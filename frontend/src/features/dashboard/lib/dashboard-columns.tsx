@@ -12,6 +12,10 @@ import type {
 } from "@/features/members/types/members.types";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
+import type {
+  VendorContractResponse,
+  VendorResponse,
+} from "@/features/vendors/types/vendors.types";
 
 export function buildSecretColumns(): DataTableColumn<SecretSummary>[] {
   return [
@@ -68,8 +72,15 @@ export function buildShareColumns({
     },
     {
       key: "recipient",
-      label: "Recipient",
-      render: (shareLink) => shareLink.recipientLabel || "Not specified",
+      label: "Recipient / Vendor",
+      render: (shareLink) => (
+        <div className="space-y-1">
+          <p>{shareLink.recipientLabel || "Not specified"}</p>
+          <p className="text-xs text-[var(--color-muted)]">
+            {shareLink.vendorName || "No vendor linkage"}
+          </p>
+        </div>
+      ),
     },
     {
       key: "permission",
@@ -118,6 +129,96 @@ export function buildShareColumns({
             Revoke
           </Button>
         </div>
+      ),
+    },
+  ];
+}
+
+export function buildVendorColumns(): DataTableColumn<VendorResponse>[] {
+  return [
+    {
+      key: "name",
+      label: "Vendor",
+      render: (vendor) => (
+        <div className="space-y-1">
+          <p className="font-semibold text-[var(--color-ink-strong)]">{vendor.name}</p>
+          <p className="text-xs text-[var(--color-muted)]">
+            {vendor.contactEmail || vendor.contactName || "No contact assigned"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (vendor) => <Badge tone={statusTone(vendor.status)}>{vendor.status}</Badge>,
+    },
+    {
+      key: "createdBy",
+      label: "Created by",
+      render: (vendor) => vendor.createdByName,
+    },
+    {
+      key: "createdAt",
+      label: "Created",
+      render: (vendor) => formatInstant(vendor.createdAt),
+    },
+  ];
+}
+
+export function buildVendorContractColumns({
+  onRevoke,
+}: {
+  onRevoke: (contract: VendorContractResponse) => void;
+}): DataTableColumn<VendorContractResponse>[] {
+  return [
+    {
+      key: "secret",
+      label: "Secret",
+      render: (contract) => (
+        <div className="space-y-1">
+          <p className="font-semibold text-[var(--color-ink-strong)]">
+            {contract.secretName}
+          </p>
+          <p className="text-xs text-[var(--color-muted)]">{contract.secretKey}</p>
+        </div>
+      ),
+    },
+    {
+      key: "permission",
+      label: "Permission",
+      render: (contract) => (
+        <Badge tone={statusTone(contract.permission)}>{contract.permission}</Badge>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (contract) => (
+        <Badge tone={statusTone(contract.status)}>{contract.status}</Badge>
+      ),
+    },
+    {
+      key: "expiresAt",
+      label: "Expiry",
+      render: (contract) => formatInstant(contract.expiresAt),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (contract) => (
+        <Button
+          disabled={contract.status !== "ACTIVE"}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRevoke(contract);
+          }}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Revoke
+        </Button>
       ),
     },
   ];

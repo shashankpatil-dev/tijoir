@@ -48,6 +48,8 @@ export function MembersView({
   setMemberPage,
   setMemberRoleFilter,
   setMemberSearch,
+  totalInvites,
+  totalMembers,
 }: {
   copyText: (value: string, label: string) => Promise<void>;
   filteredInvitesLength: number;
@@ -76,6 +78,8 @@ export function MembersView({
   setMemberPage: (page: number) => void;
   setMemberRoleFilter: (value: string) => void;
   setMemberSearch: (value: string) => void;
+  totalInvites: number;
+  totalMembers: number;
 }) {
   return (
     <div className="space-y-5">
@@ -133,7 +137,7 @@ export function MembersView({
                   itemLabel="members"
                   onPageChange={setMemberPage}
                   pageCount={memberPageCount}
-                  totalItems={filteredMembersLength}
+                  totalItems={totalMembers || filteredMembersLength}
                 />
               </div>
             </PageSection>
@@ -176,7 +180,7 @@ export function MembersView({
                   itemLabel="invites"
                   onPageChange={setInvitePage}
                   pageCount={invitePageCount}
-                  totalItems={filteredInvitesLength}
+                  totalItems={totalInvites || filteredInvitesLength}
                 />
               </div>
             </PageSection>
