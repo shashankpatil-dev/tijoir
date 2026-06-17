@@ -55,7 +55,6 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
   const shareLinks = useShareLinksWorkspace({
     copyText: core.copyText,
     handleSessionError: core.handleSessionError,
-    loadWorkspace: core.loadWorkspace,
     router: args.router,
     secrets: core.secrets,
     sessionAccessToken: core.session?.accessToken,
@@ -70,7 +69,6 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
   const members = useMembersWorkspace({
     handleSessionError: core.handleSessionError,
     invites: core.invites,
-    loadWorkspace: core.loadWorkspace,
     members: core.members,
     router: args.router,
     sessionAccessToken: core.session?.accessToken,

@@ -141,10 +141,17 @@ frontend/src/
         share-links.api.ts
       components/
         create-share-link-dialog.tsx
+        selected-share-link-section.tsx
+        share-link-inventory-section.tsx
+        share-link-sidebar.tsx
         share-links-view.tsx
       hooks/
+        share-link-query-utils.ts
+        use-share-link-actions.ts
         use-share-link-form-state.ts
         use-share-links-workspace.ts
+      lib/
+        share-link-columns.tsx
       types/
         share-links.types.ts
 
@@ -155,9 +162,19 @@ frontend/src/
         change-member-role-dialog.tsx
         create-invite-dialog.tsx
         members-view.tsx
+        organization-access-model-section.tsx
+        organization-invites-section.tsx
+        organization-members-section.tsx
+        organization-profile-section.tsx
+        organization-sections.ts
+        organization-sidebar.tsx
       hooks/
+        member-query-utils.ts
+        use-member-actions.ts
         use-members-form-state.ts
         use-members-workspace.ts
+      lib/
+        member-columns.tsx
       types/
         members.types.ts
 

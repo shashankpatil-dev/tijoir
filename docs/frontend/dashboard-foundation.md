@@ -38,11 +38,14 @@ Protected routes:
 - `/dashboard/overview`
 - `/dashboard/vault`
 - `/dashboard/share-links`
-- `/dashboard/members`
+- `/dashboard/vendors`
+- `/dashboard/organization`
+- `/dashboard/audit`
+- `/dashboard/settings`
 - `/dashboard/recipient`
 
-This route split is now implemented. The remaining work is improving how much
-data each route owns independently.
+This route split is now implemented, and the main route-level ownership cleanup
+has been completed for vault, share links, and organization flows.
 
 ## Dashboard Information Architecture
 
@@ -247,21 +250,18 @@ Current caching model:
 
 Remaining improvements:
 
-- make route-level query ownership stronger
-- reduce broad shared workspace coupling
-- move remaining feature data reads away from broad shared orchestration
 - improve auth/session storage security model
+- add optimistic updates where they help perceived speed
+- add production timing instrumentation and route-level performance review
 
 So the frontend is past the “just local React state” stage now. The next work is
 refinement, not first adoption.
 
 ## Current Gaps
 
-- backend still lacks paginated list APIs
-- frontend tables still filter/paginate client-side
-- route ownership is better, but not fully isolated per route yet
 - no optimistic updates yet
 - no production timing instrumentation yet
+- no browser-level responsive QA evidence captured for every dashboard route yet
 
 ## Latest Progress Snapshot
 
@@ -275,13 +275,14 @@ Completed:
 - query-backed dashboard reads
 - mutation-backed core operational actions
 - extracted form state hooks
+- extracted action hooks and query utility modules
+- split large share-link and organization route composites into focused sections
 
 Still pending:
 
-- server-backed pagination
-- more route-local query ownership
 - stronger session storage model
 - performance verification against production interactions
+- browser QA across mobile and tablet breakpoints
 
 ## Styling Strategy
 
