@@ -40,6 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -113,19 +114,20 @@ public class ShareLinkService {
                 expiresAt
         ));
 
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("secretId", secret.getId());
+        auditDetails.put("secretKey", secret.getSecretKey());
+        auditDetails.put("permission", request.permission().name());
+        auditDetails.put("vendorId", vendor != null ? vendor.getId() : null);
+        auditDetails.put("contractId", contract != null ? contract.getId() : null);
+
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
                 actor,
                 AuditAction.SHARE_LINK_CREATED,
                 "SHARE_LINK",
                 shareLink.getId(),
-                toJson(Map.of(
-                        "secretId", secret.getId(),
-                        "secretKey", secret.getSecretKey(),
-                        "permission", request.permission().name(),
-                        "vendorId", vendor != null ? vendor.getId() : null,
-                        "contractId", contract != null ? contract.getId() : null
-                ))
+                toJson(auditDetails)
         ));
 
         return toResponse(shareLink, rawToken, shareLink.getStatus());

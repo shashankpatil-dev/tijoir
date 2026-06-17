@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -94,16 +95,17 @@ public class VendorService {
                 normalizeOptional(request.notes())
         ));
 
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("name", vendor.getName());
+        auditDetails.put("contactEmail", vendor.getContactEmail());
+
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
                 actor,
                 AuditAction.VENDOR_CREATED,
                 "VENDOR",
                 vendor.getId(),
-                toJson(Map.of(
-                        "name", vendor.getName(),
-                        "contactEmail", vendor.getContactEmail()
-                ))
+                toJson(auditDetails)
         ));
 
         return toVendorResponse(vendor);
