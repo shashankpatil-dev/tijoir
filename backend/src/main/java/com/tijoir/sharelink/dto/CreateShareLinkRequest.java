@@ -11,6 +11,8 @@ public record CreateShareLinkRequest(
         @NotNull UUID secretId,
         @Size(max = 255) String recipientLabel,
         @NotNull ContractPermission permission,
-        Instant expiresAt
+        Instant expiresAt,
+        UUID vendorId,
+        UUID contractId
 ) {
 }

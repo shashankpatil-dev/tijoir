@@ -21,4 +21,7 @@ public interface ShareLinkRepository extends JpaRepository<ShareLink, UUID>, Jpa
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select shareLink from ShareLink shareLink where shareLink.tokenHash = :tokenHash")
     Optional<ShareLink> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
+
+    @Query("select shareLink from ShareLink shareLink where shareLink.vendor.id = :vendorId and shareLink.status in :statuses")
+    List<ShareLink> findAllActiveByVendorId(@Param("vendorId") UUID vendorId, @Param("statuses") List<ShareLinkStatus> statuses);
 }

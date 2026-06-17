@@ -32,6 +32,13 @@ public class OrganizationAuthorizationService {
         throw new ApiException(HttpStatus.FORBIDDEN, "You do not have permission to manage share links");
     }
 
+    public void requireVendorManager(UserRole role) {
+        if (role == UserRole.ORG_OWNER || role == UserRole.ADMIN || role == UserRole.MEMBER) {
+            return;
+        }
+        throw new ApiException(HttpStatus.FORBIDDEN, "You do not have permission to manage vendors");
+    }
+
     public void requireOrganizationManager(UserRole role) {
         if (role == UserRole.ORG_OWNER || role == UserRole.ADMIN) {
             return;

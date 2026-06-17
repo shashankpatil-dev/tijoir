@@ -1,7 +1,5 @@
-package com.tijoir.sharelink;
+package com.tijoir.connection;
 
-import com.tijoir.connection.Vendor;
-import com.tijoir.connection.VendorAccessContract;
 import com.tijoir.contract.ContractPermission;
 import com.tijoir.organization.Organization;
 import com.tijoir.organization.UserAccount;
@@ -22,14 +20,18 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "share_links")
-public class ShareLink {
+@Table(name = "vendor_access_contracts")
+public class VendorAccessContract {
     @Id
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "org_id", nullable = false)
     private Organization organization;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "vendor_id", nullable = false)
+    private Vendor vendor;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "secret_id", nullable = false)
@@ -39,31 +41,17 @@ public class ShareLink {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private UserAccount createdBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vendor_id")
-    private Vendor vendor;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "contract_id")
-    private VendorAccessContract contract;
-
-    @Column(length = 255)
-    private String recipientLabel;
-
-    @Column(nullable = false, length = 64)
-    private String tokenHash;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "contract_permission", nullable = false)
     private ContractPermission contractPermission;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ShareLinkStatus status;
+    private VendorAccessContractStatus status;
 
     private Instant expiresAt;
 
-    private Instant consumedAt;
+    private Instant revokedAt;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -71,42 +59,24 @@ public class ShareLink {
     @Column(nullable = false)
     private Instant updatedAt;
 
-    protected ShareLink() {
+    protected VendorAccessContract() {
     }
 
-    public ShareLink(
+    public VendorAccessContract(
             Organization organization,
-            VaultSecret secret,
-            UserAccount createdBy,
-            String recipientLabel,
-            String tokenHash,
-            ContractPermission contractPermission,
-            Instant expiresAt
-    ) {
-        this(organization, secret, createdBy, null, null, recipientLabel, tokenHash, contractPermission, expiresAt);
-    }
-
-    public ShareLink(
-            Organization organization,
-            VaultSecret secret,
-            UserAccount createdBy,
             Vendor vendor,
-            VendorAccessContract contract,
-            String recipientLabel,
-            String tokenHash,
+            VaultSecret secret,
+            UserAccount createdBy,
             ContractPermission contractPermission,
             Instant expiresAt
     ) {
         this.organization = organization;
+        this.vendor = vendor;
         this.secret = secret;
         this.createdBy = createdBy;
-        this.vendor = vendor;
-        this.contract = contract;
-        this.recipientLabel = recipientLabel;
-        this.tokenHash = tokenHash;
         this.contractPermission = contractPermission;
         this.expiresAt = expiresAt;
-        this.status = ShareLinkStatus.ACTIVE;
+        this.status = VendorAccessContractStatus.ACTIVE;
     }
 
     @PrePersist
@@ -132,6 +102,10 @@ public class ShareLink {
         return organization;
     }
 
+    public Vendor getVendor() {
+        return vendor;
+    }
+
     public VaultSecret getSecret() {
         return secret;
     }
@@ -140,27 +114,11 @@ public class ShareLink {
         return createdBy;
     }
 
-    public Vendor getVendor() {
-        return vendor;
-    }
-
-    public VendorAccessContract getContract() {
-        return contract;
-    }
-
-    public String getRecipientLabel() {
-        return recipientLabel;
-    }
-
-    public String getTokenHash() {
-        return tokenHash;
-    }
-
     public ContractPermission getContractPermission() {
         return contractPermission;
     }
 
-    public ShareLinkStatus getStatus() {
+    public VendorAccessContractStatus getStatus() {
         return status;
     }
 
@@ -168,8 +126,8 @@ public class ShareLink {
         return expiresAt;
     }
 
-    public Instant getConsumedAt() {
-        return consumedAt;
+    public Instant getRevokedAt() {
+        return revokedAt;
     }
 
     public Instant getCreatedAt() {
@@ -177,19 +135,19 @@ public class ShareLink {
     }
 
     public boolean isExpiredAt(Instant now) {
-        return expiresAt != null && expiresAt.isBefore(now);
+        return expiresAt != null && !expiresAt.isAfter(now);
     }
 
     public void revoke() {
-        this.status = ShareLinkStatus.REVOKED;
-    }
-
-    public void consume() {
-        this.status = ShareLinkStatus.CONSUMED;
-        this.consumedAt = Instant.now();
+        if (status != VendorAccessContractStatus.REVOKED) {
+            status = VendorAccessContractStatus.REVOKED;
+            revokedAt = Instant.now();
+        }
     }
 
     public void expire() {
-        this.status = ShareLinkStatus.EXPIRED;
+        if (status == VendorAccessContractStatus.ACTIVE) {
+            status = VendorAccessContractStatus.EXPIRED;
+        }
     }
 }
