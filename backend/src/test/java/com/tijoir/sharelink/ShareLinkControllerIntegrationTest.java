@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.contract.ContractPermission;
+import com.tijoir.organization.OrganizationPolicy;
+import com.tijoir.organization.OrganizationPolicyRepository;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
@@ -51,6 +53,9 @@ class ShareLinkControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private OrganizationPolicyRepository organizationPolicyRepository;
 
     @Test
     void viewOnceShareLinkCanBeConsumedOnlyOnce() throws Exception {
@@ -261,6 +266,51 @@ class ShareLinkControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.items[0].permission").value("VIEW_ONCE"))
                 .andExpect(jsonPath("$.items[0].recipientLabel").value("Primary vendor"));
+    }
+
+    @Test
+    void organizationPolicyCanRestrictSharePermissionModesAndSetDefaultExpiry() throws Exception {
+        String ownerEmail = "owner@acme-share-policy.test";
+        String ownerToken = registerVerifyAndLogin("Acme Share Policy", ownerEmail);
+        String secretId = createSecret(ownerToken, "Policy Secret", "API_KEY", "policy-secret-value");
+        UserAccount owner = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(ownerEmail).orElseThrow();
+
+        organizationPolicyRepository.save(new OrganizationPolicy(
+                organizationRepository.findById(owner.getOrganization().getId()).orElseThrow(),
+                48,
+                false,
+                false,
+                true,
+                true,
+                14
+        ));
+
+        mockMvc.perform(post("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "recipientLabel": "Blocked permission",
+                                  "permission": "VIEW_ONCE"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Organization policy does not allow VIEW_ONCE share links"));
+
+        mockMvc.perform(post("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "recipientLabel": "Allowed permission",
+                                  "permission": "VIEW_UNTIL_REVOKED"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.expiresAt").isNotEmpty())
+                .andExpect(jsonPath("$.permission").value("VIEW_UNTIL_REVOKED"));
     }
 
     private String createSecret(String ownerToken, String name, String type, String value) throws Exception {

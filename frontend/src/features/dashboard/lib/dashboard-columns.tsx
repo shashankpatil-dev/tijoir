@@ -1,6 +1,7 @@
 import { Badge, statusTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { DataTableColumn } from "@/components/ui/data-table";
+import type { AuditEventResponse } from "@/features/audit/types/audit.types";
 import {
   canEditMember,
   canRemoveMember,
@@ -220,6 +221,62 @@ export function buildVendorContractColumns({
           Revoke
         </Button>
       ),
+    },
+  ];
+}
+
+export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
+  return [
+    {
+      key: "action",
+      label: "Action",
+      render: (event) => (
+        <div className="space-y-1">
+          <p className="font-semibold text-[var(--color-ink-strong)]">{event.action}</p>
+          <p className="text-xs text-[var(--color-muted)]">{event.resourceType}</p>
+        </div>
+      ),
+    },
+    {
+      key: "actor",
+      label: "Actor",
+      render: (event) => (
+        <div className="space-y-1">
+          <p>{event.actorName || "System / public flow"}</p>
+          <p className="text-xs text-[var(--color-muted)]">
+            {event.actorEmail || "Anonymous or internal automation"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "resourceId",
+      label: "Resource",
+      render: (event) => (
+        <span className="font-mono text-xs text-[var(--color-muted)]">{event.resourceId}</span>
+      ),
+    },
+    {
+      key: "details",
+      label: "Details",
+      render: (event) => {
+        if (!event.details) {
+          return "No details";
+        }
+        if (typeof event.details === "string") {
+          return event.details;
+        }
+        return (
+          <pre className="max-w-[26rem] whitespace-pre-wrap break-words text-xs text-[var(--color-muted)]">
+            {JSON.stringify(event.details, null, 2)}
+          </pre>
+        );
+      },
+    },
+    {
+      key: "createdAt",
+      label: "At",
+      render: (event) => formatInstant(event.createdAt),
     },
   ];
 }

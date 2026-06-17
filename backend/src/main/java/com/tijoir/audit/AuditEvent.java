@@ -74,4 +74,36 @@ public class AuditEvent {
             createdAt = Instant.now();
         }
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public Organization getOrganization() {
+        return organization;
+    }
+
+    public UserAccount getActor() {
+        return actor;
+    }
+
+    public AuditAction getAction() {
+        return action;
+    }
+
+    public String getResourceType() {
+        return resourceType;
+    }
+
+    public UUID getResourceId() {
+        return resourceId;
+    }
+
+    public String getDetailsJson() {
+        return detailsJson;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }

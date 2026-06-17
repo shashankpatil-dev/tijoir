@@ -14,7 +14,9 @@ import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
 import com.tijoir.organization.dto.MemberResponse;
+import com.tijoir.organization.dto.OrganizationPolicyResponse;
 import com.tijoir.organization.dto.UpdateMemberRoleRequest;
+import com.tijoir.organization.dto.UpdateOrganizationPolicyRequest;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +38,7 @@ import java.util.UUID;
 public class OrganizationService {
     private final UserAccountRepository userAccountRepository;
     private final OrganizationInviteRepository organizationInviteRepository;
+    private final OrganizationPolicyRepository organizationPolicyRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
@@ -45,6 +49,7 @@ public class OrganizationService {
     public OrganizationService(
             UserAccountRepository userAccountRepository,
             OrganizationInviteRepository organizationInviteRepository,
+            OrganizationPolicyRepository organizationPolicyRepository,
             OrganizationAuthorizationService authorizationService,
             PasswordEncoder passwordEncoder,
             AuthService authService,
@@ -54,6 +59,7 @@ public class OrganizationService {
     ) {
         this.userAccountRepository = userAccountRepository;
         this.organizationInviteRepository = organizationInviteRepository;
+        this.organizationPolicyRepository = organizationPolicyRepository;
         this.authorizationService = authorizationService;
         this.passwordEncoder = passwordEncoder;
         this.authService = authService;
@@ -260,6 +266,64 @@ public class OrganizationService {
         ));
     }
 
+    @Transactional(readOnly = true)
+    public OrganizationPolicyResponse getPolicy(AuthenticatedUser principal) {
+        authorizationService.requireOrganizationManager(principal.role());
+        OrganizationPolicy policy = organizationPolicyRepository.findByOrganizationId(principal.organizationId())
+                .orElse(null);
+        return toPolicyResponse(policy);
+    }
+
+    @Transactional
+    public OrganizationPolicyResponse updatePolicy(
+            AuthenticatedUser principal,
+            UpdateOrganizationPolicyRequest request
+    ) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireOrganizationManager(actor.getRole());
+        validatePolicyRequest(request);
+
+        OrganizationPolicy policy = organizationPolicyRepository.findByOrganizationId(principal.organizationId())
+                .orElseGet(() -> new OrganizationPolicy(
+                        actor.getOrganization(),
+                        null,
+                        false,
+                        true,
+                        true,
+                        true,
+                        30
+                ));
+
+        policy.update(
+                request.defaultShareLinkExpiryHours(),
+                request.requireVendorContractForShareLinks(),
+                request.allowViewOnce(),
+                request.allowViewUntilRevoked(),
+                request.allowRotationNotifyOnly(),
+                request.rotationReminderDays()
+        );
+        organizationPolicyRepository.save(policy);
+
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("defaultShareLinkExpiryHours", request.defaultShareLinkExpiryHours());
+        auditDetails.put("requireVendorContractForShareLinks", request.requireVendorContractForShareLinks());
+        auditDetails.put("allowViewOnce", request.allowViewOnce());
+        auditDetails.put("allowViewUntilRevoked", request.allowViewUntilRevoked());
+        auditDetails.put("allowRotationNotifyOnly", request.allowRotationNotifyOnly());
+        auditDetails.put("rotationReminderDays", request.rotationReminderDays());
+
+        auditEventRepository.save(new AuditEvent(
+                actor.getOrganization(),
+                actor,
+                AuditAction.ORGANIZATION_POLICY_UPDATED,
+                "ORGANIZATION_POLICY",
+                policy.getId(),
+                toJson(auditDetails)
+        ));
+
+        return toPolicyResponse(policy);
+    }
+
     private MemberResponse toMemberResponse(UserAccount user) {
         return new MemberResponse(
                 user.getId(),
@@ -286,8 +350,38 @@ public class OrganizationService {
         );
     }
 
+    private OrganizationPolicyResponse toPolicyResponse(OrganizationPolicy policy) {
+        if (policy == null) {
+            return new OrganizationPolicyResponse(
+                    null,
+                    false,
+                    true,
+                    true,
+                    true,
+                    30,
+                    null
+            );
+        }
+
+        return new OrganizationPolicyResponse(
+                policy.getDefaultShareLinkExpiryHours(),
+                policy.isRequireVendorContractForShareLinks(),
+                policy.isAllowViewOnce(),
+                policy.isAllowViewUntilRevoked(),
+                policy.isAllowRotationNotifyOnly(),
+                policy.getRotationReminderDays(),
+                policy.getUpdatedAt()
+        );
+    }
+
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void validatePolicyRequest(UpdateOrganizationPolicyRequest request) {
+        if (!request.allowViewOnce() && !request.allowViewUntilRevoked() && !request.allowRotationNotifyOnly()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "At least one share permission mode must remain enabled");
+        }
     }
 
     private String toJson(Map<String, Object> payload) {

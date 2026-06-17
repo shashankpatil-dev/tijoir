@@ -46,6 +46,13 @@ public class OrganizationAuthorizationService {
         throw new ApiException(HttpStatus.FORBIDDEN, "You do not have permission to manage organization members");
     }
 
+    public void requireAuditReader(UserRole role) {
+        if (role == UserRole.ORG_OWNER || role == UserRole.ADMIN || role == UserRole.AUDITOR) {
+            return;
+        }
+        throw new ApiException(HttpStatus.FORBIDDEN, "You do not have permission to review audit logs");
+    }
+
     public void requireInviteRole(UserRole actorRole, UserRole targetRole) {
         requireOrganizationManager(actorRole);
         if (targetRole == UserRole.ORG_OWNER) {

@@ -253,6 +253,14 @@ export function useWorkspaceCore({
     [session?.user.role],
   );
 
+  const canReviewAudit = useMemo(
+    () =>
+      session?.user.role === "ORG_OWNER" ||
+      session?.user.role === "ADMIN" ||
+      session?.user.role === "AUDITOR",
+    [session?.user.role],
+  );
+
   const activeShareLinks = useMemo(
     () => shareLinks.filter((shareLink) => shareLink.status === "ACTIVE").length,
     [shareLinks],
@@ -295,6 +303,22 @@ export function useWorkspaceCore({
       });
     }
 
+    if (canReviewAudit) {
+      items.push({
+        id: "audit",
+        label: "Audit Log",
+        note: "Append-only event evidence",
+      });
+    }
+
+    if (isOrganizationManager) {
+      items.push({
+        id: "settings",
+        label: "Settings",
+        note: "Policy and controls",
+      });
+    }
+
     items.push({
       id: "recipient",
       label: "Recipient View",
@@ -302,7 +326,7 @@ export function useWorkspaceCore({
     });
 
     return items;
-  }, [activeShareLinks, isOrganizationManager, members.length, secrets.length, vendors.length]);
+  }, [activeShareLinks, canReviewAudit, isOrganizationManager, members.length, secrets.length, vendors.length]);
 
   async function loadWorkspace(_accessToken: string) {
     if (!accessToken) {
@@ -317,6 +341,11 @@ export function useWorkspaceCore({
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.shareLinks(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.members(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.invites(accessToken) }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "audit-events-page", accessToken] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "audit-report", accessToken] }),
+      queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.organizationPolicy(accessToken),
+      }),
     ]);
   }
 
@@ -359,6 +388,7 @@ export function useWorkspaceCore({
     logout,
     members,
     membersAvailable,
+    canReviewAudit,
     message,
     navigationItems,
     pendingInvites,

@@ -1,3 +1,4 @@
+import { useAuditWorkspace } from "@/features/audit/hooks/use-audit-workspace";
 import { useMemo } from "react";
 import { titleForView } from "@/features/dashboard/lib/dashboard-routing";
 import type { DashboardHookArgs } from "@/features/dashboard/hooks/workspace.types";
@@ -6,6 +7,7 @@ import { useMembersWorkspace } from "@/features/members/hooks/use-members-worksp
 import { useRecipientWorkspace } from "@/features/recipient-access/hooks/use-recipient-workspace";
 import { useVaultWorkspace } from "@/features/secrets/hooks/use-vault-workspace";
 import { useShareLinksWorkspace } from "@/features/share-links/hooks/use-share-links-workspace";
+import { useSettingsWorkspace } from "@/features/settings/hooks/use-settings-workspace";
 import { useVendorsWorkspace } from "@/features/vendors/hooks/use-vendors-workspace";
 
 export function useDashboardWorkspace(args: DashboardHookArgs) {
@@ -42,6 +44,15 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
     vendors: core.vendors,
   });
 
+  const audit = useAuditWorkspace({
+    handleSessionError: core.handleSessionError,
+    router: args.router,
+    sessionAccessToken: core.session?.accessToken,
+    setActionBusy: core.setActionBusy,
+    setMessage: core.setMessage,
+    showToast: args.showToast,
+  });
+
   const shareLinks = useShareLinksWorkspace({
     copyText: core.copyText,
     handleSessionError: core.handleSessionError,
@@ -71,14 +82,25 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
     showToast: args.showToast,
   });
 
+  const settings = useSettingsWorkspace({
+    handleSessionError: core.handleSessionError,
+    router: args.router,
+    sessionAccessToken: core.session?.accessToken,
+    setActionBusy: core.setActionBusy,
+    setMessage: core.setMessage,
+    showToast: args.showToast,
+  });
+
   const title = useMemo(() => titleForView(core.activeView), [core.activeView]);
 
   return {
     ...core,
+    ...audit,
     ...vault,
     ...vendors,
     ...shareLinks,
     ...members,
+    ...settings,
     ...recipient,
     router: args.router,
     title,

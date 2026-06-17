@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -221,6 +222,44 @@ class OrganizationControllerIntegrationTest {
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(2));
+    }
+
+    @Test
+    void ownerCanReadAndUpdateOrganizationPolicy() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Policy", "owner@acme-policy.test");
+
+        mockMvc.perform(get("/api/organization/policy")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requireVendorContractForShareLinks").value(false))
+                .andExpect(jsonPath("$.allowViewOnce").value(true))
+                .andExpect(jsonPath("$.allowViewUntilRevoked").value(true))
+                .andExpect(jsonPath("$.allowRotationNotifyOnly").value(true));
+
+        mockMvc.perform(put("/api/organization/policy")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "defaultShareLinkExpiryHours": 72,
+                                  "requireVendorContractForShareLinks": true,
+                                  "allowViewOnce": true,
+                                  "allowViewUntilRevoked": true,
+                                  "allowRotationNotifyOnly": false,
+                                  "rotationReminderDays": 14
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.defaultShareLinkExpiryHours").value(72))
+                .andExpect(jsonPath("$.requireVendorContractForShareLinks").value(true))
+                .andExpect(jsonPath("$.allowRotationNotifyOnly").value(false))
+                .andExpect(jsonPath("$.rotationReminderDays").value(14));
+
+        mockMvc.perform(get("/api/organization/policy")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.defaultShareLinkExpiryHours").value(72))
+                .andExpect(jsonPath("$.requireVendorContractForShareLinks").value(true));
     }
 
     private String inviteAndAccept(

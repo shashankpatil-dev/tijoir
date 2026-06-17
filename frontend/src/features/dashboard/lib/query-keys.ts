@@ -23,6 +23,14 @@ export const dashboardQueryKeys = {
     vendorId: string | undefined,
     params: { page: number; size: number; status: string },
   ) => ["dashboard", "vendor-contracts-page", accessToken, vendorId, params] as const,
+  auditEventsPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; query: string; action: string; resourceType: string },
+  ) => ["dashboard", "audit-events-page", accessToken, params] as const,
+  auditReport: (
+    accessToken: string | undefined,
+    params: { query: string; action: string; resourceType: string },
+  ) => ["dashboard", "audit-report", accessToken, params] as const,
   members: (accessToken?: string) => ["dashboard", "members", accessToken] as const,
   membersPage: (
     accessToken: string | undefined,
@@ -33,4 +41,6 @@ export const dashboardQueryKeys = {
     accessToken: string | undefined,
     params: { page: number; size: number; query: string; role: string; status: string },
   ) => ["dashboard", "invites-page", accessToken, params] as const,
+  organizationPolicy: (accessToken?: string) =>
+    ["dashboard", "organization-policy", accessToken] as const,
 } as const;
