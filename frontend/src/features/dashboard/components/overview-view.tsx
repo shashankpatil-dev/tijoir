@@ -1,8 +1,11 @@
 import {
   DetailList,
+  DetailListSkeleton,
   EmptyState,
   PageSection,
   StatCard,
+  StatCardSkeleton,
+  SurfaceNoteListSkeleton,
 } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
@@ -15,6 +18,7 @@ export function OverviewView({
   activeShareLinks,
   isOrganizationManager,
   lastCreatedShareReady,
+  loadingWorkspace,
   memberCount,
   organizationName,
   onCreateSecret,
@@ -29,6 +33,7 @@ export function OverviewView({
   activeShareLinks: number;
   isOrganizationManager: boolean;
   lastCreatedShareReady: boolean;
+  loadingWorkspace: boolean;
   memberCount: number;
   organizationName: string;
   onCreateSecret: () => void;
@@ -39,34 +44,42 @@ export function OverviewView({
   secretCount: number;
   vendorCount: number;
 }) {
+  const showLoadingState = loadingWorkspace && !session;
+
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          label="Vault items"
-          note="Protected secrets in this workspace"
-          value={String(secretCount)}
-        />
-        <StatCard
-          label="Active share links"
-          note="Recipient access currently live"
-          value={String(activeShareLinks)}
-        />
-        <StatCard
-          label="Vendors"
-          note="Tracked external entities"
-          value={String(vendorCount)}
-        />
-        <StatCard
-          label="Team members"
-          note="Users in this organization"
-          value={String(memberCount)}
-        />
-        <StatCard
-          label="Pending invites"
-          note="People waiting to join"
-          value={String(pendingInvites)}
-        />
+        {showLoadingState ? (
+          Array.from({ length: 5 }).map((_, index) => <StatCardSkeleton key={index} />)
+        ) : (
+          <>
+            <StatCard
+              label="Vault items"
+              note="Protected secrets in this workspace"
+              value={String(secretCount)}
+            />
+            <StatCard
+              label="Active share links"
+              note="Recipient access currently live"
+              value={String(activeShareLinks)}
+            />
+            <StatCard
+              label="Vendors"
+              note="Tracked external entities"
+              value={String(vendorCount)}
+            />
+            <StatCard
+              label="Team members"
+              note="Users in this organization"
+              value={String(memberCount)}
+            />
+            <StatCard
+              label="Pending invites"
+              note="People waiting to join"
+              value={String(pendingInvites)}
+            />
+          </>
+        )}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
@@ -74,7 +87,9 @@ export function OverviewView({
           description="A clear view of the current organization workspace and its main activity."
           title="Workspace summary"
         >
-          {session ? (
+          {showLoadingState ? (
+            <DetailListSkeleton />
+          ) : session ? (
             <DetailList
               items={[
                 { label: "Organization", value: organizationName },
@@ -98,28 +113,32 @@ export function OverviewView({
             description="The next things that matter most in the current workspace."
             title="Focus"
           >
-            <div className="space-y-3">
-              <SurfaceNote
-                label="Selected secret"
-                value={activeSecret ? activeSecret.secretKey : "No secret selected"}
-              />
-              <SurfaceNote
-                label="Last share link"
-                value={
-                  lastCreatedShareReady
-                    ? "A new recipient access package is ready."
-                    : "No recent recipient package is staged."
-                }
-              />
-              <SurfaceNote
-                label="Team access"
-                value={
-                  isOrganizationManager
-                    ? `${memberCount} members and ${pendingInvites} pending invites in the workspace.`
-                    : "Team administration is available to organization managers."
-                }
-              />
-            </div>
+            {showLoadingState ? (
+              <SurfaceNoteListSkeleton />
+            ) : (
+              <div className="space-y-3">
+                <SurfaceNote
+                  label="Selected secret"
+                  value={activeSecret ? activeSecret.secretKey : "No secret selected"}
+                />
+                <SurfaceNote
+                  label="Last share link"
+                  value={
+                    lastCreatedShareReady
+                      ? "A new recipient access package is ready."
+                      : "No recent recipient package is staged."
+                  }
+                />
+                <SurfaceNote
+                  label="Team access"
+                  value={
+                    isOrganizationManager
+                      ? `${memberCount} members and ${pendingInvites} pending invites in the workspace.`
+                      : "Team administration is available to organization managers."
+                  }
+                />
+              </div>
+            )}
           </PageSection>
 
           <PageSection
@@ -127,14 +146,24 @@ export function OverviewView({
             title="Quick actions"
           >
             <div className="flex flex-wrap gap-3">
-              <Button onClick={onCreateSecret} type="button">
+              <Button disabled={showLoadingState} onClick={onCreateSecret} type="button">
                 Create secret
               </Button>
-              <Button onClick={onCreateShareLink} type="button" variant="secondary">
+              <Button
+                disabled={showLoadingState}
+                onClick={onCreateShareLink}
+                type="button"
+                variant="secondary"
+              >
                 Create share link
               </Button>
               {isOrganizationManager ? (
-                <Button onClick={onInviteMember} type="button" variant="outline">
+                <Button
+                  disabled={showLoadingState}
+                  onClick={onInviteMember}
+                  type="button"
+                  variant="outline"
+                >
                   Invite member
                 </Button>
               ) : null}

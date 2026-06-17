@@ -1,24 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { ApiRequestError } from "@/lib/api/errors";
-import { currentUserRequest, logoutRequest } from "@/features/auth/api/auth.api";
+import { logoutRequest } from "@/features/auth/api/auth.api";
 import { saveSession } from "@/features/auth/lib/auth-storage";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
-import {
-  readWorkspaceCache,
-  saveWorkspaceCache,
-} from "@/features/dashboard/lib/workspace-cache";
-import type { InviteSummary, MemberSummary } from "@/features/members/types/members.types";
-import { fetchInvites, fetchMembers } from "@/features/members/api/members.api";
-import type { SecretSummary } from "@/features/secrets/types/secrets.types";
-import { fetchSecrets } from "@/features/secrets/api/secrets.api";
-import { fetchShareLinks } from "@/features/share-links/api/share-links.api";
-import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
-import { fetchVendors } from "@/features/vendors/api/vendors.api";
-import type { VendorResponse } from "@/features/vendors/types/vendors.types";
-import type { DashboardNavItem } from "@/components/dashboard/dashboard-shell";
+import { saveWorkspaceCache } from "@/features/dashboard/lib/workspace-cache";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import { viewFromPath } from "@/features/dashboard/lib/dashboard-routing";
+import { buildWorkspaceQueries } from "@/features/dashboard/hooks/workspace-core.queries";
+import {
+  buildNavigationItems,
+  canRoleReviewAudit,
+  EMPTY_WORKSPACE_STATE,
+  getCachedWorkspaceState,
+  hasOrganizationManagerRole,
+} from "@/features/dashboard/hooks/workspace-core.utils";
 import type { DashboardHookArgs } from "@/features/dashboard/hooks/workspace.types";
 
 export function useWorkspaceCore({
@@ -35,38 +31,15 @@ export function useWorkspaceCore({
   const [message, setMessage] = useState("");
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-  const [cachedWorkspace, setCachedWorkspace] = useState<{
-    secrets: SecretSummary[];
-    shareLinks: ShareLinkResponse[];
-    vendors: VendorResponse[];
-    members: MemberSummary[];
-    invites: InviteSummary[];
-  }>({
-    secrets: [],
-    shareLinks: [],
-    vendors: [],
-    members: [],
-    invites: [],
-  });
+  const [cachedWorkspace, setCachedWorkspace] = useState(EMPTY_WORKSPACE_STATE);
   const [selectedSecretId, setSelectedSecretId] = useState("");
 
   useEffect(() => {
     setSession(initialSession);
-    const cached = readWorkspaceCache(initialSession.organization.slug);
-
-    if (cached) {
-      setCachedWorkspace({
-        secrets: cached.secrets,
-        shareLinks: cached.shareLinks,
-        vendors: cached.vendors || [],
-        members: cached.members || [],
-        invites: cached.invites || [],
-      });
-      setSelectedSecretId(cached.selectedSecretId || "");
-      setMessage("");
-    } else {
-      setMessage("");
-    }
+    const cached = getCachedWorkspaceState(initialSession);
+    setCachedWorkspace(cached.cachedWorkspace);
+    setSelectedSecretId(cached.selectedSecretId);
+    setMessage("");
   }, [initialSession]);
 
   const accessToken = session?.accessToken;
@@ -116,40 +89,10 @@ export function useWorkspaceCore({
     }
   }
 
-  const [meQuery, secretsQuery, vendorsQuery, shareLinksQuery, membersQuery, invitesQuery] = useQueries({
-    queries: [
-      {
-        queryKey: dashboardQueryKeys.me(accessToken),
-        queryFn: () => currentUserRequest(accessToken as string),
-        enabled: Boolean(accessToken),
-      },
-      {
-        queryKey: dashboardQueryKeys.secrets(accessToken),
-        queryFn: () => fetchSecrets(accessToken as string),
-        enabled: Boolean(accessToken),
-      },
-      {
-        queryKey: dashboardQueryKeys.vendors(accessToken),
-        queryFn: () => fetchVendors(accessToken as string),
-        enabled: Boolean(accessToken),
-      },
-      {
-        queryKey: dashboardQueryKeys.shareLinks(accessToken),
-        queryFn: () => fetchShareLinks(accessToken as string),
-        enabled: Boolean(accessToken),
-      },
-      {
-        queryKey: dashboardQueryKeys.members(accessToken),
-        queryFn: () => fetchMembers(accessToken as string),
-        enabled: Boolean(accessToken),
-      },
-      {
-        queryKey: dashboardQueryKeys.invites(accessToken),
-        queryFn: () => fetchInvites(accessToken as string),
-        enabled: Boolean(accessToken),
-      },
-    ],
-  });
+  const [meQuery, secretsQuery, vendorsQuery, shareLinksQuery, membersQuery, invitesQuery] =
+    useQueries({
+      queries: buildWorkspaceQueries(accessToken),
+    });
 
   useEffect(() => {
     setLoadingWorkspace(
@@ -231,15 +174,12 @@ export function useWorkspaceCore({
   }, [activeView, invites, members, secrets, selectedSecretId, session?.organization.slug, shareLinks, vendors]);
 
   const isOrganizationManager = useMemo(
-    () => session?.user.role === "ORG_OWNER" || session?.user.role === "ADMIN",
+    () => hasOrganizationManagerRole(session?.user.role),
     [session?.user.role],
   );
 
   const canReviewAudit = useMemo(
-    () =>
-      session?.user.role === "ORG_OWNER" ||
-      session?.user.role === "ADMIN" ||
-      session?.user.role === "AUDITOR",
+    () => canRoleReviewAudit(session?.user.role),
     [session?.user.role],
   );
 
@@ -253,62 +193,25 @@ export function useWorkspaceCore({
     [invites],
   );
 
-  const navigationItems = useMemo<DashboardNavItem[]>(() => {
-    const items: DashboardNavItem[] = [
-      { id: "overview", label: "Overview", note: "Workspace status" },
-      {
-        id: "vault",
-        label: "Vault",
-        note: "Secrets and rotation",
-        badge: String(secrets.length),
-      },
-      {
-        id: "vendors",
-        label: "Vendors",
-        note: "Entities and contracts",
-        badge: String(vendors.length),
-      },
-      {
-        id: "share",
-        label: "Share Links",
-        note: "Recipient access",
-        badge: String(activeShareLinks),
-      },
-    ];
-
-    if (isOrganizationManager) {
-      items.push({
-        id: "organization",
-        label: "Organization",
-        note: "Profile, team and access",
-        badge: String(members.length),
-      });
-    }
-
-    if (canReviewAudit) {
-      items.push({
-        id: "audit",
-        label: "Audit Log",
-        note: "Security activity",
-      });
-    }
-
-    if (isOrganizationManager) {
-      items.push({
-        id: "settings",
-        label: "Settings",
-        note: "Policy and controls",
-      });
-    }
-
-    items.push({
-      id: "recipient",
-      label: "Recipient Access",
-      note: "Open shared secrets",
-    });
-
-    return items;
-  }, [activeShareLinks, canReviewAudit, isOrganizationManager, members.length, secrets.length, vendors.length]);
+  const navigationItems = useMemo(
+    () =>
+      buildNavigationItems({
+        activeShareLinks,
+        canReviewAudit,
+        isOrganizationManager,
+        membersCount: members.length,
+        secretsCount: secrets.length,
+        vendorsCount: vendors.length,
+      }),
+    [
+      activeShareLinks,
+      canReviewAudit,
+      isOrganizationManager,
+      members.length,
+      secrets.length,
+      vendors.length,
+    ],
+  );
 
   async function loadWorkspace(_accessToken: string) {
     if (!accessToken) {
@@ -348,7 +251,7 @@ export function useWorkspaceCore({
     } finally {
       removeSession();
       setSession(null);
-      setCachedWorkspace({ secrets: [], shareLinks: [], vendors: [], members: [], invites: [] });
+      setCachedWorkspace(EMPTY_WORKSPACE_STATE);
       showToast({
         title: "Logged out",
         description: "The workspace session has been cleared.",

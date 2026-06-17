@@ -13,6 +13,7 @@ export default function DashboardSettingsPage() {
       allowViewUntilRevoked={workspace.allowViewUntilRevoked}
       defaultShareLinkExpiryHours={workspace.defaultShareLinkExpiryHours}
       handleUpdatePolicy={workspace.handleUpdatePolicy}
+      loadingPolicy={workspace.loadingPolicy}
       policyUpdatedAt={workspace.policyUpdatedAt}
       requireVendorContractForShareLinks={workspace.requireVendorContractForShareLinks}
       rotationReminderDays={workspace.rotationReminderDays}

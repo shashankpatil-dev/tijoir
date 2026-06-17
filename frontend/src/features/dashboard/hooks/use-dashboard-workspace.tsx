@@ -22,7 +22,6 @@ export function useDashboardWorkspace(args: DashboardHookArgs) {
 
   const vault = useVaultWorkspace({
     handleSessionError: core.handleSessionError,
-    loadWorkspace: core.loadWorkspace,
     router: args.router,
     secrets: core.secrets,
     selectedSecretId: core.selectedSecretId,

@@ -12,6 +12,7 @@ export default function DashboardOverviewPage() {
       activeShareLinks={workspace.activeShareLinks}
       isOrganizationManager={workspace.isOrganizationManager}
       lastCreatedShareReady={Boolean(workspace.lastCreatedShare)}
+      loadingWorkspace={workspace.loadingWorkspace}
       memberCount={workspace.members.length}
       organizationName={workspace.session?.organization.name || "Organization"}
       onCreateSecret={workspace.openCreateSecret}

@@ -113,6 +113,7 @@ export function useSettingsWorkspace({
     allowViewUntilRevoked,
     defaultShareLinkExpiryHours,
     handleUpdatePolicy,
+    loadingPolicy: policyQuery.isLoading,
     policyUpdatedAt: policyQuery.data?.updatedAt || null,
     requireVendorContractForShareLinks,
     rotationReminderDays,

@@ -1,4 +1,7 @@
-import { PageSection } from "@/components/dashboard/dashboard-shell";
+import {
+  PageSection,
+  SurfaceNoteListSkeleton,
+} from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { SelectField, TextField } from "@/components/ui/form-fields";
 import { SurfaceNote } from "@/features/dashboard/components/surface-note";
@@ -11,6 +14,7 @@ export function SettingsView({
   allowViewUntilRevoked,
   defaultShareLinkExpiryHours,
   handleUpdatePolicy,
+  loadingPolicy,
   policyUpdatedAt,
   requireVendorContractForShareLinks,
   rotationReminderDays,
@@ -26,6 +30,7 @@ export function SettingsView({
   allowViewUntilRevoked: string;
   defaultShareLinkExpiryHours: string;
   handleUpdatePolicy: (event: FormEvent<HTMLFormElement>) => void;
+  loadingPolicy: boolean;
   policyUpdatedAt?: string | null;
   requireVendorContractForShareLinks: string;
   rotationReminderDays: string;
@@ -40,102 +45,115 @@ export function SettingsView({
     { label: "Enabled", value: "true" },
     { label: "Disabled", value: "false" },
   ];
+  const showLoadingState =
+    loadingPolicy &&
+    !policyUpdatedAt &&
+    defaultShareLinkExpiryHours === "" &&
+    rotationReminderDays === "30";
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+    <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
       <PageSection
         description="Set the default organization rules for share duration, permission modes, and rotation review."
-        title="Policy configuration"
+        title="Organization policy"
       >
-        <form className="space-y-4" onSubmit={handleUpdatePolicy}>
-          <TextField
-            hint="Optional default expiry in hours for share links."
-            label="Default share-link expiry hours"
-            onChange={setDefaultShareLinkExpiryHours}
-            required={false}
-            type="number"
-            value={defaultShareLinkExpiryHours}
-          />
-          <SelectField
-            hint="If enabled, share links should only be issued through an active vendor contract."
-            label="Require vendor contract for share links"
-            onChange={setRequireVendorContractForShareLinks}
-            options={booleanOptions}
-            value={requireVendorContractForShareLinks}
-          />
-          <SelectField
-            label="Allow VIEW_ONCE"
-            onChange={setAllowViewOnce}
-            options={booleanOptions}
-            value={allowViewOnce}
-          />
-          <SelectField
-            label="Allow VIEW_UNTIL_REVOKED"
-            onChange={setAllowViewUntilRevoked}
-            options={booleanOptions}
-            value={allowViewUntilRevoked}
-          />
-          <SelectField
-            label="Allow ROTATION_NOTIFY_ONLY"
-            onChange={setAllowRotationNotifyOnly}
-            options={booleanOptions}
-            value={allowRotationNotifyOnly}
-          />
-          <TextField
-            hint="Reminder lead time in days before secret rotation should be reviewed."
-            label="Rotation reminder days"
-            onChange={setRotationReminderDays}
-            required={false}
-            type="number"
-            value={rotationReminderDays}
-          />
-          <div className="flex justify-end">
-            <Button type="submit">Save policy</Button>
-          </div>
-        </form>
+        {showLoadingState ? (
+          <SurfaceNoteListSkeleton rows={5} />
+        ) : (
+          <form className="space-y-4" onSubmit={handleUpdatePolicy}>
+            <TextField
+              hint="Optional default expiry in hours for share links."
+              label="Default share-link expiry hours"
+              onChange={setDefaultShareLinkExpiryHours}
+              required={false}
+              type="number"
+              value={defaultShareLinkExpiryHours}
+            />
+            <SelectField
+              hint="If enabled, share links should only be issued through an active vendor contract."
+              label="Require vendor contract for share links"
+              onChange={setRequireVendorContractForShareLinks}
+              options={booleanOptions}
+              value={requireVendorContractForShareLinks}
+            />
+            <SelectField
+              label="Allow VIEW_ONCE"
+              onChange={setAllowViewOnce}
+              options={booleanOptions}
+              value={allowViewOnce}
+            />
+            <SelectField
+              label="Allow VIEW_UNTIL_REVOKED"
+              onChange={setAllowViewUntilRevoked}
+              options={booleanOptions}
+              value={allowViewUntilRevoked}
+            />
+            <SelectField
+              label="Allow ROTATION_NOTIFY_ONLY"
+              onChange={setAllowRotationNotifyOnly}
+              options={booleanOptions}
+              value={allowRotationNotifyOnly}
+            />
+            <TextField
+              hint="Reminder lead time in days before secret rotation should be reviewed."
+              label="Rotation reminder days"
+              onChange={setRotationReminderDays}
+              required={false}
+              type="number"
+              value={rotationReminderDays}
+            />
+            <div className="flex justify-end">
+              <Button type="submit">Save policy</Button>
+            </div>
+          </form>
+        )}
       </PageSection>
 
       <div className="space-y-5">
         <PageSection
           description="A compact readout of the currently staged organization policy."
-          title="Policy summary"
+          title="Current policy"
         >
-          <div className="space-y-3">
-            <SurfaceNote
-              label="Default expiry"
-              value={
-                defaultShareLinkExpiryHours
-                  ? `${defaultShareLinkExpiryHours} hours`
-                  : "No default expiry enforced"
-              }
-            />
-            <SurfaceNote
-              label="Vendor contract required"
-              value={requireVendorContractForShareLinks === "true" ? "Yes" : "No"}
-            />
-            <SurfaceNote
-              label="Allowed modes"
-              value={[
-                allowViewOnce === "true" ? "VIEW_ONCE" : null,
-                allowViewUntilRevoked === "true" ? "VIEW_UNTIL_REVOKED" : null,
-                allowRotationNotifyOnly === "true" ? "ROTATION_NOTIFY_ONLY" : null,
-              ]
-                .filter(Boolean)
-                .join(", ") || "None"}
-            />
-            <SurfaceNote
-              label="Rotation reminder"
-              value={
-                rotationReminderDays
-                  ? `${rotationReminderDays} days before review`
-                  : "No reminder window set"
-              }
-            />
-            <SurfaceNote
-              label="Last updated"
-              value={policyUpdatedAt ? formatInstant(policyUpdatedAt) : "Default policy"}
-            />
-          </div>
+          {showLoadingState ? (
+            <SurfaceNoteListSkeleton rows={5} />
+          ) : (
+            <div className="space-y-3">
+              <SurfaceNote
+                label="Default expiry"
+                value={
+                  defaultShareLinkExpiryHours
+                    ? `${defaultShareLinkExpiryHours} hours`
+                    : "No default expiry enforced"
+                }
+              />
+              <SurfaceNote
+                label="Vendor contract required"
+                value={requireVendorContractForShareLinks === "true" ? "Yes" : "No"}
+              />
+              <SurfaceNote
+                label="Allowed modes"
+                value={[
+                  allowViewOnce === "true" ? "VIEW_ONCE" : null,
+                  allowViewUntilRevoked === "true" ? "VIEW_UNTIL_REVOKED" : null,
+                  allowRotationNotifyOnly === "true" ? "ROTATION_NOTIFY_ONLY" : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ") || "None"}
+              />
+              <SurfaceNote
+                label="Rotation reminder"
+                value={
+                  rotationReminderDays
+                    ? `${rotationReminderDays} days before review`
+                    : "No reminder window set"
+                }
+              />
+              <SurfaceNote
+                label="Last updated"
+                value={policyUpdatedAt ? formatInstant(policyUpdatedAt) : "Default policy"}
+              />
+            </div>
+          )}
         </PageSection>
 
         <PageSection
@@ -154,6 +172,26 @@ export function SettingsView({
             <SurfaceNote
               label="Permission modes"
               value="Keep only the permission types the organization actually intends to support."
+            />
+          </div>
+        </PageSection>
+
+        <PageSection
+          description="Use one clear policy posture so operators do not need to guess how access should be issued."
+          title="Operating guidance"
+        >
+          <div className="space-y-3">
+            <SurfaceNote
+              label="Temporary access"
+              value="Use short expiries and tighter permission modes for task-based or vendor onboarding work."
+            />
+            <SurfaceNote
+              label="Stable integrations"
+              value="Use a contract-backed path when a relationship is ongoing and needs traceable ownership."
+            />
+            <SurfaceNote
+              label="Rotation posture"
+              value="Keep reminder windows realistic enough that teams review secrets before external breakage happens."
             />
           </div>
         </PageSection>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { SkeletonBlock } from "@/components/ui/skeleton";
 
 export type DashboardNavItem = {
   id: string;
@@ -59,14 +60,14 @@ export function DashboardShell({
           <div className="space-y-5 lg:sticky lg:top-5">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-5">
               <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">
-                Tj
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">
+                  Tj
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Tijoir</p>
+                  <p className="text-xs text-blue-100/75">Secrets and external access</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Tijoir</p>
-                <p className="text-xs text-blue-100/75">Secrets and external access</p>
-              </div>
-            </div>
               <button
                 className="rounded-xl px-2 py-1 text-sm text-blue-100/75 hover:bg-white/10 lg:hidden"
                 onClick={() => setSidebarOpen(false)}
@@ -131,7 +132,9 @@ export function DashboardShell({
                 </div>
                 {userMeta}
               </div>
-              <div className="flex flex-wrap items-center gap-3">{topbarActions}</div>
+              <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+                {topbarActions}
+              </div>
             </div>
           </header>
 
@@ -230,6 +233,18 @@ export function StatCard({
   );
 }
 
+export function StatCardSkeleton() {
+  return (
+    <SurfaceCard className="p-4">
+      <div className="space-y-2">
+        <SkeletonBlock className="h-4 w-24" />
+        <SkeletonBlock className="h-8 w-14" />
+        <SkeletonBlock className="h-4 w-32" />
+      </div>
+    </SurfaceCard>
+  );
+}
+
 export function EmptyState({
   description,
   title,
@@ -268,5 +283,45 @@ export function DetailList({
         </div>
       ))}
     </dl>
+  );
+}
+
+export function DetailListSkeleton({
+  items = 6,
+}: {
+  items?: number;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {Array.from({ length: items }).map((_, index) => (
+        <div
+          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          key={index}
+        >
+          <SkeletonBlock className="h-3 w-24" />
+          <SkeletonBlock className="mt-3 h-4 w-36" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SurfaceNoteListSkeleton({
+  rows = 3,
+}: {
+  rows?: number;
+}) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, index) => (
+        <div
+          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          key={index}
+        >
+          <SkeletonBlock className="h-3 w-24" />
+          <SkeletonBlock className="mt-3 h-4 w-full" />
+        </div>
+      ))}
+    </div>
   );
 }

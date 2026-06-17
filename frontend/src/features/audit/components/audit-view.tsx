@@ -1,4 +1,4 @@
-import { PageSection } from "@/components/dashboard/dashboard-shell";
+import { EmptyState, PageSection } from "@/components/dashboard/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -8,6 +8,7 @@ import {
   SearchInput,
   TableToolbar,
 } from "@/components/ui/table-controls";
+import { SurfaceNote } from "@/features/dashboard/components/surface-note";
 import type {
   AuditAction,
   AuditEventResponse,
@@ -51,36 +52,7 @@ export function AuditView({
   const resourceBreakdown = Object.entries(auditReport?.byResourceType ?? {}).slice(0, 6);
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-3">
-        <PageSection
-          description="Matched audit events across the current filter scope."
-          title="Total events"
-        >
-          <p className="text-3xl font-semibold text-[var(--color-ink-strong)]">
-            {auditReport?.totalEvents ?? auditTotal}
-          </p>
-        </PageSection>
-        <PageSection
-          description="Recent activity window for the last 24 hours."
-          title="Last 24 hours"
-        >
-          <p className="text-3xl font-semibold text-[var(--color-ink-strong)]">
-            {auditReport?.eventsInLast24Hours ?? 0}
-          </p>
-        </PageSection>
-        <PageSection
-          description="Export the filtered audit evidence as a CSV file."
-          title="Reporting"
-        >
-          <div className="flex h-full items-end justify-end">
-            <Button onClick={() => void handleAuditExport()} type="button" variant="secondary">
-              Export CSV
-            </Button>
-          </div>
-        </PageSection>
-      </div>
-
+    <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
       <PageSection
         description="Review the organization event trail with action and resource filters."
         title="Audit log"
@@ -135,51 +107,6 @@ export function AuditView({
             />
           </TableToolbar>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-3 rounded-2xl border border-[var(--color-dashboard-border)] bg-[var(--color-surface)] p-4">
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--color-ink-strong)]">
-                  Action breakdown
-                </h3>
-                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                  Most frequent matching actions.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {actionBreakdown.length ? (
-                  actionBreakdown.map(([label, count]) => (
-                    <Badge key={label} tone="neutral">
-                      {label}: {count}
-                    </Badge>
-                  ))
-                ) : (
-                  <p className="text-sm text-[var(--color-muted)]">No action data yet.</p>
-                )}
-              </div>
-            </div>
-            <div className="space-y-3 rounded-2xl border border-[var(--color-dashboard-border)] bg-[var(--color-surface)] p-4">
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--color-ink-strong)]">
-                  Resource breakdown
-                </h3>
-                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                  Most frequent matching resource types.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {resourceBreakdown.length ? (
-                  resourceBreakdown.map(([label, count]) => (
-                    <Badge key={label} tone="neutral">
-                      {label}: {count}
-                    </Badge>
-                  ))
-                ) : (
-                  <p className="text-sm text-[var(--color-muted)]">No resource data yet.</p>
-                )}
-              </div>
-            </div>
-          </div>
-
           <DataTable
             containerClassName="max-h-[34rem]"
             columns={auditColumns}
@@ -199,6 +126,105 @@ export function AuditView({
           />
         </div>
       </PageSection>
+
+      <div className="space-y-5">
+        <PageSection
+          description="Current audit scope and export action for the visible filters."
+          title="Audit summary"
+        >
+          <div className="space-y-3">
+            <SurfaceNote
+              label="Matched events"
+              value={String(auditReport?.totalEvents ?? auditTotal)}
+            />
+            <SurfaceNote
+              label="Last 24 hours"
+              value={String(auditReport?.eventsInLast24Hours ?? 0)}
+            />
+            <SurfaceNote
+              label="Current action filter"
+              value={auditActionFilter === "ALL" ? "All actions" : auditActionFilter}
+            />
+            <SurfaceNote
+              label="Current resource filter"
+              value={
+                auditResourceTypeFilter === "ALL"
+                  ? "All resources"
+                  : auditResourceTypeFilter
+              }
+            />
+            <div className="flex flex-wrap gap-3 pt-1">
+              <Button
+                onClick={() => void handleAuditExport()}
+                type="button"
+                variant="secondary"
+              >
+                Export CSV
+              </Button>
+            </div>
+          </div>
+        </PageSection>
+
+        <PageSection
+          description="Most frequent matching actions in the current audit slice."
+          title="Action breakdown"
+        >
+          <div className="flex flex-wrap gap-2">
+            {actionBreakdown.length ? (
+              actionBreakdown.map(([label, count]) => (
+                <Badge key={label} tone="neutral">
+                  {label}: {count}
+                </Badge>
+              ))
+            ) : (
+              <EmptyState
+                description="Export or broaden the filters after more activity lands in this workspace."
+                title="No action data yet"
+              />
+            )}
+          </div>
+        </PageSection>
+
+        <PageSection
+          description="Most frequent matching resource types in the current audit slice."
+          title="Resource breakdown"
+        >
+          <div className="flex flex-wrap gap-2">
+            {resourceBreakdown.length ? (
+              resourceBreakdown.map(([label, count]) => (
+                <Badge key={label} tone="neutral">
+                  {label}: {count}
+                </Badge>
+              ))
+            ) : (
+              <EmptyState
+                description="Use broader filters or wait for more activity to build the resource distribution."
+                title="No resource data yet"
+              />
+            )}
+          </div>
+        </PageSection>
+
+        <PageSection
+          description="Keep the audit surface useful for reviews, incidents, and handoff evidence."
+          title="Investigation notes"
+        >
+          <div className="space-y-3">
+            <SurfaceNote
+              label="Start narrow"
+              value="Use action and resource filters first, then search by actor or target object."
+            />
+            <SurfaceNote
+              label="Export when ready"
+              value="Download the filtered slice only after the scope is clean enough to hand to another reviewer."
+            />
+            <SurfaceNote
+              label="Watch policy changes"
+              value="Policy updates, contract revokes, and member-role changes usually deserve the fastest follow-up."
+            />
+          </div>
+        </PageSection>
+      </div>
     </div>
   );
 }
