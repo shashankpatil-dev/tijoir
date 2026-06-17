@@ -48,3 +48,9 @@ export async function refreshRequest() {
     method: "POST",
   });
 }
+
+export async function logoutRequest() {
+  return apiRequest<void>("/api/auth/logout", {
+    method: "POST",
+  });
+}

@@ -1,9 +1,26 @@
 export const dashboardQueryKeys = {
   me: (accessToken?: string) => ["dashboard", "me", accessToken] as const,
   secrets: (accessToken?: string) => ["dashboard", "secrets", accessToken] as const,
+  secretsPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; query: string; type: string; status: string },
+  ) => ["dashboard", "secrets-page", accessToken, params] as const,
+  secretOptions: (accessToken?: string) => ["dashboard", "secret-options", accessToken] as const,
   secretDetail: (accessToken?: string, secretId?: string) =>
     ["dashboard", "secret-detail", accessToken, secretId] as const,
   shareLinks: (accessToken?: string) => ["dashboard", "share-links", accessToken] as const,
+  shareLinksPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; query: string; permission: string; status: string },
+  ) => ["dashboard", "share-links-page", accessToken, params] as const,
   members: (accessToken?: string) => ["dashboard", "members", accessToken] as const,
+  membersPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; query: string; role: string },
+  ) => ["dashboard", "members-page", accessToken, params] as const,
   invites: (accessToken?: string) => ["dashboard", "invites", accessToken] as const,
+  invitesPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; query: string; role: string; status: string },
+  ) => ["dashboard", "invites-page", accessToken, params] as const,
 } as const;

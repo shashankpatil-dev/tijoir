@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiBaseUrl } from "@/lib/api/client";
 import { buildStaticAppUrl } from "@/lib/auth-client";
 import {
@@ -11,6 +11,7 @@ import { buildShareColumns } from "@/features/dashboard/lib/dashboard-columns";
 import type { SharePreview, RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 import {
   createShareLink,
+  fetchShareLinksPage,
   revokeShareLink,
 } from "@/features/share-links/api/share-links.api";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
@@ -60,24 +61,32 @@ export function useShareLinksWorkspace({
     setSharePage(1);
   }, [sharePermissionFilter, shareSearch, shareStatusFilter]);
 
-  const filteredShareLinks = useMemo(() => {
-    const query = shareSearch.trim().toLowerCase();
-    return shareLinks.filter((shareLink) => {
-      const matchesQuery =
-        !query ||
-        shareLink.secretName.toLowerCase().includes(query) ||
-        shareLink.secretKey.toLowerCase().includes(query) ||
-        (shareLink.recipientLabel || "").toLowerCase().includes(query);
-      const matchesStatus =
-        shareStatusFilter === "ALL" || shareLink.status === shareStatusFilter;
-      const matchesPermission =
-        sharePermissionFilter === "ALL" || shareLink.permission === sharePermissionFilter;
-      return matchesQuery && matchesStatus && matchesPermission;
-    });
-  }, [shareLinks, sharePermissionFilter, shareSearch, shareStatusFilter]);
-
-  const paginatedShareLinks = paginate(filteredShareLinks, sharePage, DASHBOARD_ITEMS_PER_PAGE);
-  const sharePageCount = pageCount(filteredShareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
+  const shareLinksPageQuery = useQuery({
+    queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, {
+      page: sharePage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      query: shareSearch,
+      permission: sharePermissionFilter,
+      status: shareStatusFilter,
+    }),
+    queryFn: () =>
+      fetchShareLinksPage(sessionAccessToken as string, {
+        page: sharePage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        query: shareSearch.trim() || undefined,
+        permission:
+          sharePermissionFilter === "ALL"
+            ? undefined
+            : (sharePermissionFilter as ContractPermission),
+        status: shareStatusFilter === "ALL" ? undefined : shareStatusFilter,
+      }),
+    enabled: Boolean(sessionAccessToken),
+    placeholderData: (previous) => previous,
+  });
+  const filteredShareLinks = shareLinksPageQuery.data?.items ?? shareLinks;
+  const paginatedShareLinks = filteredShareLinks;
+  const sharePageCount =
+    shareLinksPageQuery.data?.totalPages ?? pageCount(shareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
 
   const shareColumns = useMemo<DataTableColumn<ShareLinkResponse>[]>(
     () =>
@@ -139,6 +148,15 @@ export function useShareLinksWorkspace({
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.shareLinks(sessionAccessToken),
       });
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, {
+          page: sharePage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          query: shareSearch,
+          permission: sharePermissionFilter,
+          status: shareStatusFilter,
+        }),
+      });
       setMessage(`Share link created for ${created.secretKey}.`);
       showToast({
         title: "Share link created",
@@ -165,6 +183,15 @@ export function useShareLinksWorkspace({
       await revokeShareLinkMutation.mutateAsync(shareLinkId);
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.shareLinks(sessionAccessToken),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, {
+          page: sharePage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          query: shareSearch,
+          permission: sharePermissionFilter,
+          status: shareStatusFilter,
+        }),
       });
       setMessage("Share link revoked.");
       showToast({
@@ -200,6 +227,7 @@ export function useShareLinksWorkspace({
     shareColumns,
     sharePage,
     sharePageCount,
+    shareLinksTotal: shareLinksPageQuery.data?.totalElements ?? shareLinks.length,
     sharePermissionFilter,
     shareRevokeTarget,
     shareSearch,

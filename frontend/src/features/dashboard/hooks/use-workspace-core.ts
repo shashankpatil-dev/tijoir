@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { ApiRequestError } from "@/lib/api/errors";
-import { currentUserRequest } from "@/features/auth/api/auth.api";
+import { currentUserRequest, logoutRequest } from "@/features/auth/api/auth.api";
 import { saveSession } from "@/features/auth/lib/auth-storage";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
 import {
@@ -299,16 +299,22 @@ export function useWorkspaceCore({
     await loadWorkspace(accessToken);
   }
 
-  function logout() {
-    removeSession();
-    setSession(null);
-    setCachedWorkspace({ secrets: [], shareLinks: [], members: [], invites: [] });
-    showToast({
-      title: "Logged out",
-      description: "The workspace session has been cleared.",
-      tone: "info",
-    });
-    router.push("/login");
+  async function logout() {
+    try {
+      await logoutRequest();
+    } catch {
+      // Ignore remote logout failures and clear local state anyway.
+    } finally {
+      removeSession();
+      setSession(null);
+      setCachedWorkspace({ secrets: [], shareLinks: [], members: [], invites: [] });
+      showToast({
+        title: "Logged out",
+        description: "The workspace session has been cleared.",
+        tone: "info",
+      });
+      router.push("/login");
+    }
   }
 
   return {

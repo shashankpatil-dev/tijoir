@@ -112,4 +112,50 @@ class AuthControllerIntegrationTest {
                                 """))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void logoutRevokesRefreshCookieSession() throws Exception {
+        String registerResponse = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "Acme Logout",
+                                  "organizationEmail": "security@acme-logout.test",
+                                  "userName": "Acme Owner",
+                                  "userEmail": "owner@acme-logout.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String verificationToken = objectMapper.readTree(registerResponse).get("emailVerificationToken").asText();
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + verificationToken + "\"}"))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-logout.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists("tijoir_refresh"))
+                .andReturn();
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .cookie(loginResult.getResponse().getCookie("tijoir_refresh")))
+                .andExpect(status().isNoContent())
+                .andExpect(cookie().maxAge("tijoir_refresh", 0));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .cookie(loginResult.getResponse().getCookie("tijoir_refresh")))
+                .andExpect(status().isUnauthorized());
+    }
 }

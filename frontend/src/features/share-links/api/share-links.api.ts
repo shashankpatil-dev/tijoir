@@ -8,11 +8,30 @@ import type {
 } from "@/features/share-links/types/share-links.types";
 
 export async function fetchShareLinks(accessToken: string) {
-  const page = await authenticatedApiRequest<PageResponse<ShareLinkResponse>>(
-    "/api/share-links?page=0&size=100",
+  const page = await fetchShareLinksPage(accessToken, { page: 0, size: 100 });
+  return page.items;
+}
+
+export async function fetchShareLinksPage(
+  accessToken: string,
+  params: {
+    page?: number;
+    size?: number;
+    query?: string;
+    permission?: ContractPermission;
+    status?: string;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.size !== undefined) searchParams.set("size", String(params.size));
+  if (params.query) searchParams.set("query", params.query);
+  if (params.permission) searchParams.set("permission", params.permission);
+  if (params.status) searchParams.set("status", params.status);
+  return authenticatedApiRequest<PageResponse<ShareLinkResponse>>(
+    `/api/share-links?${searchParams.toString()}`,
     accessToken,
   );
-  return page.items;
 }
 
 export async function createShareLink(

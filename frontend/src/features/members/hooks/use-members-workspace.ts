@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildStaticAppUrl } from "@/lib/auth-client";
 import {
   DASHBOARD_ITEMS_PER_PAGE,
@@ -13,6 +13,8 @@ import {
 import type { InvitePreview, RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 import {
   createInvite,
+  fetchInvitesPage,
+  fetchMembersPage,
   removeMember,
   revokeInvite,
   updateMemberRole,
@@ -76,35 +78,51 @@ export function useMembersWorkspace({
     [sessionUserRole],
   );
 
-  const filteredMembers = useMemo(() => {
-    const query = memberSearch.trim().toLowerCase();
-    return members.filter((member) => {
-      const matchesQuery =
-        !query ||
-        member.name.toLowerCase().includes(query) ||
-        member.email.toLowerCase().includes(query);
-      const matchesRole = memberRoleFilter === "ALL" || member.role === memberRoleFilter;
-      return matchesQuery && matchesRole;
-    });
-  }, [memberRoleFilter, memberSearch, members]);
+  const membersPageQuery = useQuery({
+    queryKey: dashboardQueryKeys.membersPage(sessionAccessToken, {
+      page: memberPage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      query: memberSearch,
+      role: memberRoleFilter,
+    }),
+    queryFn: () =>
+      fetchMembersPage(sessionAccessToken as string, {
+        page: memberPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        query: memberSearch.trim() || undefined,
+        role: memberRoleFilter === "ALL" ? undefined : memberRoleFilter,
+      }),
+    enabled: Boolean(sessionAccessToken),
+    placeholderData: (previous) => previous,
+  });
 
-  const filteredInvites = useMemo(() => {
-    const query = inviteSearch.trim().toLowerCase();
-    return invites.filter((invite) => {
-      const matchesQuery =
-        !query ||
-        invite.email.toLowerCase().includes(query) ||
-        invite.role.toLowerCase().includes(query);
-      const matchesStatus =
-        inviteStatusFilter === "ALL" || invite.status === inviteStatusFilter;
-      return matchesQuery && matchesStatus;
-    });
-  }, [inviteSearch, inviteStatusFilter, invites]);
+  const invitesPageQuery = useQuery({
+    queryKey: dashboardQueryKeys.invitesPage(sessionAccessToken, {
+      page: invitePage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      query: inviteSearch,
+      role: "ALL",
+      status: inviteStatusFilter,
+    }),
+    queryFn: () =>
+      fetchInvitesPage(sessionAccessToken as string, {
+        page: invitePage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        query: inviteSearch.trim() || undefined,
+        status: inviteStatusFilter === "ALL" ? undefined : inviteStatusFilter,
+      }),
+    enabled: Boolean(sessionAccessToken),
+    placeholderData: (previous) => previous,
+  });
 
-  const paginatedMembers = paginate(filteredMembers, memberPage, DASHBOARD_ITEMS_PER_PAGE);
-  const paginatedInvites = paginate(filteredInvites, invitePage, DASHBOARD_ITEMS_PER_PAGE);
-  const memberPageCount = pageCount(filteredMembers.length, DASHBOARD_ITEMS_PER_PAGE);
-  const invitePageCount = pageCount(filteredInvites.length, DASHBOARD_ITEMS_PER_PAGE);
+  const filteredMembers = membersPageQuery.data?.items ?? members;
+  const filteredInvites = invitesPageQuery.data?.items ?? invites;
+  const paginatedMembers = filteredMembers;
+  const paginatedInvites = filteredInvites;
+  const memberPageCount =
+    membersPageQuery.data?.totalPages ?? pageCount(members.length, DASHBOARD_ITEMS_PER_PAGE);
+  const invitePageCount =
+    invitesPageQuery.data?.totalPages ?? pageCount(invites.length, DASHBOARD_ITEMS_PER_PAGE);
 
   const memberColumns = useMemo<DataTableColumn<MemberSummary>[]>(
     () =>
@@ -183,6 +201,15 @@ export function useMembersWorkspace({
         queryClient.invalidateQueries({
           queryKey: dashboardQueryKeys.invites(sessionAccessToken),
         }),
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.invitesPage(sessionAccessToken, {
+            page: invitePage - 1,
+            size: DASHBOARD_ITEMS_PER_PAGE,
+            query: inviteSearch,
+            role: "ALL",
+            status: inviteStatusFilter,
+          }),
+        }),
       ]);
       setMessage(`Invite created for ${created.email}.`);
       showToast({
@@ -215,6 +242,14 @@ export function useMembersWorkspace({
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.members(sessionAccessToken),
       });
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.membersPage(sessionAccessToken, {
+          page: memberPage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          query: memberSearch,
+          role: memberRoleFilter,
+        }),
+      });
       setMessage("Member role updated.");
       showToast({
         title: "Member updated",
@@ -242,6 +277,14 @@ export function useMembersWorkspace({
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.members(sessionAccessToken),
       });
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.membersPage(sessionAccessToken, {
+          page: memberPage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          query: memberSearch,
+          role: memberRoleFilter,
+        }),
+      });
       setMessage("Member removed.");
       showToast({
         title: "Member removed",
@@ -268,6 +311,15 @@ export function useMembersWorkspace({
       await revokeInviteMutation.mutateAsync(inviteId);
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.invites(sessionAccessToken),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.invitesPage(sessionAccessToken, {
+          page: invitePage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          query: inviteSearch,
+          role: "ALL",
+          status: inviteStatusFilter,
+        }),
       });
       setMessage("Invite revoked.");
       showToast({
@@ -301,12 +353,14 @@ export function useMembersWorkspace({
     invitePageCount,
     inviteSearch,
     inviteStatusFilter,
+    invitesTotal: invitesPageQuery.data?.totalElements ?? invites.length,
     lastCreatedInvite,
     memberColumns,
     memberPage,
     memberPageCount,
     memberRoleFilter,
     memberSearch,
+    membersTotal: membersPageQuery.data?.totalElements ?? members.length,
     openCreateInvite,
     paginatedInvites,
     paginatedMembers,

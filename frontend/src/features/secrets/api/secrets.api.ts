@@ -11,11 +11,30 @@ import type {
 } from "@/features/secrets/types/secrets.types";
 
 export async function fetchSecrets(accessToken: string) {
-  const page = await authenticatedApiRequest<PageResponse<SecretSummary>>(
-    "/api/secrets?page=0&size=100",
+  const page = await fetchSecretsPage(accessToken, { page: 0, size: 100 });
+  return page.items;
+}
+
+export async function fetchSecretsPage(
+  accessToken: string,
+  params: {
+    page?: number;
+    size?: number;
+    query?: string;
+    type?: SecretType;
+    status?: string;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.size !== undefined) searchParams.set("size", String(params.size));
+  if (params.query) searchParams.set("query", params.query);
+  if (params.type) searchParams.set("type", params.type);
+  if (params.status) searchParams.set("status", params.status);
+  return authenticatedApiRequest<PageResponse<SecretSummary>>(
+    `/api/secrets?${searchParams.toString()}`,
     accessToken,
   );
-  return page.items;
 }
 
 export async function fetchSecretDetail(secretId: string, accessToken: string) {

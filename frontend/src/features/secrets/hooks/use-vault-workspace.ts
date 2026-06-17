@@ -12,6 +12,7 @@ import {
 import {
   createSecret,
   fetchSecretDetail,
+  fetchSecretsPage,
   generateSecretValue,
   revealSecret,
   revokeSecret,
@@ -89,22 +90,28 @@ export function useVaultWorkspace({
     [secrets, selectedSecretId],
   );
 
-  const filteredSecrets = useMemo(() => {
-    const query = vaultSearch.trim().toLowerCase();
-    return secrets.filter((secret) => {
-      const matchesQuery =
-        !query ||
-        secret.name.toLowerCase().includes(query) ||
-        secret.secretKey.toLowerCase().includes(query) ||
-        secret.type.toLowerCase().includes(query);
-      const matchesStatus = vaultStatusFilter === "ALL" || secret.status === vaultStatusFilter;
-      const matchesType = vaultTypeFilter === "ALL" || secret.type === vaultTypeFilter;
-      return matchesQuery && matchesStatus && matchesType;
-    });
-  }, [secrets, vaultSearch, vaultStatusFilter, vaultTypeFilter]);
-
-  const paginatedSecrets = paginate(filteredSecrets, vaultPage, DASHBOARD_ITEMS_PER_PAGE);
-  const vaultPageCount = pageCount(filteredSecrets.length, DASHBOARD_ITEMS_PER_PAGE);
+  const secretListQuery = useQuery({
+    queryKey: dashboardQueryKeys.secretsPage(sessionAccessToken, {
+      page: vaultPage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      query: vaultSearch,
+      type: vaultTypeFilter,
+      status: vaultStatusFilter,
+    }),
+    queryFn: () =>
+      fetchSecretsPage(sessionAccessToken as string, {
+        page: vaultPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        query: vaultSearch.trim() || undefined,
+        type: vaultTypeFilter === "ALL" ? undefined : (vaultTypeFilter as SecretType),
+        status: vaultStatusFilter === "ALL" ? undefined : vaultStatusFilter,
+      }),
+    enabled: Boolean(sessionAccessToken),
+    placeholderData: (previous) => previous,
+  });
+  const filteredSecrets = secretListQuery.data?.items ?? secrets;
+  const paginatedSecrets = filteredSecrets;
+  const vaultPageCount = secretListQuery.data?.totalPages ?? pageCount(secrets.length, DASHBOARD_ITEMS_PER_PAGE);
   const secretColumns = useMemo<DataTableColumn<SecretSummary>[]>(() => buildSecretColumns(), []);
   const secretDetailQuery = useQuery({
     queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, selectedSecretId),
@@ -164,6 +171,15 @@ export function useVaultWorkspace({
       router.push("/dashboard/vault");
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.secrets(sessionAccessToken),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.secretsPage(sessionAccessToken, {
+          page: vaultPage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          query: vaultSearch,
+          type: vaultTypeFilter,
+          status: vaultStatusFilter,
+        }),
       });
       setMessage(`Secret ${created.secretKey} created.`);
       showToast({
@@ -254,6 +270,15 @@ export function useVaultWorkspace({
           queryKey: dashboardQueryKeys.secrets(sessionAccessToken),
         }),
         queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.secretsPage(sessionAccessToken, {
+            page: vaultPage - 1,
+            size: DASHBOARD_ITEMS_PER_PAGE,
+            query: vaultSearch,
+            type: vaultTypeFilter,
+            status: vaultStatusFilter,
+          }),
+        }),
+        queryClient.invalidateQueries({
           queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, selectedSecretId),
         }),
       ]);
@@ -285,6 +310,15 @@ export function useVaultWorkspace({
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: dashboardQueryKeys.secrets(sessionAccessToken),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: dashboardQueryKeys.secretsPage(sessionAccessToken, {
+            page: vaultPage - 1,
+            size: DASHBOARD_ITEMS_PER_PAGE,
+            query: vaultSearch,
+            type: vaultTypeFilter,
+            status: vaultStatusFilter,
+          }),
         }),
         queryClient.invalidateQueries({
           queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, secretId),
@@ -321,6 +355,7 @@ export function useVaultWorkspace({
     paginatedSecrets,
     revealedSecret,
     secretColumns,
+    secretTotal: secretListQuery.data?.totalElements ?? secrets.length,
     secretRevokeTarget,
     selectedSecretDetail,
     setSecretRevokeTarget,

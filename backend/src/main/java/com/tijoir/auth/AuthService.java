@@ -141,6 +141,15 @@ public class AuthService {
     }
 
     @Transactional
+    public void logout(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            return;
+        }
+        refreshTokenRepository.findByTokenHash(CryptoUtil.sha256Hex(rawRefreshToken.trim()))
+                .ifPresent(RefreshToken::revoke);
+    }
+
+    @Transactional
     public VerificationResponse verifyEmail(String rawToken) {
         String tokenHash = CryptoUtil.sha256Hex(rawToken);
         EmailVerificationToken token = verificationTokenRepository.findByTokenHash(tokenHash)

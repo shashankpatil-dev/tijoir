@@ -8,19 +8,55 @@ import type {
 } from "@/features/members/types/members.types";
 
 export async function fetchMembers(accessToken: string) {
-  const page = await authenticatedApiRequest<PageResponse<MemberSummary>>(
-    "/api/organization/members?page=0&size=100",
-    accessToken,
-  );
+  const page = await fetchMembersPage(accessToken, { page: 0, size: 100 });
   return page.items;
 }
 
 export async function fetchInvites(accessToken: string) {
-  const page = await authenticatedApiRequest<PageResponse<InviteSummary>>(
-    "/api/organization/invites?page=0&size=100",
+  const page = await fetchInvitesPage(accessToken, { page: 0, size: 100 });
+  return page.items;
+}
+
+export async function fetchMembersPage(
+  accessToken: string,
+  params: {
+    page?: number;
+    size?: number;
+    query?: string;
+    role?: string;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.size !== undefined) searchParams.set("size", String(params.size));
+  if (params.query) searchParams.set("query", params.query);
+  if (params.role) searchParams.set("role", params.role);
+  return authenticatedApiRequest<PageResponse<MemberSummary>>(
+    `/api/organization/members?${searchParams.toString()}`,
     accessToken,
   );
-  return page.items;
+}
+
+export async function fetchInvitesPage(
+  accessToken: string,
+  params: {
+    page?: number;
+    size?: number;
+    query?: string;
+    role?: string;
+    status?: string;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.size !== undefined) searchParams.set("size", String(params.size));
+  if (params.query) searchParams.set("query", params.query);
+  if (params.role) searchParams.set("role", params.role);
+  if (params.status) searchParams.set("status", params.status);
+  return authenticatedApiRequest<PageResponse<InviteSummary>>(
+    `/api/organization/invites?${searchParams.toString()}`,
+    accessToken,
+  );
 }
 
 export async function createInvite(

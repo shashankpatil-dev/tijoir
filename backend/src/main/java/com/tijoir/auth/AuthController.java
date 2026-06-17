@@ -53,6 +53,21 @@ public class AuthController {
         return sessionResponse(authService.refresh(refreshToken));
     }
 
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<Void> logout(
+            @RequestBody(required = false) RefreshRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        String refreshToken = resolveRefreshToken(request, httpServletRequest);
+        authService.logout(refreshToken);
+        HttpHeaders headers = new HttpHeaders();
+        authCookieService.clearRefreshCookie(headers);
+        return ResponseEntity.noContent()
+                .headers(headers)
+                .build();
+    }
+
     @GetMapping("/me")
     public AuthResponse me(@AuthenticationPrincipal AuthenticatedUser user) {
         return authService.currentUser(user.userId());
