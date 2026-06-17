@@ -9,14 +9,18 @@ export default function DashboardOverviewPage() {
   return (
     <OverviewView
       activeSecret={workspace.activeSecret}
+      activeShareLinks={workspace.activeShareLinks}
       isOrganizationManager={workspace.isOrganizationManager}
       lastCreatedShareReady={Boolean(workspace.lastCreatedShare)}
       memberCount={workspace.members.length}
+      organizationName={workspace.session?.organization.name || "Organization"}
       onCreateSecret={workspace.openCreateSecret}
       onCreateShareLink={workspace.openCreateShareLink}
       onInviteMember={workspace.openCreateInvite}
       pendingInvites={workspace.pendingInvites}
       session={workspace.session}
+      secretCount={workspace.secrets.length}
+      vendorCount={workspace.vendors.length}
     />
   );
 }

@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiBaseUrl } from "@/lib/api/client";
 import { buildStaticAppUrl } from "@/lib/auth-client";
 import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
 import { buildShareColumns } from "@/features/dashboard/lib/dashboard-columns";
@@ -205,8 +204,6 @@ export function useShareLinksWorkspace({
         setLastCreatedShare({
           token: created.shareToken,
           appUrl,
-          metadataUrl: `${apiBaseUrl}${created.publicMetadataPath || ""}`,
-          consumeUrl: `${apiBaseUrl}${created.publicConsumePath || ""}`,
         });
         setPublicToken(created.shareToken);
       }

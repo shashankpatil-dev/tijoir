@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 
 export type DashboardNavItem = {
@@ -25,19 +27,53 @@ export function DashboardShell({
   topbarActions?: ReactNode;
   userMeta?: ReactNode;
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    function closeOnResize() {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener("resize", closeOnResize);
+    return () => window.removeEventListener("resize", closeOnResize);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--color-dashboard-bg)] text-[var(--color-ink)]">
+      {sidebarOpen ? (
+        <button
+          aria-label="Close sidebar overlay"
+          className="fixed inset-0 z-40 bg-[rgba(13,34,64,0.3)] lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          type="button"
+        />
+      ) : null}
       <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="border-r border-white/10 bg-[var(--color-sidebar)] px-4 py-5 text-white lg:px-5">
-          <div className="sticky top-5 space-y-5">
-            <div className="flex items-center gap-3 border-b border-white/10 pb-5">
+        <aside
+          className={`fixed left-0 top-0 z-50 h-screen w-[280px] -translate-x-full overflow-y-auto border-r border-white/10 bg-[var(--color-sidebar)] px-4 py-5 text-white transition-transform duration-200 lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:px-5 ${
+            sidebarOpen ? "translate-x-0" : ""
+          }`}
+        >
+          <div className="space-y-5 lg:sticky lg:top-5">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-5">
+              <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">
                 Tj
               </div>
               <div>
-                <p className="text-sm font-semibold">Tijoir Console</p>
-                <p className="text-xs text-blue-100/75">Vault and vendor access</p>
+                <p className="text-sm font-semibold">Tijoir</p>
+                <p className="text-xs text-blue-100/75">Secrets and external access</p>
               </div>
+            </div>
+              <button
+                className="rounded-xl px-2 py-1 text-sm text-blue-100/75 hover:bg-white/10 lg:hidden"
+                onClick={() => setSidebarOpen(false)}
+                type="button"
+              >
+                Close
+              </button>
             </div>
 
             <nav className="space-y-2">
@@ -51,7 +87,10 @@ export function DashboardShell({
                         : "text-blue-100/78 hover:bg-white/8"
                     }`}
                     key={item.id}
-                    onClick={() => onSelect(item.id)}
+                    onClick={() => {
+                      onSelect(item.id);
+                      setSidebarOpen(false);
+                    }}
                     type="button"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -80,7 +119,16 @@ export function DashboardShell({
           <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
             <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:px-8">
               <div className="min-w-0 space-y-2">
-                <Badge tone="brand">Organization workspace</Badge>
+                <div className="flex items-center gap-3">
+                  <button
+                    className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] lg:hidden"
+                    onClick={() => setSidebarOpen(true)}
+                    type="button"
+                  >
+                    Menu
+                  </button>
+                  <Badge tone="brand">Organization workspace</Badge>
+                </div>
                 {userMeta}
               </div>
               <div className="flex flex-wrap items-center gap-3">{topbarActions}</div>
@@ -104,7 +152,7 @@ export function DashboardSectionHeader({
   title: string;
 }) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold text-[var(--color-ink-strong)]">
           {title}
@@ -127,7 +175,7 @@ export function SurfaceCard({
 }) {
   return (
     <section
-      className={`rounded-3xl border border-[var(--color-dashboard-border)] bg-white p-5 shadow-[var(--shadow-card)] ${className}`}
+      className={`rounded-3xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)] sm:p-5 ${className}`}
     >
       {children}
     </section>
@@ -145,7 +193,7 @@ export function PageSection({
 }) {
   return (
     <SurfaceCard>
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-[var(--color-ink-strong)]">
             {title}
@@ -173,10 +221,10 @@ export function StatCard({
 }) {
   return (
     <SurfaceCard className="p-4">
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <p className="text-sm font-medium text-[var(--color-muted)]">{label}</p>
-        <p className="text-3xl font-semibold text-[var(--color-ink-strong)]">{value}</p>
-        <p className="text-sm leading-6 text-[var(--color-muted)]">{note}</p>
+        <p className="text-2xl font-semibold text-[var(--color-ink-strong)]">{value}</p>
+        <p className="text-sm leading-5 text-[var(--color-muted)]">{note}</p>
       </div>
     </SurfaceCard>
   );

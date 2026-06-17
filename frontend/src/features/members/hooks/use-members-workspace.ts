@@ -189,7 +189,7 @@ export function useMembersWorkspace({
       formState.setInviteEmail("");
       formState.setInviteRole(assignableRoles[0] || "MEMBER");
       formState.setCreateInviteOpen(false);
-      router.push("/dashboard/members");
+      router.push("/dashboard/organization");
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: dashboardQueryKeys.members(sessionAccessToken),
@@ -331,7 +331,7 @@ export function useMembersWorkspace({
   }
 
   function openCreateInvite() {
-    router.push("/dashboard/members");
+    router.push("/dashboard/organization");
     formState.setCreateInviteOpen(true);
   }
 

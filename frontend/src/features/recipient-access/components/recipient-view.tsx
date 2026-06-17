@@ -30,25 +30,37 @@ export function RecipientView({
   setPublicToken: (value: string) => void;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
+    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <PageSection
-        description="Load public metadata and consume a share token without an organization session."
-        title="Recipient test"
+        description="Paste the token from the recipient package, review access, and reveal the secret only if it is still allowed."
+        title="Open recipient package"
       >
         <form className="space-y-4" onSubmit={onLoadMetadata}>
           <TextAreaField
-            hint="Paste the public share token or copy it from the latest recipient package."
-            label="Share token"
+            hint="Paste the token from the shared recipient package."
+            label="Recipient token"
             onChange={setPublicToken}
             rows={5}
             value={publicToken}
           />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SurfaceStat
+              label="Step 1"
+              value="Check access"
+              note="Confirm organization, secret type, status, and permission."
+            />
+            <SurfaceStat
+              label="Step 2"
+              value="Reveal if allowed"
+              note="Only links with reveal permission can expose the secret value."
+            />
+          </div>
           <div className="flex flex-wrap gap-3">
             <Button type="submit" variant="primary">
-              Load metadata
+              Check access
             </Button>
             <Button onClick={onConsume} type="button" variant="secondary">
-              Consume link
+              Reveal secret
             </Button>
           </div>
         </form>
@@ -56,8 +68,8 @@ export function RecipientView({
 
       <div className="space-y-5">
         <PageSection
-          description="Contract metadata is safe to inspect before revealing the payload."
-          title="Metadata"
+          description="Access details are safe to inspect before the reveal step."
+          title="Access details"
         >
           {publicMetadata ? (
             <DetailList
@@ -85,19 +97,23 @@ export function RecipientView({
                   label: "Recipient",
                   value: publicMetadata.recipientLabel || "Not specified",
                 },
+                {
+                  label: "Reveal allowed",
+                  value: publicMetadata.canReveal ? "Yes" : "No",
+                },
               ]}
             />
           ) : (
             <EmptyState
-              description="Load metadata for a share token before attempting to consume it."
-              title="No metadata loaded"
+              description="Check access first to load the organization, permission, and status details."
+              title="No access details yet"
             />
           )}
         </PageSection>
 
         <PageSection
-          description="Consumed output represents the public secret reveal result."
-          title="Consumed output"
+          description="This area only fills after a successful reveal."
+          title="Revealed value"
         >
           {publicConsumedValue ? (
             <div className="space-y-4">
@@ -129,17 +145,37 @@ export function RecipientView({
                 type="button"
                 variant="secondary"
               >
-                Copy consumed value
+                Copy value
               </Button>
             </div>
           ) : (
             <EmptyState
-              description="Consume a valid token to verify the full public reveal path."
-              title="Nothing consumed yet"
+              description="Reveal the secret after checking access if the recipient package still allows it."
+              title="No revealed value yet"
             />
           )}
         </PageSection>
       </div>
+    </div>
+  );
+}
+
+function SurfaceStat({
+  label,
+  note,
+  value,
+}: {
+  label: string;
+  note: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-[var(--color-ink-strong)]">{value}</p>
+      <p className="mt-1 text-sm leading-5 text-[var(--color-muted)]">{note}</p>
     </div>
   );
 }

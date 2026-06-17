@@ -18,8 +18,6 @@ import type {
 type SharePreview = {
   token: string;
   appUrl: string;
-  metadataUrl: string;
-  consumeUrl: string;
 };
 
 export function ShareLinksView({
@@ -69,8 +67,8 @@ export function ShareLinksView({
     <div className="space-y-5">
       {!shareLinksAvailable ? (
         <InlineMessage
-          body="This role can still use vault APIs, but the share-link inventory is not available in the current session."
-          title="Share-link inventory unavailable"
+          body="This role cannot manage recipient access in the current workspace."
+          title="Recipient access unavailable"
           tone="warning"
         />
       ) : null}
@@ -137,8 +135,8 @@ export function ShareLinksView({
         </PageSection>
 
         <div className="space-y-5">
-          <PageSection
-            description="The newest share link is staged here for operator testing and vendor handoff."
+            <PageSection
+            description="The newest recipient package is staged here for vendor handoff."
             title="Latest recipient package"
           >
             {lastCreatedShare ? (
@@ -153,20 +151,10 @@ export function ShareLinksView({
                   onCopy={() => void copyText(lastCreatedShare.token, "Share token")}
                   value={lastCreatedShare.token}
                 />
-                <SharePreviewItem
-                  label="Metadata URL"
-                  onCopy={() => void copyText(lastCreatedShare.metadataUrl, "Metadata URL")}
-                  value={lastCreatedShare.metadataUrl}
-                />
-                <SharePreviewItem
-                  label="Consume URL"
-                  onCopy={() => void copyText(lastCreatedShare.consumeUrl, "Consume URL")}
-                  value={lastCreatedShare.consumeUrl}
-                />
               </div>
             ) : (
               <EmptyState
-                description="Create a share link to populate the recipient package with public URLs and the share token."
+                description="Create a share link to populate the recipient package."
                 title="No recipient package yet"
               />
             )}

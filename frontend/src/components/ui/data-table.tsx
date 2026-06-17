@@ -43,7 +43,7 @@ export function DataTable<T>({
           <tr>
             {columns.map((column) => (
               <th
-                className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] ${column.className || ""}`}
+                className={`px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] sm:px-4 ${column.className || ""}`}
                 key={column.key}
               >
                 {column.label}
@@ -63,7 +63,7 @@ export function DataTable<T>({
               >
                 {columns.map((column) => (
                   <td
-                    className={`px-4 py-4 align-top text-sm text-[var(--color-ink)] ${column.className || ""}`}
+                    className={`px-3 py-3 align-top text-sm text-[var(--color-ink)] sm:px-4 ${column.className || ""}`}
                     key={column.key}
                   >
                     {column.render(row)}

@@ -20,7 +20,7 @@ export function SkeletonTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">
       <div
-        className="grid gap-4 border-b border-[var(--color-border)] px-4 py-3"
+        className="grid gap-3 border-b border-[var(--color-border)] px-3 py-2.5 sm:px-4"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
       >
         {Array.from({ length: columns }).map((_, index) => (
@@ -30,7 +30,7 @@ export function SkeletonTable({
       <div className="space-y-0">
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div
-            className="grid gap-4 border-b border-[var(--color-border)] px-4 py-4 last:border-b-0"
+            className="grid gap-3 border-b border-[var(--color-border)] px-3 py-3 last:border-b-0 sm:px-4"
             key={rowIndex}
             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
           >

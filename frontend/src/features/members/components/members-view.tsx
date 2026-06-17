@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/table-controls";
 import { SharePreviewItem } from "@/features/dashboard/components/share-preview-item";
 import { SurfaceNote } from "@/features/dashboard/components/surface-note";
+import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type {
   InviteSummary,
   MemberSummary,
 } from "@/features/members/types/members.types";
+import type { AuthResponse } from "@/features/auth/types/auth.types";
 
 type InvitePreview = {
   token: string;
@@ -39,9 +41,11 @@ export function MembersView({
   memberSearch,
   members,
   membersAvailable,
+  onOpenSettings,
   onCreateInvite,
   paginatedInvites,
   paginatedMembers,
+  session,
   setInvitePage,
   setInviteSearch,
   setInviteStatusFilter,
@@ -69,9 +73,11 @@ export function MembersView({
   memberSearch: string;
   members: MemberSummary[];
   membersAvailable: boolean;
+  onOpenSettings: () => void;
   onCreateInvite: () => void;
   paginatedInvites: InviteSummary[];
   paginatedMembers: MemberSummary[];
+  session: AuthResponse | null;
   setInvitePage: (page: number) => void;
   setInviteSearch: (value: string) => void;
   setInviteStatusFilter: (value: string) => void;
@@ -85,16 +91,51 @@ export function MembersView({
     <div className="space-y-5">
       {!membersAvailable ? (
         <InlineMessage
-          body="Only organization managers can view member inventory, role changes, and invite flows."
-          title="Member management unavailable"
+          body="Only organization managers can manage the organization profile, team roles, and invites."
+          title="Organization access unavailable"
           tone="warning"
         />
       ) : (
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-5">
             <PageSection
+              description="Profile, workspace ownership, and the current signed-in access context."
+              title="Organization profile"
+            >
+              {session ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <SurfaceNote label="Organization" value={session.organization.name} />
+                  <SurfaceNote label="Workspace slug" value={session.organization.slug} />
+                  <SurfaceNote label="Organization email" value={session.organization.email} />
+                  <SurfaceNote
+                    label="Signed in as"
+                    value={`${session.user.name} · ${session.user.role}`}
+                  />
+                  <SurfaceNote label="User email" value={session.user.email} />
+                  <SurfaceNote
+                    label="Session expires"
+                    value={formatInstant(session.expiresAt)}
+                  />
+                  <div className="flex flex-wrap gap-3 lg:col-span-2">
+                    <Button onClick={onCreateInvite} type="button">
+                      Invite member
+                    </Button>
+                    <Button onClick={onOpenSettings} type="button" variant="secondary">
+                      Open policy settings
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  description="The current organization profile is not available."
+                  title="No organization context"
+                />
+              )}
+            </PageSection>
+
+            <PageSection
               description="Current organization users and their assigned roles."
-              title="Members"
+              title="Team members"
             >
               <div className="space-y-4">
                 <TableToolbar
@@ -214,7 +255,7 @@ export function MembersView({
 
             <PageSection
               description="Current role boundaries in this workspace."
-              title="RBAC summary"
+              title="Access model"
             >
               <div className="space-y-3">
                 <SurfaceNote

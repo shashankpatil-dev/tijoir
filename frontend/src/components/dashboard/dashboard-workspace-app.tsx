@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { DashboardSectionHeader, DashboardShell, StatCard } from "@/components/dashboard/dashboard-shell";
+import { DashboardSectionHeader, DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
+import { Menu, MenuDivider, MenuHint, MenuItem } from "@/components/ui/menu";
 import { ChangeMemberRoleDialog } from "@/features/members/components/change-member-role-dialog";
 import { CreateInviteDialog } from "@/features/members/components/create-invite-dialog";
 import { CreateSecretDialog } from "@/features/secrets/components/create-secret-dialog";
@@ -17,7 +18,6 @@ import { useDashboardWorkspaceContext } from "@/features/dashboard/components/da
 import { viewPath, type DashboardViewKey } from "@/features/dashboard/lib/dashboard-routing";
 import { CreateVendorContractDialog } from "@/features/vendors/components/create-vendor-contract-dialog";
 import { CreateVendorDialog } from "@/features/vendors/components/create-vendor-dialog";
-import { apiBaseUrl } from "@/lib/api/client";
 
 export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
   const workspace = useDashboardWorkspaceContext();
@@ -27,36 +27,61 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
       activeItemId={workspace.activeView}
       items={workspace.navigationItems}
       onSelect={(value) => workspace.router.push(viewPath(value as DashboardViewKey))}
-      sidebarFooter={
-        <div className="space-y-2">
-          <p className="font-semibold text-white">Backend endpoint</p>
-          <p className="break-all">{apiBaseUrl}</p>
-        </div>
-      }
       topbarActions={
         <>
-          <Button onClick={workspace.openCreateSecret} type="button" variant="primary">
-            New Secret
-          </Button>
-          <Button onClick={workspace.openCreateShareLink} type="button" variant="secondary">
-            Share Access
-          </Button>
-          {workspace.vendorsAvailable ? (
-            <Button onClick={workspace.openCreateVendor} type="button" variant="secondary">
-              New Vendor
-            </Button>
-          ) : null}
-          {workspace.isOrganizationManager ? (
-            <Button onClick={workspace.openCreateInvite} type="button" variant="secondary">
-              Invite Member
-            </Button>
-          ) : null}
+          <Menu
+            label={
+              <>
+                <span>Create</span>
+                <span aria-hidden="true">▾</span>
+              </>
+            }
+          >
+            <MenuItem onClick={workspace.openCreateSecret}>
+              <MenuHint label="New secret" text="Store a new secret in the vault." />
+            </MenuItem>
+            <MenuItem onClick={workspace.openCreateShareLink}>
+              <MenuHint label="Share access" text="Prepare recipient access for a secret." />
+            </MenuItem>
+            {workspace.vendorsAvailable ? (
+              <MenuItem onClick={workspace.openCreateVendor}>
+                <MenuHint label="New vendor" text="Add an external entity before sharing." />
+              </MenuItem>
+            ) : null}
+            {workspace.isOrganizationManager ? (
+              <MenuItem onClick={workspace.openCreateInvite}>
+                <MenuHint label="Invite member" text="Add another user to the organization." />
+              </MenuItem>
+            ) : null}
+          </Menu>
+
           <Button onClick={workspace.refreshWorkspace} type="button" variant="secondary">
             {workspace.loadingWorkspace ? "Refreshing..." : "Refresh"}
           </Button>
-          <Button onClick={workspace.logout} type="button" variant="ghost">
-            Logout
-          </Button>
+
+          <Menu
+            label={
+              <>
+                <span>{workspace.session?.user.name || "Account"}</span>
+                <span aria-hidden="true">▾</span>
+              </>
+            }
+          >
+            {workspace.isOrganizationManager ? (
+              <MenuItem onClick={() => workspace.router.push("/dashboard/organization")}>
+                <MenuHint label="Organization" text="Open team and access administration." />
+              </MenuItem>
+            ) : null}
+            {workspace.isOrganizationManager ? (
+              <MenuItem onClick={() => workspace.router.push("/dashboard/settings")}>
+                <MenuHint label="Settings" text="Review organization policy controls." />
+              </MenuItem>
+            ) : null}
+            <MenuDivider />
+            <MenuItem onClick={workspace.logout}>
+              <MenuHint label="Logout" text="End the current workspace session." />
+            </MenuItem>
+          </Menu>
         </>
       }
       userMeta={
@@ -72,7 +97,7 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
               </Badge>
             </div>
             <p className="text-sm text-[var(--color-muted)]">
-              {workspace.session.user.email} · {workspace.session.organization.slug}
+              {workspace.session.user.name} · {workspace.session.user.email}
             </p>
           </div>
         ) : null
@@ -86,50 +111,9 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
 
       <section className="space-y-5">
         <DashboardSectionHeader
-          description="Manage organization secrets, vendor entities, contract-scoped share links, member invitations, and the public recipient flow from one operational workspace."
+          description="Manage secrets, vendors, recipient access, team members, and security activity from one workspace."
           title={workspace.title}
         />
-
-        <InlineMessage
-          body={workspace.message}
-          title="Workspace activity"
-          tone={workspace.message.toLowerCase().includes("could not") ? "error" : "neutral"}
-        />
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <StatCard
-            label="Vault objects"
-            note="Secrets available to this organization"
-            value={String(workspace.secrets.length)}
-          />
-          <StatCard
-            label="Active share links"
-            note="Live vendor access contracts"
-            value={String(workspace.activeShareLinks)}
-          />
-          <StatCard
-            label="Pending invites"
-            note="Organization users still waiting to join"
-            value={String(workspace.pendingInvites)}
-          />
-          <StatCard
-            label="Vendors"
-            note="Tracked external entities"
-            value={String(workspace.vendors.length)}
-          />
-          <StatCard
-            label="Access expires"
-            note="JWT access session deadline"
-            value={
-              workspace.session
-                ? new Date(workspace.session.expiresAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "--"
-            }
-          />
-        </div>
 
         {children}
       </section>

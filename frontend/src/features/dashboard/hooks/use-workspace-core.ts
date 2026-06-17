@@ -32,7 +32,7 @@ export function useWorkspaceCore({
   const queryClient = useQueryClient();
 
   const [session, setSession] = useState<AuthResponse | null>(initialSession);
-  const [message, setMessage] = useState("Loading workspace");
+  const [message, setMessage] = useState("");
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [cachedWorkspace, setCachedWorkspace] = useState<{
@@ -63,9 +63,9 @@ export function useWorkspaceCore({
         invites: cached.invites || [],
       });
       setSelectedSecretId(cached.selectedSecretId || "");
-      setMessage("Session restored. Showing cached workspace while live data loads.");
+      setMessage("");
     } else {
-      setMessage("Session restored. Loading organization data.");
+      setMessage("");
     }
   }, [initialSession]);
 
@@ -80,7 +80,7 @@ export function useWorkspaceCore({
       removeSession();
       setSession(null);
       router.replace("/login");
-      setMessage("Session expired. Login required.");
+      setMessage("");
       showToast({
         title: "Session expired",
         description: "Log in again to continue using the workspace.",
@@ -89,7 +89,7 @@ export function useWorkspaceCore({
       return;
     }
 
-    setMessage(text || fallback);
+      setMessage("");
     showToast({
       title: "Request failed",
       description: text || fallback,
@@ -100,14 +100,14 @@ export function useWorkspaceCore({
   async function copyText(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value);
-      setMessage(`${label} copied.`);
+      setMessage("");
       showToast({
         title: "Copied",
         description: `${label} copied to the clipboard.`,
         tone: "success",
       });
     } catch {
-      setMessage(`Could not copy ${label.toLowerCase()}.`);
+      setMessage("");
       showToast({
         title: "Copy failed",
         description: `Could not copy ${label.toLowerCase()}.`,
@@ -188,25 +188,7 @@ export function useWorkspaceCore({
     saveSession(meQuery.data);
     setSession(meQuery.data);
 
-    if (vendorsQuery.error && shareLinksQuery.error && membersQuery.error) {
-      setMessage(
-        "Workspace loaded. Vendor, share, and membership inventory are not available for this account.",
-      );
-    } else if (vendorsQuery.error && shareLinksQuery.error) {
-      setMessage("Workspace loaded. Vendor and share-link inventory are not available for this role.");
-    } else if (vendorsQuery.error) {
-      setMessage("Workspace loaded. Vendor inventory is not available for this role.");
-    } else if (shareLinksQuery.error && membersQuery.error) {
-      setMessage(
-        "Workspace loaded. Vault data is live, but role-restricted sections are unavailable for this account.",
-      );
-    } else if (shareLinksQuery.error) {
-      setMessage("Workspace loaded. Share-link inventory is not available for this role.");
-    } else if (membersQuery.error || invitesQuery.error) {
-      setMessage("Workspace loaded. Member management is not available for this role.");
-    } else {
-      setMessage("Workspace loaded from live backend APIs.");
-    }
+    setMessage("");
   }, [
     accessToken,
     invitesQuery.data,
@@ -289,16 +271,16 @@ export function useWorkspaceCore({
       {
         id: "share",
         label: "Share Links",
-        note: "Vendor access contracts",
+        note: "Recipient access",
         badge: String(activeShareLinks),
       },
     ];
 
     if (isOrganizationManager) {
       items.push({
-        id: "members",
-        label: "Members",
-        note: "Invites and roles",
+        id: "organization",
+        label: "Organization",
+        note: "Profile, team and access",
         badge: String(members.length),
       });
     }
@@ -307,7 +289,7 @@ export function useWorkspaceCore({
       items.push({
         id: "audit",
         label: "Audit Log",
-        note: "Append-only event evidence",
+        note: "Security activity",
       });
     }
 
@@ -321,8 +303,8 @@ export function useWorkspaceCore({
 
     items.push({
       id: "recipient",
-      label: "Recipient View",
-      note: "Public consume test",
+      label: "Recipient Access",
+      note: "Open shared secrets",
     });
 
     return items;
@@ -333,7 +315,7 @@ export function useWorkspaceCore({
       return;
     }
 
-    setMessage("Refreshing workspace");
+    setMessage("");
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.me(accessToken) }),
       queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.secrets(accessToken) }),

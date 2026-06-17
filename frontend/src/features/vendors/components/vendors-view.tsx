@@ -75,8 +75,8 @@ export function VendorsView({
     <div className="space-y-5">
       {!vendorsAvailable ? (
         <InlineMessage
-          body="This session can still use vault APIs, but the vendor registry is not available for the current role."
-          title="Vendor registry unavailable"
+          body="This role cannot manage vendor relationships in the current workspace."
+          title="Vendor access unavailable"
           tone="warning"
         />
       ) : (

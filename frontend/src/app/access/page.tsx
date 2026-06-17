@@ -23,7 +23,7 @@ export default function AccessPage() {
   const [consumedValue, setConsumedValue] =
     useState<ConsumeShareLinkResponse | null>(null);
   const [message, setMessage] = useState(
-    "Load metadata first, then consume the shared secret if the contract allows it.",
+    "Open a recipient package, review access details, and reveal the secret only when allowed.",
   );
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -159,35 +159,35 @@ export default function AccessPage() {
       aside={
         <div className="space-y-4">
           <StatusPanel
-            body="This page is the public recipient entry point for share links. It does not require login."
-            title="Recipient flow"
+            body="This page is meant for the person receiving shared access. It does not require an organization login."
+            title="Recipient access"
           />
           <StatusPanel
-            body="View-once links become consumed immediately after a successful reveal. Rotation-notify links show metadata but do not expose the secret payload."
-            title="Contract behavior"
+            body="View-once links are consumed after reveal. Rotation-notify links show access details without exposing the secret value."
+            title="How access works"
           />
         </div>
       }
-      description="Open a share token, inspect its contract metadata, and reveal the secret if the link still allows it."
-      eyebrow="Public access"
-      title="Consume a shared secret"
+      description="Open a recipient token, inspect access details, and reveal the secret only if the shared contract still allows it."
+      eyebrow="Recipient access"
+      title="Open shared access"
     >
       <BusyOverlay
-        body="Working with the public share-link API and refreshing the recipient state."
-        title={busy === "consume" ? "Consuming link" : "Loading metadata"}
+        body="Updating the recipient access state."
+        title={busy === "consume" ? "Opening shared access" : "Checking access"}
         visible={busy !== null}
       />
       <div className="space-y-6">
         <form className="space-y-4" onSubmit={handleLoadMetadata}>
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
-              Share access
+              Recipient token
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink-strong)]">
-              Validate the link before reveal
+              Review access before reveal
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-              This uses the public share-link APIs directly, without any organization session.
+              Paste the token from the recipient package. You can inspect access details before opening the shared value.
             </p>
           </div>
 
@@ -204,7 +204,7 @@ export default function AccessPage() {
               disabled={busy !== null}
               type="submit"
             >
-              {busy === "metadata" ? "Loading..." : "Load metadata"}
+              {busy === "metadata" ? "Checking..." : "Check access"}
             </button>
             <Link
               className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)]"
@@ -218,7 +218,7 @@ export default function AccessPage() {
         {metadata ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
             <h3 className="text-lg font-semibold text-[var(--color-ink-strong)]">
-              Share metadata
+              Access details
             </h3>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               <MetadataRow label="Organization" value={metadata.organizationName} />
@@ -248,7 +248,7 @@ export default function AccessPage() {
                 onClick={consume}
                 type="button"
               >
-                {busy === "consume" ? "Consuming..." : "Reveal secret"}
+                {busy === "consume" ? "Opening..." : "Reveal secret"}
               </button>
             </div>
           </div>

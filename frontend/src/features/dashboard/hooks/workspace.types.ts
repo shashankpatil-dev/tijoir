@@ -16,8 +16,6 @@ export type ShowToast = (options: {
 export type SharePreview = {
   token: string;
   appUrl: string;
-  metadataUrl: string;
-  consumeUrl: string;
 };
 
 export type InvitePreview = {

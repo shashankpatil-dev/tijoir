@@ -2,6 +2,7 @@ import {
   DetailList,
   EmptyState,
   PageSection,
+  StatCard,
 } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
@@ -11,100 +12,135 @@ import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 
 export function OverviewView({
   activeSecret,
+  activeShareLinks,
   isOrganizationManager,
   lastCreatedShareReady,
   memberCount,
+  organizationName,
   onCreateSecret,
   onCreateShareLink,
   onInviteMember,
   pendingInvites,
   session,
+  secretCount,
+  vendorCount,
 }: {
   activeSecret: SecretSummary | null;
+  activeShareLinks: number;
   isOrganizationManager: boolean;
   lastCreatedShareReady: boolean;
   memberCount: number;
+  organizationName: string;
   onCreateSecret: () => void;
   onCreateShareLink: () => void;
   onInviteMember: () => void;
   pendingInvites: number;
   session: AuthResponse | null;
+  secretCount: number;
+  vendorCount: number;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-      <PageSection
-        description="This is the current organization session context and operational summary."
-        title="Current identity"
-      >
-        {session ? (
-          <DetailList
-            items={[
-              { label: "User", value: session.user.name },
-              { label: "Email", value: session.user.email },
-              { label: "Role", value: session.user.role },
-              {
-                label: "Email verified",
-                value: session.user.emailVerified ? "Yes" : "No",
-              },
-              { label: "Organization", value: session.organization.name },
-              { label: "Token expires", value: formatInstant(session.expiresAt) },
-            ]}
-          />
-        ) : (
-          <EmptyState
-            description="No session is available. Return to login to restore the organization workspace."
-            title="No session"
-          />
-        )}
-      </PageSection>
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard
+          label="Vault items"
+          note="Protected secrets in this workspace"
+          value={String(secretCount)}
+        />
+        <StatCard
+          label="Active share links"
+          note="Recipient access currently live"
+          value={String(activeShareLinks)}
+        />
+        <StatCard
+          label="Vendors"
+          note="Tracked external entities"
+          value={String(vendorCount)}
+        />
+        <StatCard
+          label="Team members"
+          note="Users in this organization"
+          value={String(memberCount)}
+        />
+        <StatCard
+          label="Pending invites"
+          note="People waiting to join"
+          value={String(pendingInvites)}
+        />
+      </div>
 
-      <div className="space-y-5">
+      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <PageSection
-          description="Focus surfaces the most recent operational context."
-          title="Workspace focus"
+          description="A clear view of the current organization workspace and its main activity."
+          title="Workspace summary"
         >
-          <div className="space-y-3">
-            <SurfaceNote
-              label="Selected secret"
-              value={activeSecret ? activeSecret.secretKey : "No secret selected"}
+          {session ? (
+            <DetailList
+              items={[
+                { label: "Organization", value: organizationName },
+                { label: "Signed in as", value: session.user.name },
+                { label: "Role", value: session.user.role },
+                { label: "Email", value: session.user.email },
+                { label: "Current session", value: formatInstant(session.expiresAt) },
+                { label: "Workspace slug", value: session.organization.slug },
+              ]}
             />
-            <SurfaceNote
-              label="Last share link"
-              value={
-                lastCreatedShareReady
-                  ? "A new recipient link is ready for testing."
-                  : "No share link created in this session."
-              }
+          ) : (
+            <EmptyState
+              description="No session is available. Return to login to restore the workspace."
+              title="No session"
             />
-            <SurfaceNote
-              label="Member operations"
-              value={
-                isOrganizationManager
-                  ? `${memberCount} members and ${pendingInvites} pending invites in the workspace.`
-                  : "Member management is reserved for organization managers."
-              }
-            />
-          </div>
+          )}
         </PageSection>
 
-        <PageSection
-          description="Fast entry points for the current product workflows."
-          title="Quick actions"
-        >
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={onCreateSecret} type="button">
-              Create secret
-            </Button>
-            <Button onClick={onCreateShareLink} type="button" variant="secondary">
-              Create share link
-            </Button>
-            {isOrganizationManager ? (
-              <Button onClick={onInviteMember} type="button" variant="outline">
-                Invite member
+        <div className="space-y-5">
+          <PageSection
+            description="The next things that matter most in the current workspace."
+            title="Focus"
+          >
+            <div className="space-y-3">
+              <SurfaceNote
+                label="Selected secret"
+                value={activeSecret ? activeSecret.secretKey : "No secret selected"}
+              />
+              <SurfaceNote
+                label="Last share link"
+                value={
+                  lastCreatedShareReady
+                    ? "A new recipient access package is ready."
+                    : "No recent recipient package is staged."
+                }
+              />
+              <SurfaceNote
+                label="Team access"
+                value={
+                  isOrganizationManager
+                    ? `${memberCount} members and ${pendingInvites} pending invites in the workspace.`
+                    : "Team administration is available to organization managers."
+                }
+              />
+            </div>
+          </PageSection>
+
+          <PageSection
+            description="Fast entry points for the main workflows."
+            title="Quick actions"
+          >
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={onCreateSecret} type="button">
+                Create secret
               </Button>
-            ) : null}
-          </div>
-        </PageSection>
+              <Button onClick={onCreateShareLink} type="button" variant="secondary">
+                Create share link
+              </Button>
+              {isOrganizationManager ? (
+                <Button onClick={onInviteMember} type="button" variant="outline">
+                  Invite member
+                </Button>
+              ) : null}
+            </div>
+          </PageSection>
+        </div>
       </div>
     </div>
   );

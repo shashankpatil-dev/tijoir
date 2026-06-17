@@ -3,7 +3,7 @@ export type DashboardViewKey =
   | "vault"
   | "vendors"
   | "share"
-  | "members"
+  | "organization"
   | "audit"
   | "settings"
   | "recipient";
@@ -18,8 +18,11 @@ export function viewFromPath(pathname: string): DashboardViewKey {
   if (pathname.includes("/dashboard/vendors")) {
     return "vendors";
   }
+  if (pathname.includes("/dashboard/organization")) {
+    return "organization";
+  }
   if (pathname.includes("/dashboard/members")) {
-    return "members";
+    return "organization";
   }
   if (pathname.includes("/dashboard/audit")) {
     return "audit";
@@ -41,8 +44,8 @@ export function viewPath(view: DashboardViewKey) {
       return "/dashboard/vendors";
     case "share":
       return "/dashboard/share-links";
-    case "members":
-      return "/dashboard/members";
+    case "organization":
+      return "/dashboard/organization";
     case "audit":
       return "/dashboard/audit";
     case "settings":
@@ -63,14 +66,14 @@ export function titleForView(view: DashboardViewKey) {
       return "Vendors";
     case "share":
       return "Share Links";
-    case "members":
-      return "Members";
+    case "organization":
+      return "Organization";
     case "audit":
       return "Audit Log";
     case "settings":
       return "Settings";
     case "recipient":
-      return "Recipient View";
+      return "Recipient Access";
     case "overview":
     default:
       return "Overview";
