@@ -14,8 +14,19 @@ export default function DashboardShareLinksPage() {
       filteredShareLinksLength={workspace.filteredShareLinks.length}
       lastCreatedShare={workspace.lastCreatedShare}
       loadingWorkspace={workspace.loadingWorkspace}
+      onCopySelectedAppUrl={(value) => void workspace.copyText(value, "Recipient URL")}
+      onCopySelectedToken={(value) => void workspace.copyText(value, "Share token")}
       onCreateShareLink={() => workspace.setCreateShareOpen(true)}
+      onRevokeSelectedShareLink={() => {
+        if (workspace.selectedShareLink) {
+          workspace.setShareRevokeTarget(workspace.selectedShareLink);
+        }
+      }}
       paginatedShareLinks={workspace.paginatedShareLinks}
+      selectedShareLink={workspace.selectedShareLink}
+      selectedShareLinkAppUrl={workspace.selectedShareLinkAppUrl}
+      selectedShareLinkId={workspace.selectedShareLinkId}
+      setSelectedShareLinkId={workspace.setSelectedShareLinkId}
       setSharePage={workspace.setSharePage}
       setSharePermissionFilter={workspace.setSharePermissionFilter}
       setShareSearch={workspace.setShareSearch}

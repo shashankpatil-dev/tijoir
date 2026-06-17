@@ -53,6 +53,7 @@ export function useShareLinksWorkspace({
   const queryClient = useQueryClient();
   const [lastCreatedShare, setLastCreatedShare] = useState<SharePreview | null>(null);
   const [shareRevokeTarget, setShareRevokeTarget] = useState<ShareLinkResponse | null>(null);
+  const [selectedShareLinkId, setSelectedShareLinkId] = useState("");
   const formState = useShareLinkFormState(secrets);
   const [shareSearch, setShareSearch] = useState("");
   const [shareStatusFilter, setShareStatusFilter] = useState("ALL");
@@ -151,6 +152,29 @@ export function useShareLinksWorkspace({
   const sharePageCount =
     shareLinksPageQuery.data?.totalPages ?? pageCount(shareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
 
+  useEffect(() => {
+    if (!paginatedShareLinks.length) {
+      setSelectedShareLinkId("");
+      return;
+    }
+
+    setSelectedShareLinkId((current) =>
+      current && paginatedShareLinks.some((shareLink) => shareLink.id === current)
+        ? current
+        : paginatedShareLinks[0].id,
+    );
+  }, [paginatedShareLinks]);
+
+  const selectedShareLink =
+    paginatedShareLinks.find((shareLink) => shareLink.id === selectedShareLinkId) ||
+    shareLinks.find((shareLink) => shareLink.id === selectedShareLinkId) ||
+    null;
+
+  const selectedShareLinkAppUrl =
+    selectedShareLink?.shareToken && typeof window !== "undefined"
+      ? buildStaticAppUrl("/access", { token: selectedShareLink.shareToken })
+      : null;
+
   const shareColumns = useMemo<DataTableColumn<ShareLinkResponse>[]>(
     () =>
       buildShareColumns({
@@ -210,6 +234,7 @@ export function useShareLinksWorkspace({
 
       formState.setCreateShareOpen(false);
       router.push("/dashboard/share-links");
+      setSelectedShareLinkId(created.id);
       await queryClient.invalidateQueries({
         queryKey: dashboardQueryKeys.shareLinks(sessionAccessToken),
       });
@@ -284,11 +309,15 @@ export function useShareLinksWorkspace({
     lastCreatedShare,
     openCreateShareLink,
     paginatedShareLinks,
+    selectedShareLink,
+    selectedShareLinkAppUrl,
+    selectedShareLinkId,
     setSharePage,
     setSharePermissionFilter,
     setShareRevokeTarget,
     setShareSearch,
     setShareStatusFilter,
+    setSelectedShareLinkId,
     shareColumns,
     sharePage,
     sharePageCount,

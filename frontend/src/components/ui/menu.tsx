@@ -41,7 +41,7 @@ export function Menu({
     <div className="relative" ref={rootRef}>
       <button
         aria-expanded={open}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] ${buttonClassName}`.trim()}
+        className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] ${buttonClassName}`.trim()}
         onClick={(event) => {
           event.stopPropagation();
           setOpen((current) => !current);
@@ -72,7 +72,7 @@ export function MenuItem({
 }) {
   return (
     <button
-      className="flex w-full items-start rounded-xl px-3 py-2.5 text-left text-sm text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+      className="flex w-full items-start rounded-xl px-3 py-2.5 text-left text-sm leading-5 text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
       onClick={(event) => {
         event.stopPropagation();
         onClick?.();
@@ -97,7 +97,7 @@ export function MenuHint({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-sm font-medium text-[var(--color-ink-strong)]">{label}</p>
+      <p className="text-sm font-medium leading-5 text-[var(--color-ink-strong)]">{label}</p>
       <p className="text-xs leading-5 text-[var(--color-muted)]">{text}</p>
     </div>
   );

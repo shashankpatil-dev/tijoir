@@ -40,7 +40,7 @@ export function DataTable<T>({
 
   return (
     <div
-      className={`overflow-auto rounded-2xl border border-[var(--color-border)] bg-white ${containerClassName}`.trim()}
+      className={`overflow-auto rounded-xl border border-[var(--color-border)] bg-white ${containerClassName}`.trim()}
     >
       <table className="min-w-full border-collapse">
         <thead className="bg-[var(--color-surface)]">
@@ -68,7 +68,7 @@ export function DataTable<T>({
               >
                 {columns.map((column) => (
                   <td
-                    className={`px-3 py-3 align-top text-sm text-[var(--color-ink)] sm:px-4 ${column.className || ""}`}
+                    className={`px-3 py-3.5 align-top text-[13px] leading-5 text-[var(--color-ink)] sm:px-4 ${column.className || ""}`}
                     key={column.key}
                   >
                     {column.render(row)}

@@ -11,13 +11,15 @@ export function TableToolbar({
   title?: string;
 }) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {title ? (
         <p className="text-sm font-medium text-[var(--color-ink-strong)]">{title}</p>
       ) : null}
-      <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex flex-1 flex-col gap-2.5 md:flex-row md:flex-wrap">{children}</div>
-        {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-1 flex-col gap-2.5 md:flex-row md:flex-wrap md:items-center">
+          {children}
+        </div>
+        {actions ? <div className="flex flex-wrap gap-2.5 lg:justify-end">{actions}</div> : null}
       </div>
     </div>
   );
@@ -34,7 +36,7 @@ export function SearchInput({
 }) {
   return (
     <input
-      className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)] md:max-w-sm"
+      className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)] md:max-w-sm"
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       value={value}
@@ -53,7 +55,7 @@ export function FilterSelect({
 }) {
   return (
     <select
-      className="rounded-xl border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+      className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)] md:w-auto"
       onChange={(event) => onChange(event.target.value)}
       value={value}
     >
@@ -88,11 +90,11 @@ export function PaginationControls({
   }
 
   return (
-    <div className="flex flex-col gap-2.5 pt-1 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-2 pt-1 md:flex-row md:items-center md:justify-between">
       <p className="text-sm text-[var(--color-muted)]">
         Page {currentPage} of {pageCount} · {totalItems} {itemLabel}
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           disabled={currentPage <= 1}
           onClick={() => onPageChange(currentPage - 1)}

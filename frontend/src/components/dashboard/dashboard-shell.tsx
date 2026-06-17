@@ -53,14 +53,14 @@ export function DashboardShell({
       ) : null}
       <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside
-          className={`fixed left-0 top-0 z-50 h-screen w-[280px] -translate-x-full overflow-y-auto border-r border-white/10 bg-[var(--color-sidebar)] px-4 py-5 text-white transition-transform duration-200 lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:px-5 ${
+          className={`fixed left-0 top-0 z-50 h-screen w-[280px] -translate-x-full overflow-y-auto border-r border-white/10 bg-[var(--color-sidebar)] px-4 py-4 text-white transition-transform duration-200 lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:px-5 lg:py-5 ${
             sidebarOpen ? "translate-x-0" : ""
           }`}
         >
           <div className="space-y-5 lg:sticky lg:top-5">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-sm font-semibold">
                   Tj
                 </div>
                 <div>
@@ -82,7 +82,7 @@ export function DashboardShell({
                 const selected = item.id === activeItemId;
                 return (
                   <button
-                    className={`w-full rounded-2xl px-4 py-3 text-left transition ${
+                    className={`w-full rounded-xl px-4 py-3 text-left transition ${
                       selected
                         ? "bg-white/12 text-white"
                         : "text-blue-100/78 hover:bg-white/8"
@@ -109,7 +109,7 @@ export function DashboardShell({
             </nav>
 
             {sidebarFooter ? (
-              <div className="rounded-2xl bg-white/8 p-4 text-sm text-blue-100/85">
+              <div className="rounded-xl bg-white/8 p-4 text-sm text-blue-100/85">
                 {sidebarFooter}
               </div>
             ) : null}
@@ -118,8 +118,8 @@ export function DashboardShell({
 
         <div className="min-w-0">
           <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
-            <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:px-8">
-              <div className="min-w-0 space-y-2">
+            <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:px-8">
+              <div className="min-w-0 space-y-1.5">
                 <div className="flex items-center gap-3">
                   <button
                     className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] lg:hidden"
@@ -138,7 +138,7 @@ export function DashboardShell({
             </div>
           </header>
 
-          <main className="px-4 py-5 sm:px-6 xl:px-8 xl:py-6">{children}</main>
+          <main className="px-4 py-4 sm:px-6 xl:px-8 xl:py-5">{children}</main>
         </div>
       </div>
     </div>
@@ -155,9 +155,9 @@ export function DashboardSectionHeader({
   title: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-[var(--color-ink-strong)]">
+    <div className="flex flex-col gap-2.5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-1.5">
+        <h1 className="text-[28px] font-semibold leading-tight text-[var(--color-ink-strong)]">
           {title}
         </h1>
         <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
@@ -178,7 +178,7 @@ export function SurfaceCard({
 }) {
   return (
     <section
-      className={`rounded-3xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)] sm:p-5 ${className}`}
+      className={`rounded-xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)] sm:p-5 ${className}`}
     >
       {children}
     </section>
@@ -196,9 +196,9 @@ export function PageSection({
 }) {
   return (
     <SurfaceCard>
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-ink-strong)]">
+          <h2 className="text-[18px] font-semibold leading-7 text-[var(--color-ink-strong)]">
             {title}
           </h2>
           {description ? (
@@ -225,8 +225,8 @@ export function StatCard({
   return (
     <SurfaceCard className="p-4">
       <div className="space-y-1.5">
-        <p className="text-sm font-medium text-[var(--color-muted)]">{label}</p>
-        <p className="text-2xl font-semibold text-[var(--color-ink-strong)]">{value}</p>
+        <p className="text-[13px] font-medium text-[var(--color-muted)]">{label}</p>
+        <p className="text-[28px] font-semibold leading-tight text-[var(--color-ink-strong)]">{value}</p>
         <p className="text-sm leading-5 text-[var(--color-muted)]">{note}</p>
       </div>
     </SurfaceCard>
@@ -253,7 +253,7 @@ export function EmptyState({
   title: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)] px-5 py-10 text-center">
+    <div className="rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)] px-5 py-8 text-center">
       <p className="text-base font-semibold text-[var(--color-ink-strong)]">{title}</p>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--color-muted)]">
         {description}
@@ -271,13 +271,13 @@ export function DetailList({
     <dl className="grid gap-4 sm:grid-cols-2">
       {items.map((item) => (
         <div
-          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
           key={item.label}
         >
           <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
             {item.label}
           </dt>
-          <dd className="mt-2 text-sm text-[var(--color-ink-strong)]">
+          <dd className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">
             {item.value}
           </dd>
         </div>
@@ -295,7 +295,7 @@ export function DetailListSkeleton({
     <div className="grid gap-4 sm:grid-cols-2">
       {Array.from({ length: items }).map((_, index) => (
         <div
-          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
           key={index}
         >
           <SkeletonBlock className="h-3 w-24" />
@@ -315,7 +315,7 @@ export function SurfaceNoteListSkeleton({
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, index) => (
         <div
-          className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
           key={index}
         >
           <SkeletonBlock className="h-3 w-24" />

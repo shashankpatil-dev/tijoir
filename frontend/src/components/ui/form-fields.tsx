@@ -26,7 +26,7 @@ export function TextField({
     <label className="block">
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       <input
-        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        className="mt-2 min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
@@ -57,9 +57,9 @@ export function PasswordField({
   return (
     <label className="block">
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
-      <div className="mt-2 flex overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white focus-within:border-[var(--color-brand)] focus-within:ring-4 focus-within:ring-[var(--color-brand-ring)]">
+      <div className="mt-2 flex min-h-11 overflow-hidden rounded-xl border border-[var(--color-border)] bg-white focus-within:border-[var(--color-brand)] focus-within:ring-4 focus-within:ring-[var(--color-brand-ring)]">
         <input
-          className="w-full border-0 bg-transparent px-4 py-3 text-sm outline-none"
+          className="w-full border-0 bg-transparent px-4 py-2.5 text-sm leading-5 outline-none"
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
           required={required}
@@ -99,7 +99,7 @@ export function TextAreaField({
     <label className="block">
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       <textarea
-        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        className="mt-2 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
@@ -130,7 +130,7 @@ export function SelectField({
     <label className="block">
       <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
       <select
-        className="mt-2 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        className="mt-2 min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={value}

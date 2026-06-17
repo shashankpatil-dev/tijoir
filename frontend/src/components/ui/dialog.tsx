@@ -48,13 +48,13 @@ export function Dialog({
       role="presentation"
     >
       <div
-        className="w-full max-w-2xl rounded-3xl border border-[var(--color-border)] bg-white shadow-[var(--shadow-card)]"
+        className="w-full max-w-xl rounded-xl border border-[var(--color-border)] bg-white shadow-[var(--shadow-card)] sm:max-w-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4 sm:px-6">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="text-[18px] font-semibold leading-7 text-[var(--color-ink-strong)]">
               {title}
             </h2>
             {description ? (
@@ -67,7 +67,7 @@ export function Dialog({
             Close
           </Button>
         </div>
-        <div className="max-h-[calc(100vh-12rem)] overflow-y-auto px-6 py-5">
+        <div className="max-h-[calc(100vh-12rem)] overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
           {children}
         </div>
       </div>
