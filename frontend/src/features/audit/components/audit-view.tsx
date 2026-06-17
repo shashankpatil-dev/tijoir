@@ -2,7 +2,6 @@ import { PageSection } from "@/components/dashboard/dashboard-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
-import { InlineMessage } from "@/components/ui/feedback";
 import {
   FilterSelect,
   PaginationControls,
@@ -53,12 +52,6 @@ export function AuditView({
 
   return (
     <div className="space-y-5">
-      <InlineMessage
-        body="Audit events are append-only evidence for secret, sharing, membership, and vendor actions."
-        title="Audit evidence"
-        tone="neutral"
-      />
-
       <div className="grid gap-4 md:grid-cols-3">
         <PageSection
           description="Matched audit events across the current filter scope."
@@ -188,6 +181,7 @@ export function AuditView({
           </div>
 
           <DataTable
+            containerClassName="max-h-[34rem]"
             columns={auditColumns}
             data={auditEvents}
             emptyDescription="No audit records match the current filters."

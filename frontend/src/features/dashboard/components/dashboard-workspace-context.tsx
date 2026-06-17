@@ -5,7 +5,7 @@ import { useDashboardWorkspace } from "@/features/dashboard/hooks/use-dashboard-
 import type { AuthResponse } from "@/features/auth/types/auth.types";
 import type { DashboardHookArgs } from "@/features/dashboard/hooks/workspace.types";
 
-type DashboardWorkspaceValue = ReturnType<typeof useDashboardWorkspace>;
+export type DashboardWorkspaceValue = ReturnType<typeof useDashboardWorkspace>;
 
 const DashboardWorkspaceContext = createContext<DashboardWorkspaceValue | null>(null);
 

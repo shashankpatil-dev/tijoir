@@ -67,7 +67,7 @@ export default function InvitePage() {
               title="Invite flow"
             />
             <StatusPanel
-              body="If the invite has expired or was revoked, the backend will reject the token before account creation."
+              body="If the invite has expired or was revoked, the token will be rejected before account creation."
               title="Access control"
             />
           </div>
@@ -90,7 +90,7 @@ export default function InvitePage() {
               Create the invited user account
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-              The invite token binds the organization and role. You only need to set the visible name and password here.
+              The invite token already carries the organization and role. You only need to set your visible name and password here.
             </p>
           </div>
 

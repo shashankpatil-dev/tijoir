@@ -1,6 +1,6 @@
 import { Badge, statusTone } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type { DataTableColumn } from "@/components/ui/data-table";
+import { Menu, MenuHint, MenuItem } from "@/components/ui/menu";
 import type { AuditEventResponse } from "@/features/audit/types/audit.types";
 import {
   canEditMember,
@@ -104,32 +104,23 @@ export function buildShareColumns({
       key: "actions",
       label: "Actions",
       render: (shareLink) => (
-        <div className="flex flex-wrap gap-2">
+        <Menu
+          buttonClassName="px-3 py-2 text-xs"
+          label={<span aria-label="Share link actions">•••</span>}
+        >
           {shareLink.shareToken ? (
-            <Button
-              onClick={(event) => {
-                event.stopPropagation();
+            <MenuItem
+              onClick={() => {
                 void copyText(shareLink.shareToken || "", "Share token");
               }}
-              size="sm"
-              type="button"
-              variant="secondary"
             >
-              Copy token
-            </Button>
+              <MenuHint label="Copy token" text="Copy the recipient token." />
+            </MenuItem>
           ) : null}
-          <Button
-            onClick={(event) => {
-              event.stopPropagation();
-              onRevoke(shareLink);
-            }}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Revoke
-          </Button>
-        </div>
+          <MenuItem onClick={() => onRevoke(shareLink)}>
+            <MenuHint label="Revoke link" text="Disable this recipient access link." />
+          </MenuItem>
+        </Menu>
       ),
     },
   ];
@@ -208,18 +199,27 @@ export function buildVendorContractColumns({
       key: "actions",
       label: "Actions",
       render: (contract) => (
-        <Button
-          disabled={contract.status !== "ACTIVE"}
-          onClick={(event) => {
-            event.stopPropagation();
-            onRevoke(contract);
-          }}
-          size="sm"
-          type="button"
-          variant="outline"
+        <Menu
+          buttonClassName="px-3 py-2 text-xs"
+          label={<span aria-label="Contract actions">•••</span>}
         >
-          Revoke
-        </Button>
+          <MenuItem
+            onClick={() => {
+              if (contract.status === "ACTIVE") {
+                onRevoke(contract);
+              }
+            }}
+          >
+            <MenuHint
+              label="Revoke contract"
+              text={
+                contract.status === "ACTIVE"
+                  ? "Disable this active vendor contract."
+                  : "Only active contracts can be revoked."
+              }
+            />
+          </MenuItem>
+        </Menu>
       ),
     },
   ];
@@ -326,32 +326,43 @@ export function buildMemberColumns({
       key: "actions",
       label: "Actions",
       render: (member) => (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={!canEditMember(actorRole, member, actorEmail)}
-            onClick={(event) => {
-              event.stopPropagation();
-              onChangeRole(member);
+        <Menu
+          buttonClassName="px-3 py-2 text-xs"
+          label={<span aria-label="Member actions">•••</span>}
+        >
+          <MenuItem
+            onClick={() => {
+              if (canEditMember(actorRole, member, actorEmail)) {
+                onChangeRole(member);
+              }
             }}
-            size="sm"
-            type="button"
-            variant="secondary"
           >
-            Change role
-          </Button>
-          <Button
-            disabled={!canRemoveMember(actorRole, member, actorEmail)}
-            onClick={(event) => {
-              event.stopPropagation();
-              onRemove(member);
+            <MenuHint
+              label="Change role"
+              text={
+                canEditMember(actorRole, member, actorEmail)
+                  ? "Update this member's organization role."
+                  : "Role change is not available for this member."
+              }
+            />
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              if (canRemoveMember(actorRole, member, actorEmail)) {
+                onRemove(member);
+              }
             }}
-            size="sm"
-            type="button"
-            variant="outline"
           >
-            Remove
-          </Button>
-        </div>
+            <MenuHint
+              label="Remove member"
+              text={
+                canRemoveMember(actorRole, member, actorEmail)
+                  ? "Remove this member from the organization."
+                  : "Removal is not available for this member."
+              }
+            />
+          </MenuItem>
+        </Menu>
       ),
     },
   ];
@@ -394,20 +405,27 @@ export function buildInviteColumns({
       key: "actions",
       label: "Actions",
       render: (invite) => (
-        <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={invite.status !== "PENDING"}
-            onClick={(event) => {
-              event.stopPropagation();
-              onRevoke(invite);
+        <Menu
+          buttonClassName="px-3 py-2 text-xs"
+          label={<span aria-label="Invite actions">•••</span>}
+        >
+          <MenuItem
+            onClick={() => {
+              if (invite.status === "PENDING") {
+                onRevoke(invite);
+              }
             }}
-            size="sm"
-            type="button"
-            variant="outline"
           >
-            Revoke
-          </Button>
-        </div>
+            <MenuHint
+              label="Revoke invite"
+              text={
+                invite.status === "PENDING"
+                  ? "Cancel this outstanding invitation."
+                  : "Only pending invites can be revoked."
+              }
+            />
+          </MenuItem>
+        </Menu>
       ),
     },
   ];

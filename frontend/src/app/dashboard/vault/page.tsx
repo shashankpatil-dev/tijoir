@@ -23,6 +23,7 @@ export default function DashboardVaultPage() {
       secrets={workspace.secrets}
       secretTypeOptions={SECRET_TYPES}
       selectedSecretDetail={workspace.selectedSecretDetail}
+      selectedSecretLoading={workspace.selectedSecretLoading}
       selectedSecretId={workspace.selectedSecretId}
       setVaultPage={workspace.setVaultPage}
       setVaultSearch={workspace.setVaultSearch}

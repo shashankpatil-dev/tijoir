@@ -122,7 +122,7 @@ export default function VerifyPage() {
           <div className="space-y-4">
             <StatusPanel
               title="MVP token delivery"
-              body="SES is not wired yet, so the backend returns the verification token and the frontend stages it locally for this step."
+              body="Email delivery is not enabled yet, so the verification token is staged in this browser for the current setup flow."
             />
             <StatusPanel
               title="Owner email"
@@ -148,7 +148,7 @@ export default function VerifyPage() {
               Confirm the registration token
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-              Verification must succeed before login and share-link creation are available.
+              Verification must succeed before login and workspace actions become available.
             </p>
           </div>
 

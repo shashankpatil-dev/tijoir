@@ -13,6 +13,7 @@ export default function DashboardVendorsPage() {
       contractPageCount={workspace.contractPageCount}
       contractStatusFilter={workspace.contractStatusFilter}
       contracts={workspace.paginatedVendorContracts}
+      contractsLoading={workspace.contractsLoading}
       contractsTotal={workspace.contractsTotal}
       loadingWorkspace={workspace.loadingWorkspace}
       onCreateContract={workspace.openCreateContract}

@@ -32,7 +32,7 @@ export function RecipientView({
   return (
     <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <PageSection
-        description="Paste the token from the recipient package, review access, and reveal the secret only if it is still allowed."
+        description="Paste the token, review the access details, and reveal only when the package still allows it."
         title="Open recipient package"
       >
         <form className="space-y-4" onSubmit={onLoadMetadata}>
@@ -99,7 +99,7 @@ export function RecipientView({
                 },
                 {
                   label: "Reveal allowed",
-                  value: publicMetadata.canReveal ? "Yes" : "No",
+                  value: publicMetadata.canReveal ? "Yes" : "No, metadata only",
                 },
               ]}
             />
@@ -112,7 +112,7 @@ export function RecipientView({
         </PageSection>
 
         <PageSection
-          description="This area only fills after a successful reveal."
+          description="This area fills only after a successful reveal."
           title="Revealed value"
         >
           {publicConsumedValue ? (
@@ -154,6 +154,24 @@ export function RecipientView({
               title="No revealed value yet"
             />
           )}
+        </PageSection>
+
+        <PageSection
+          description="A few recipient-side rules that keep the handoff clear and safe."
+          title="Safe handling"
+        >
+          <div className="space-y-3">
+            <SurfaceStat
+              label="Before reveal"
+              note="Confirm the organization, secret name, and expiry before opening the value."
+              value="Inspect metadata"
+            />
+            <SurfaceStat
+              label="After reveal"
+              note="Copy the value into the target system promptly and avoid storing it in chat or notes."
+              value="Use and close"
+            />
+          </div>
         </PageSection>
       </div>
     </div>

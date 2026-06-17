@@ -10,6 +10,7 @@ export type DataTableColumn<T> = {
 };
 
 export function DataTable<T>({
+  containerClassName = "",
   columns,
   data,
   emptyDescription,
@@ -19,6 +20,7 @@ export function DataTable<T>({
   rowKey,
   selectedRowKey,
 }: {
+  containerClassName?: string;
   columns: DataTableColumn<T>[];
   data: T[];
   emptyDescription: string;
@@ -37,13 +39,16 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">
+    <div
+      className={`overflow-auto rounded-2xl border border-[var(--color-border)] bg-white ${containerClassName}`.trim()}
+    >
       <table className="min-w-full border-collapse">
         <thead className="bg-[var(--color-surface)]">
           <tr>
             {columns.map((column) => (
               <th
-                className={`px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] sm:px-4 ${column.className || ""}`}
+                className={`sticky top-0 z-10 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] sm:px-4 ${column.className || ""}`}
+                style={{ backgroundColor: "var(--color-surface)" }}
                 key={column.key}
               >
                 {column.label}

@@ -24,6 +24,7 @@ export function VendorsView({
   contractPageCount,
   contractStatusFilter,
   contracts,
+  contractsLoading,
   contractsTotal,
   loadingWorkspace,
   onCreateContract,
@@ -50,6 +51,7 @@ export function VendorsView({
   contractPageCount: number;
   contractStatusFilter: string;
   contracts: VendorContractResponse[];
+  contractsLoading: boolean;
   contractsTotal: number;
   loadingWorkspace: boolean;
   onCreateContract: () => void;
@@ -111,6 +113,7 @@ export function VendorsView({
                 </TableToolbar>
 
                 <DataTable
+                  containerClassName="max-h-[30rem]"
                   columns={vendorColumns}
                   data={vendors}
                   emptyDescription="Create the first vendor to bind contracts and external share flows to a real entity."
@@ -165,11 +168,12 @@ export function VendorsView({
                   </TableToolbar>
 
                   <DataTable
+                    containerClassName="max-h-[24rem]"
                     columns={contractColumns}
                     data={contracts}
                     emptyDescription="This vendor does not have contract records for the current filters."
                     emptyTitle="No contracts to show"
-                    loading={loadingWorkspace && !contracts.length}
+                    loading={contractsLoading || (loadingWorkspace && !contracts.length)}
                     rowKey={(contract) => contract.id}
                   />
 

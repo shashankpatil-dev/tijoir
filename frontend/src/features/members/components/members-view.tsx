@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { EmptyState, PageSection } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -87,6 +90,10 @@ export function MembersView({
   totalInvites: number;
   totalMembers: number;
 }) {
+  const [activeTab, setActiveTab] = useState<"profile" | "members" | "invites" | "access">(
+    "profile",
+  );
+
   return (
     <div className="space-y-5">
       {!membersAvailable ? (
@@ -98,6 +105,38 @@ export function MembersView({
       ) : (
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-5">
+            <PageSection title="Organization workspace">
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "profile", label: "Profile" },
+                  { key: "members", label: "Members" },
+                  { key: "invites", label: "Invites" },
+                  { key: "access", label: "Access model" },
+                ].map((tab) => {
+                  const selected = activeTab === tab.key;
+                  return (
+                    <button
+                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                        selected
+                          ? "bg-[var(--color-brand)] text-white"
+                          : "border border-[var(--color-border)] bg-white text-[var(--color-ink)] hover:border-[var(--color-brand)]"
+                      }`}
+                      key={tab.key}
+                      onClick={() =>
+                        setActiveTab(
+                          tab.key as "profile" | "members" | "invites" | "access",
+                        )
+                      }
+                      type="button"
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </PageSection>
+
+            {activeTab === "profile" ? (
             <PageSection
               description="Profile, workspace ownership, and the current signed-in access context."
               title="Organization profile"
@@ -132,7 +171,9 @@ export function MembersView({
                 />
               )}
             </PageSection>
+            ) : null}
 
+            {activeTab === "members" ? (
             <PageSection
               description="Current organization users and their assigned roles."
               title="Team members"
@@ -165,6 +206,7 @@ export function MembersView({
                 </TableToolbar>
 
                 <DataTable
+                  containerClassName="max-h-[30rem]"
                   columns={memberColumns}
                   data={paginatedMembers}
                   emptyDescription="Invite the next workspace user to move beyond the single-owner setup."
@@ -182,7 +224,9 @@ export function MembersView({
                 />
               </div>
             </PageSection>
+            ) : null}
 
+            {activeTab === "invites" ? (
             <PageSection
               description="Issued invites stay here until accepted, revoked, or expired."
               title="Invites"
@@ -208,6 +252,7 @@ export function MembersView({
                 </TableToolbar>
 
                 <DataTable
+                  containerClassName="max-h-[30rem]"
                   columns={inviteColumns}
                   data={paginatedInvites}
                   emptyDescription="No invite records match the current filters."
@@ -225,6 +270,29 @@ export function MembersView({
                 />
               </div>
             </PageSection>
+            ) : null}
+
+            {activeTab === "access" ? (
+              <PageSection
+                description="Current role boundaries in this workspace."
+                title="Access model"
+              >
+                <div className="space-y-3">
+                  <SurfaceNote
+                    label="ORG_OWNER"
+                    value="Organization-level control, including member and admin management."
+                  />
+                  <SurfaceNote
+                    label="ADMIN"
+                    value="Can manage members except owners and other admins, and can operate vault and share workflows."
+                  />
+                  <SurfaceNote
+                    label="MEMBER / VIEWER / AUDITOR"
+                    value="Operational or read-focused roles without organization-user administration."
+                  />
+                </div>
+              </PageSection>
+            ) : null}
           </div>
 
           <div className="space-y-5">
@@ -254,21 +322,21 @@ export function MembersView({
             </PageSection>
 
             <PageSection
-              description="Current role boundaries in this workspace."
-              title="Access model"
+              description="Shortcuts for owner and admin tasks."
+              title="Admin shortcuts"
             >
               <div className="space-y-3">
                 <SurfaceNote
-                  label="ORG_OWNER"
-                  value="Organization-level control, including member and admin management."
+                  label="Team management"
+                  value="Use the Members tab to change roles or remove access."
                 />
                 <SurfaceNote
-                  label="ADMIN"
-                  value="Can manage members except owners and other admins, and can operate vault and share workflows."
+                  label="Policy controls"
+                  value="Open policy settings to adjust share-link defaults and permission modes."
                 />
                 <SurfaceNote
-                  label="MEMBER / VIEWER / AUDITOR"
-                  value="Operational or read-focused roles without organization-user administration."
+                  label="Invite handoff"
+                  value="Use the latest invite package to onboard users until email delivery is enabled."
                 />
               </div>
             </PageSection>

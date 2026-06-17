@@ -44,7 +44,7 @@ export function SettingsView({
   return (
     <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
       <PageSection
-        description="Control default share-link and rotation policy for the organization."
+        description="Set the default organization rules for share duration, permission modes, and rotation review."
         title="Policy configuration"
       >
         <form className="space-y-4" onSubmit={handleUpdatePolicy}>
@@ -97,7 +97,7 @@ export function SettingsView({
 
       <div className="space-y-5">
         <PageSection
-          description="Current policy posture for the organization."
+          description="A compact readout of the currently staged organization policy."
           title="Policy summary"
         >
           <div className="space-y-3">
@@ -134,6 +134,26 @@ export function SettingsView({
             <SurfaceNote
               label="Last updated"
               value={policyUpdatedAt ? formatInstant(policyUpdatedAt) : "Default policy"}
+            />
+          </div>
+        </PageSection>
+
+        <PageSection
+          description="Use policy defaults to reduce unsafe sharing and keep operators inside one consistent workflow."
+          title="Policy guardrails"
+        >
+          <div className="space-y-3">
+            <SurfaceNote
+              label="Default expiry"
+              value="Use a short default duration when recipient access is temporary or task-based."
+            />
+            <SurfaceNote
+              label="Contract requirement"
+              value="Require a vendor contract when each share should trace back to a known external party."
+            />
+            <SurfaceNote
+              label="Permission modes"
+              value="Keep only the permission types the organization actually intends to support."
             />
           </div>
         </PageSection>

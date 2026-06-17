@@ -27,8 +27,8 @@ const workflowSteps = [
 ];
 
 const productSignals = [
-  { label: "Current backend slice", value: "Auth, vault, and share links" },
-  { label: "Production model", value: "CloudFront, Lambda URL, AWS Secrets Manager" },
+  { label: "Current workspace scope", value: "Auth, vault, sharing, vendors, audit" },
+  { label: "Deployment model", value: "Managed AWS delivery with serverless runtime" },
   { label: "Primary use case", value: "Secure credential exchange with external vendors" },
 ];
 
@@ -119,7 +119,7 @@ export default function HomePage() {
               What the product does
             </p>
             <h2 className="text-3xl font-semibold text-[var(--color-ink-strong)]">
-              Frontend and backend are aligned around the current working platform
+              Built for the real handoff workflow teams struggle with
             </h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
@@ -157,9 +157,9 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <SignalCard title="Auth" value="Owner signup, verification, login, refresh session" />
-            <SignalCard title="Vault" value="Create, reveal, rotate, revoke, typed secret handling" />
-            <SignalCard title="Sharing" value="Public share token metadata and consume flow" />
+            <SignalCard title="Auth" value="Owner signup, verification, login, and session continuity" />
+            <SignalCard title="Vault" value="Create, reveal, rotate, revoke, and manage typed secret entries" />
+            <SignalCard title="Sharing" value="Recipient access packages with controlled reveal behavior" />
           </div>
         </div>
       </section>

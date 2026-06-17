@@ -355,6 +355,7 @@ export function useVaultWorkspace({
     paginatedSecrets,
     revealedSecret,
     secretColumns,
+    selectedSecretLoading: secretDetailQuery.isLoading && Boolean(selectedSecretId),
     secretTotal: secretListQuery.data?.totalElements ?? secrets.length,
     secretRevokeTarget,
     selectedSecretDetail,

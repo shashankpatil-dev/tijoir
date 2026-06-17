@@ -4,10 +4,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function Menu({
   align = "right",
+  buttonClassName = "",
   children,
   label,
 }: {
   align?: "left" | "right";
+  buttonClassName?: string;
   children: ReactNode;
   label: ReactNode;
 }) {
@@ -39,8 +41,11 @@ export function Menu({
     <div className="relative" ref={rootRef}>
       <button
         aria-expanded={open}
-        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)]"
-        onClick={() => setOpen((current) => !current)}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] ${buttonClassName}`.trim()}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
         type="button"
       >
         {label}
@@ -68,7 +73,10 @@ export function MenuItem({
   return (
     <button
       className="flex w-full items-start rounded-xl px-3 py-2.5 text-left text-sm text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.();
+      }}
       type="button"
     >
       {children}

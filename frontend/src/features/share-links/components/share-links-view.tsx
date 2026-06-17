@@ -116,6 +116,7 @@ export function ShareLinksView({
             </TableToolbar>
 
             <DataTable
+              containerClassName="max-h-[30rem]"
               columns={shareColumns}
               data={paginatedShareLinks}
               emptyDescription="Create a share link for a vault secret to start the recipient flow."
@@ -125,17 +126,17 @@ export function ShareLinksView({
             />
 
             <PaginationControls
-                  currentPage={sharePage}
-                  itemLabel="share links"
-                  onPageChange={setSharePage}
-                  pageCount={sharePageCount}
-                  totalItems={shareTotal || filteredShareLinksLength}
-                />
+              currentPage={sharePage}
+              itemLabel="share links"
+              onPageChange={setSharePage}
+              pageCount={sharePageCount}
+              totalItems={shareTotal || filteredShareLinksLength}
+            />
           </div>
         </PageSection>
 
         <div className="space-y-5">
-            <PageSection
+          <PageSection
             description="The newest recipient package is staged here for vendor handoff."
             title="Latest recipient package"
           >
@@ -176,6 +177,10 @@ export function ShareLinksView({
               <SurfaceNote
                 label="ROTATION_NOTIFY_ONLY"
                 value="Metadata can be inspected, but the raw secret should not be revealed."
+              />
+              <SurfaceNote
+                label="Best handoff"
+                value="Send the recipient app URL first. Share the token only through a trusted channel."
               />
             </div>
           </PageSection>

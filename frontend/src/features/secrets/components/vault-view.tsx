@@ -38,6 +38,7 @@ export function VaultView({
   secrets,
   secretTypeOptions,
   selectedSecretDetail,
+  selectedSecretLoading,
   selectedSecretId,
   setVaultPage,
   setVaultSearch,
@@ -63,6 +64,7 @@ export function VaultView({
   secrets: SecretSummary[];
   secretTypeOptions: SecretType[];
   selectedSecretDetail: SecretDetail | null;
+  selectedSecretLoading: boolean;
   selectedSecretId: string;
   setVaultPage: (page: number) => void;
   setVaultSearch: (value: string) => void;
@@ -113,6 +115,7 @@ export function VaultView({
           </TableToolbar>
 
           <DataTable
+            containerClassName="max-h-[30rem]"
             columns={secretColumns}
             data={paginatedSecrets}
             emptyDescription="Create the first vault entry to begin the secret lifecycle."
@@ -138,7 +141,19 @@ export function VaultView({
           description="Inspect metadata, reveal the active value, rotate the version, or revoke the secret entirely."
           title="Selected secret"
         >
-          {selectedSecretDetail ? (
+          {selectedSecretLoading ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    className="h-20 animate-pulse rounded-2xl bg-[var(--color-surface-strong)]"
+                    key={index}
+                  />
+                ))}
+              </div>
+              <div className="h-24 animate-pulse rounded-2xl bg-[var(--color-surface-strong)]" />
+            </div>
+          ) : selectedSecretDetail ? (
             <div className="space-y-5">
               <DetailList
                 items={[

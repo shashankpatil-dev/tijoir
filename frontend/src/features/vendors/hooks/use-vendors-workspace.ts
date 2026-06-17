@@ -357,6 +357,7 @@ export function useVendorsWorkspace({
   return {
     ...formState,
     contractColumns,
+    contractsLoading: contractsPageQuery.isLoading && Boolean(selectedVendorId),
     contractPage,
     contractPageCount,
     contractStatusFilter,
