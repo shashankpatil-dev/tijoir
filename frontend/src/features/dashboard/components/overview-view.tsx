@@ -44,7 +44,7 @@ export function OverviewView({
   secretCount: number;
   vendorCount: number;
 }) {
-  const showLoadingState = loadingWorkspace && !session;
+  const showLoadingState = loadingWorkspace;
 
   return (
     <div className="space-y-5">

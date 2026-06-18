@@ -20,26 +20,30 @@ export function DashboardWorkspaceTopbarActions({
           </>
         }
       >
-        <MenuItem onClick={workspace.openCreateSecret}>
-          <MenuHint label="New secret" text="Store a new secret in the vault." />
-        </MenuItem>
-        <MenuItem onClick={workspace.openCreateShareLink}>
-          <MenuHint label="Share access" text="Prepare recipient access for a secret." />
-        </MenuItem>
-        {workspace.vendorsAvailable ? (
-          <MenuItem onClick={workspace.openCreateVendor}>
+        {workspace.showCreateSecret ? (
+          <MenuItem onClick={workspace.requestCreateSecret}>
+            <MenuHint label="New secret" text="Store a new secret in the vault." />
+          </MenuItem>
+        ) : null}
+        {workspace.showCreateShareLink ? (
+          <MenuItem onClick={workspace.requestCreateShareLink}>
+            <MenuHint label="Share access" text="Prepare recipient access for a secret." />
+          </MenuItem>
+        ) : null}
+        {workspace.showCreateVendor ? (
+          <MenuItem onClick={workspace.requestCreateVendor}>
             <MenuHint label="New vendor" text="Add an external entity before sharing." />
           </MenuItem>
         ) : null}
-        {workspace.isOrganizationManager ? (
-          <MenuItem onClick={workspace.openCreateInvite}>
+        {workspace.showCreateInvite ? (
+          <MenuItem onClick={workspace.requestCreateInvite}>
             <MenuHint label="Invite member" text="Add another user to the organization." />
           </MenuItem>
         ) : null}
       </Menu>
 
-      <Button onClick={workspace.refreshWorkspace} type="button" variant="secondary">
-        {workspace.loadingWorkspace ? "Refreshing..." : "Refresh"}
+      <Button onClick={() => void workspace.refreshCurrentView()} type="button" variant="secondary">
+        {workspace.isRefreshingView ? "Refreshing..." : "Refresh"}
       </Button>
 
       <Menu

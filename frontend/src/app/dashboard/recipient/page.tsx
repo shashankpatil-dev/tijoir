@@ -1,20 +1,33 @@
 "use client";
 
+import { useEffect } from "react";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { RecipientView } from "@/features/recipient-access/components/recipient-view";
+import { useRecipientWorkspace } from "@/features/recipient-access/hooks/use-recipient-workspace";
 
 export default function DashboardRecipientPage() {
-  const workspace = useDashboardWorkspaceContext();
+  const shell = useDashboardWorkspaceContext();
+  const recipient = useRecipientWorkspace({
+    handleSessionError: shell.handleSessionError,
+    setActionBusy: shell.setActionBusy,
+    setMessage: shell.setMessage,
+    showToast: shell.showToast,
+  });
+
+  useEffect(
+    () => shell.registerRefreshHandler(recipient.refreshRecipient),
+    [recipient.refreshRecipient, shell],
+  );
 
   return (
     <RecipientView
-      copyText={workspace.copyText}
-      onConsume={() => void workspace.handleConsumePublicShare()}
-      onLoadMetadata={workspace.handleLoadPublicMetadata}
-      publicConsumedValue={workspace.publicConsumedValue}
-      publicMetadata={workspace.publicMetadata}
-      publicToken={workspace.publicToken}
-      setPublicToken={workspace.setPublicToken}
+      copyText={shell.copyText}
+      onConsume={() => void recipient.handleConsumePublicShare()}
+      onLoadMetadata={recipient.handleLoadPublicMetadata}
+      publicConsumedValue={recipient.publicConsumedValue}
+      publicMetadata={recipient.publicMetadata}
+      publicToken={recipient.publicToken}
+      setPublicToken={recipient.setPublicToken}
     />
   );
 }

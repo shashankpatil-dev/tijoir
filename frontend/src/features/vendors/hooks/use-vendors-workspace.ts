@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiRequestError } from "@/lib/api/errors";
 import {
   buildVendorColumns,
   buildVendorContractColumns,
@@ -7,6 +8,7 @@ import {
 import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import type { RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
+import { fetchSecrets } from "@/features/secrets/api/secrets.api";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import {
   fetchVendorContractsPage,
@@ -24,22 +26,19 @@ import type { DataTableColumn } from "@/components/ui/data-table";
 export function useVendorsWorkspace({
   handleSessionError,
   router,
-  secrets,
   sessionAccessToken,
   setActionBusy,
   setMessage,
   showToast,
-  vendors,
 }: {
   handleSessionError: (error: unknown, fallback: string) => void;
   router: RouterLike;
-  secrets: SecretSummary[];
   sessionAccessToken?: string;
   setActionBusy: (value: string | null) => void;
   setMessage: (value: string) => void;
   showToast: ShowToast;
-  vendors: VendorResponse[];
 }) {
+  const queryClient = useQueryClient();
   const formState = useVendorFormState();
   const {
     contractPage,
@@ -77,45 +76,61 @@ export function useVendorsWorkspace({
     placeholderData: (previous) => previous,
   });
 
-  const paginatedVendors = vendorsPageQuery.data?.items ?? vendors;
-  const vendorsTotal = vendorsPageQuery.data?.totalElements ?? vendors.length;
+  useEffect(() => {
+    if (
+      vendorsPageQuery.error &&
+      !(vendorsPageQuery.error instanceof ApiRequestError && vendorsPageQuery.error.status === 403)
+    ) {
+      handleSessionError(vendorsPageQuery.error, "Could not load vendors");
+    }
+  }, [handleSessionError, vendorsPageQuery.error]);
+
+  const paginatedVendors = vendorsPageQuery.data?.items ?? [];
+  const vendorsTotal = vendorsPageQuery.data?.totalElements ?? paginatedVendors.length;
   const vendorPageCount =
-    vendorsPageQuery.data?.totalPages ?? pageCount(vendors.length, DASHBOARD_ITEMS_PER_PAGE);
+    vendorsPageQuery.data?.totalPages ?? pageCount(paginatedVendors.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (vendorsPageQuery.data && vendorsPageQuery.data.items.length === 0) {
+    if (!paginatedVendors.length) {
       setSelectedVendorId("");
       return;
     }
 
-    if (!vendors.length && !paginatedVendors.length) {
-      setSelectedVendorId("");
-      return;
-    }
-
-    const candidateList = paginatedVendors.length ? paginatedVendors : vendors;
     setSelectedVendorId((current) =>
-      current && candidateList.some((vendor) => vendor.id === current)
+      current && paginatedVendors.some((vendor) => vendor.id === current)
         ? current
-        : candidateList[0]?.id || "",
+        : paginatedVendors[0]?.id || "",
     );
-  }, [paginatedVendors, vendors, vendorsPageQuery.data]);
+  }, [paginatedVendors, setSelectedVendorId]);
 
   const selectedVendor =
-    paginatedVendors.find((vendor) => vendor.id === selectedVendorId) ||
-    vendors.find((vendor) => vendor.id === selectedVendorId) ||
-    null;
+    paginatedVendors.find((vendor) => vendor.id === selectedVendorId) || null;
+
+  const secretOptionsQuery = useQuery({
+    queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
+    queryFn: () => fetchSecrets(sessionAccessToken as string),
+    enabled: Boolean(sessionAccessToken && formState.createContractOpen),
+    staleTime: 60_000,
+  });
+
+  const secretOptions: SecretSummary[] = secretOptionsQuery.data ?? [];
 
   useEffect(() => {
-    if (!secrets.length) {
+    if (secretOptionsQuery.error) {
+      handleSessionError(secretOptionsQuery.error, "Could not load secret options");
+    }
+  }, [handleSessionError, secretOptionsQuery.error]);
+
+  useEffect(() => {
+    if (!secretOptions.length) {
       formState.setContractSecretId("");
       return;
     }
 
     formState.setContractSecretId((current) =>
-      current && secrets.some((secret) => secret.id === current) ? current : secrets[0].id,
+      current && secretOptions.some((secret) => secret.id === current) ? current : secretOptions[0].id,
     );
-  }, [formState, secrets]);
+  }, [formState, secretOptions]);
 
   const contractsPageQuery = useQuery({
     queryKey: dashboardQueryKeys.vendorContractsPage(sessionAccessToken, selectedVendorId, {
@@ -135,6 +150,12 @@ export function useVendorsWorkspace({
     enabled: Boolean(sessionAccessToken && selectedVendorId),
     placeholderData: (previous) => previous,
   });
+
+  useEffect(() => {
+    if (contractsPageQuery.error) {
+      handleSessionError(contractsPageQuery.error, "Could not load vendor contracts");
+    }
+  }, [contractsPageQuery.error, handleSessionError]);
 
   const vendorContracts = contractsPageQuery.data?.items ?? [];
   const contractsTotal = contractsPageQuery.data?.totalElements ?? vendorContracts.length;
@@ -172,6 +193,24 @@ export function useVendorsWorkspace({
     vendorStatusFilter,
   });
 
+  async function refreshVendors() {
+    if (!sessionAccessToken) {
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "vendors-page", sessionAccessToken],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "vendor-contracts-page", sessionAccessToken],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
+      }),
+    ]);
+  }
+
   return {
     ...formState,
     contractColumns,
@@ -181,8 +220,11 @@ export function useVendorsWorkspace({
     contractStatusFilter,
     contractsTotal,
     ...vendorActions,
+    loadingVendors: vendorsPageQuery.isLoading,
     paginatedVendorContracts: vendorContracts,
     paginatedVendors,
+    refreshVendors,
+    secretOptions,
     selectedVendor,
     selectedVendorId,
     setContractPage,
@@ -196,7 +238,9 @@ export function useVendorsWorkspace({
     vendorPageCount,
     vendorSearch,
     vendorStatusFilter,
-    vendorsAvailable: !sessionAccessToken || !vendorsPageQuery.error,
+    vendorsAvailable: !(
+      vendorsPageQuery.error instanceof ApiRequestError && vendorsPageQuery.error.status === 403
+    ),
     vendorsTotal,
   };
 }

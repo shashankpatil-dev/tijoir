@@ -2,8 +2,6 @@
 
 import type { ReactNode } from "react";
 import { DashboardSectionHeader, DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { DashboardWorkspaceConfirmations } from "@/components/dashboard/dashboard-workspace-confirmations";
-import { DashboardWorkspaceDialogs } from "@/components/dashboard/dashboard-workspace-dialogs";
 import {
   DashboardWorkspaceTopbarActions,
   DashboardWorkspaceUserMeta,
@@ -25,8 +23,8 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
     >
       <BusyOverlay
         body="Completing the current workspace action."
-        title={workspace.loadingWorkspace ? "Refreshing workspace" : "Applying request"}
-        visible={workspace.loadingWorkspace || workspace.actionBusy !== null}
+        title="Applying request"
+        visible={workspace.actionBusy !== null}
       />
 
       <section className="space-y-5">
@@ -37,9 +35,6 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
 
         {children}
       </section>
-
-      <DashboardWorkspaceDialogs workspace={workspace} />
-      <DashboardWorkspaceConfirmations workspace={workspace} />
     </DashboardShell>
   );
 }

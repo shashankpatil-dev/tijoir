@@ -121,12 +121,19 @@ export function useRecipientWorkspace({
     }
   }
 
+  async function refreshRecipient() {
+    if (publicToken.trim()) {
+      await handleLoadPublicMetadata();
+    }
+  }
+
   return {
     handleConsumePublicShare,
     handleLoadPublicMetadata,
     publicConsumedValue,
     publicMetadata,
     publicToken,
+    refreshRecipient,
     setPublicToken,
   };
 }

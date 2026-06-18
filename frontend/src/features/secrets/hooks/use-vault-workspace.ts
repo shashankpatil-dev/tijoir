@@ -1,16 +1,17 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DataTableColumn } from "@/components/ui/data-table";
 import { buildSecretColumns } from "@/features/dashboard/lib/dashboard-columns";
 import {
   DASHBOARD_ITEMS_PER_PAGE,
   pageCount,
 } from "@/features/dashboard/lib/dashboard-pagination";
+import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
+import type { RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 import {
   fetchSecretDetail,
   fetchSecretsPage,
 } from "@/features/secrets/api/secrets.api";
-import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import { useVaultActions } from "@/features/secrets/hooks/use-vault-actions";
 import { useSecretFormState } from "@/features/secrets/hooks/use-secret-form-state";
 import { useVaultListState } from "@/features/secrets/hooks/use-vault-list-state";
@@ -20,29 +21,24 @@ import type {
   SecretSummary,
   SecretType,
 } from "@/features/secrets/types/secrets.types";
-import type { RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 
 export function useVaultWorkspace({
   handleSessionError,
   router,
-  secrets,
-  selectedSecretId,
   sessionAccessToken,
   setActionBusy,
   setMessage,
-  setSelectedSecretId,
   showToast,
 }: {
   handleSessionError: (error: unknown, fallback: string) => void;
   router: RouterLike;
-  secrets: SecretSummary[];
-  selectedSecretId: string;
   sessionAccessToken?: string;
   setActionBusy: (value: string | null) => void;
   setMessage: (value: string) => void;
-  setSelectedSecretId: (value: string) => void;
   showToast: ShowToast;
 }) {
+  const queryClient = useQueryClient();
+  const [selectedSecretId, setSelectedSecretId] = useState("");
   const [revealedSecret, setRevealedSecret] = useState<RevealSecretResponse | null>(null);
   const [secretRevokeTarget, setSecretRevokeTarget] = useState<SecretSummary | null>(null);
   const formState = useSecretFormState();
@@ -56,31 +52,6 @@ export function useVaultWorkspace({
     vaultStatusFilter,
     vaultTypeFilter,
   } = useVaultListState();
-
-  useEffect(() => {
-    if (!secrets.length) {
-      setSelectedSecretId("");
-      setRevealedSecret(null);
-      return;
-    }
-
-    if (!selectedSecretId || !secrets.some((secret) => secret.id === selectedSecretId)) {
-      setSelectedSecretId(secrets[0].id);
-    }
-  }, [secrets, selectedSecretId, setSelectedSecretId]);
-
-  useEffect(() => {
-    if (!sessionAccessToken || !selectedSecretId) {
-      return;
-    }
-    setRevealedSecret((current) => (current?.id === selectedSecretId ? current : null));
-    formState.setRotateValue("");
-  }, [selectedSecretId, sessionAccessToken]);
-
-  const activeSecret = useMemo(
-    () => secrets.find((secret) => secret.id === selectedSecretId) || null,
-    [secrets, selectedSecretId],
-  );
 
   const secretListQuery = useQuery({
     queryKey: dashboardQueryKeys.secretsPage(sessionAccessToken, {
@@ -101,15 +72,57 @@ export function useVaultWorkspace({
     enabled: Boolean(sessionAccessToken),
     placeholderData: (previous) => previous,
   });
-  const filteredSecrets = secretListQuery.data?.items ?? secrets;
-  const paginatedSecrets = filteredSecrets;
-  const vaultPageCount = secretListQuery.data?.totalPages ?? pageCount(secrets.length, DASHBOARD_ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (secretListQuery.error) {
+      handleSessionError(secretListQuery.error, "Could not load secrets");
+    }
+  }, [handleSessionError, secretListQuery.error]);
+
+  const paginatedSecrets = secretListQuery.data?.items ?? [];
+  const filteredSecretsLength = secretListQuery.data?.totalElements ?? paginatedSecrets.length;
+  const vaultPageCount =
+    secretListQuery.data?.totalPages ?? pageCount(paginatedSecrets.length, DASHBOARD_ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (!paginatedSecrets.length) {
+      setSelectedSecretId("");
+      setRevealedSecret(null);
+      return;
+    }
+
+    if (!selectedSecretId || !paginatedSecrets.some((secret) => secret.id === selectedSecretId)) {
+      setSelectedSecretId(paginatedSecrets[0].id);
+    }
+  }, [paginatedSecrets, selectedSecretId]);
+
+  useEffect(() => {
+    if (!sessionAccessToken || !selectedSecretId) {
+      return;
+    }
+    setRevealedSecret((current) => (current?.id === selectedSecretId ? current : null));
+    formState.setRotateValue("");
+  }, [formState, selectedSecretId, sessionAccessToken]);
+
+  const activeSecret = useMemo(
+    () => paginatedSecrets.find((secret) => secret.id === selectedSecretId) || null,
+    [paginatedSecrets, selectedSecretId],
+  );
+
   const secretColumns = useMemo<DataTableColumn<SecretSummary>[]>(() => buildSecretColumns(), []);
+
   const secretDetailQuery = useQuery({
     queryKey: dashboardQueryKeys.secretDetail(sessionAccessToken, selectedSecretId),
     queryFn: () => fetchSecretDetail(selectedSecretId, sessionAccessToken as string),
     enabled: Boolean(sessionAccessToken && selectedSecretId),
   });
+
+  useEffect(() => {
+    if (secretDetailQuery.error) {
+      handleSessionError(secretDetailQuery.error, "Could not load secret detail");
+    }
+  }, [handleSessionError, secretDetailQuery.error]);
+
   const selectedSecretDetail: SecretDetail | null = secretDetailQuery.data ?? null;
 
   const vaultActions = useVaultActions({
@@ -132,26 +145,42 @@ export function useVaultWorkspace({
     await vaultActions.handleRotateSecret(event, selectedSecretId);
   }
 
+  async function refreshVault() {
+    if (!sessionAccessToken) {
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "secrets-page", sessionAccessToken],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "secret-detail", sessionAccessToken],
+      }),
+    ]);
+  }
+
   return {
     activeSecret,
     ...formState,
-    filteredSecrets,
+    filteredSecretsLength,
     ...vaultActions,
     handleRotateSecret,
+    loadingVault: secretListQuery.isLoading,
     paginatedSecrets,
+    refreshVault,
     revealedSecret,
     secretColumns,
-    selectedSecretLoading: secretDetailQuery.isLoading && Boolean(selectedSecretId),
-    secretTotal: secretListQuery.data?.totalElements ?? secrets.length,
     secretRevokeTarget,
     selectedSecretDetail,
+    selectedSecretId,
+    selectedSecretLoading: secretDetailQuery.isLoading && Boolean(selectedSecretId),
     setSecretRevokeTarget,
     setSelectedSecretId,
     setVaultPage,
     setVaultSearch,
     setVaultStatusFilter,
     setVaultTypeFilter,
-    selectedSecretId,
     vaultPage,
     vaultPageCount,
     vaultSearch,

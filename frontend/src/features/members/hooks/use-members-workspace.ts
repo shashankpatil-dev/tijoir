@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
 import type {
   InvitePreview,
@@ -26,8 +26,6 @@ import type { DataTableColumn } from "@/components/ui/data-table";
 
 export function useMembersWorkspace({
   handleSessionError,
-  invites,
-  members,
   router,
   sessionAccessToken,
   sessionUserEmail,
@@ -37,8 +35,6 @@ export function useMembersWorkspace({
   showToast,
 }: {
   handleSessionError: (error: unknown, fallback: string) => void;
-  invites: InviteSummary[];
-  members: MemberSummary[];
   router: RouterLike;
   sessionAccessToken?: string;
   sessionUserEmail?: string;
@@ -47,6 +43,7 @@ export function useMembersWorkspace({
   setMessage: (value: string) => void;
   showToast: ShowToast;
 }) {
+  const queryClient = useQueryClient();
   const [lastCreatedInvite, setLastCreatedInvite] = useState<InvitePreview | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [memberRoleFilter, setMemberRoleFilter] = useState("ALL");
@@ -109,14 +106,26 @@ export function useMembersWorkspace({
     placeholderData: (previous) => previous,
   });
 
-  const filteredMembers = membersPageQuery.data?.items ?? members;
-  const filteredInvites = invitesPageQuery.data?.items ?? invites;
+  useEffect(() => {
+    if (membersPageQuery.error) {
+      handleSessionError(membersPageQuery.error, "Could not load members");
+    }
+  }, [handleSessionError, membersPageQuery.error]);
+
+  useEffect(() => {
+    if (invitesPageQuery.error) {
+      handleSessionError(invitesPageQuery.error, "Could not load invites");
+    }
+  }, [handleSessionError, invitesPageQuery.error]);
+
+  const filteredMembers = membersPageQuery.data?.items ?? [];
+  const filteredInvites = invitesPageQuery.data?.items ?? [];
   const paginatedMembers = filteredMembers;
   const paginatedInvites = filteredInvites;
   const memberPageCount =
-    membersPageQuery.data?.totalPages ?? pageCount(members.length, DASHBOARD_ITEMS_PER_PAGE);
+    membersPageQuery.data?.totalPages ?? pageCount(filteredMembers.length, DASHBOARD_ITEMS_PER_PAGE);
   const invitePageCount =
-    invitesPageQuery.data?.totalPages ?? pageCount(invites.length, DASHBOARD_ITEMS_PER_PAGE);
+    invitesPageQuery.data?.totalPages ?? pageCount(filteredInvites.length, DASHBOARD_ITEMS_PER_PAGE);
 
   const memberColumns = useMemo<DataTableColumn<MemberSummary>[]>(
     () =>
@@ -164,16 +173,26 @@ export function useMembersWorkspace({
     showToast,
   });
 
-  function openCreateInvite() {
-    router.push("/dashboard/organization");
-    formState.setCreateInviteOpen(true);
+  async function refreshMembers() {
+    if (!sessionAccessToken) {
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "members-page", sessionAccessToken],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "invites-page", sessionAccessToken],
+      }),
+    ]);
   }
 
   return {
     assignableRoles,
     ...formState,
-    filteredInvites,
-    filteredMembers,
+    filteredInvitesLength: invitesPageQuery.data?.totalElements ?? filteredInvites.length,
+    filteredMembersLength: membersPageQuery.data?.totalElements ?? filteredMembers.length,
     handleCreateInvite,
     handleRemoveMember,
     handleRevokeInvite,
@@ -181,19 +200,20 @@ export function useMembersWorkspace({
     inviteColumns,
     invitePage,
     invitePageCount,
-    invitesTotal: invitesPageQuery.data?.totalElements ?? invites.length,
+    invites: paginatedInvites,
+    invitesTotal: invitesPageQuery.data?.totalElements ?? filteredInvites.length,
     inviteSearch,
     inviteStatusFilter,
     lastCreatedInvite,
+    loadingMembers: membersPageQuery.isLoading || invitesPageQuery.isLoading,
     memberColumns,
     memberPage,
     memberPageCount,
-    membersTotal: membersPageQuery.data?.totalElements ?? members.length,
+    members: paginatedMembers,
+    membersTotal: membersPageQuery.data?.totalElements ?? filteredMembers.length,
     memberRoleFilter,
     memberSearch,
-    openCreateInvite,
-    paginatedInvites,
-    paginatedMembers,
+    refreshMembers,
     setInvitePage,
     setInviteSearch,
     setInviteStatusFilter,

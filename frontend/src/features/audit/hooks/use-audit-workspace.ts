@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildAuditColumns } from "@/features/dashboard/lib/dashboard-columns";
 import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
@@ -27,6 +27,7 @@ export function useAuditWorkspace({
   setMessage: (value: string) => void;
   showToast: ShowToast;
 }) {
+  const queryClient = useQueryClient();
   const [auditQuery, setAuditQuery] = useState("");
   const [auditActionFilter, setAuditActionFilter] = useState("ALL");
   const [auditResourceTypeFilter, setAuditResourceTypeFilter] = useState("ALL");
@@ -132,6 +133,21 @@ export function useAuditWorkspace({
     }
   }
 
+  async function refreshAudit() {
+    if (!sessionAccessToken) {
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "audit-events-page", sessionAccessToken],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "audit-report", sessionAccessToken],
+      }),
+    ]);
+  }
+
   return {
     auditActionFilter,
     auditColumns,
@@ -143,6 +159,8 @@ export function useAuditWorkspace({
     auditResourceTypeFilter,
     auditTotal,
     handleAuditExport,
+    loadingAudit: auditPageQuery.isLoading || auditReportQuery.isLoading,
+    refreshAudit,
     setAuditActionFilter,
     setAuditPage,
     setAuditQuery,

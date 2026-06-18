@@ -1,28 +1,43 @@
 "use client";
 
+import { useEffect } from "react";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { AuditView } from "@/features/audit/components/audit-view";
+import { useAuditWorkspace } from "@/features/audit/hooks/use-audit-workspace";
 
 export default function DashboardAuditPage() {
-  const workspace = useDashboardWorkspaceContext();
+  const shell = useDashboardWorkspaceContext();
+  const audit = useAuditWorkspace({
+    handleSessionError: shell.handleSessionError,
+    router: shell.router,
+    sessionAccessToken: shell.session?.accessToken,
+    setActionBusy: shell.setActionBusy,
+    setMessage: shell.setMessage,
+    showToast: shell.showToast,
+  });
+
+  useEffect(
+    () => shell.registerRefreshHandler(audit.refreshAudit),
+    [audit.refreshAudit, shell],
+  );
 
   return (
     <AuditView
-      auditActionFilter={workspace.auditActionFilter}
-      auditColumns={workspace.auditColumns}
-      auditEvents={workspace.auditEvents}
-      auditPage={workspace.auditPage}
-      auditPageCount={workspace.auditPageCount}
-      auditQuery={workspace.auditQuery}
-      auditReport={workspace.auditReport}
-      auditResourceTypeFilter={workspace.auditResourceTypeFilter}
-      auditTotal={workspace.auditTotal}
-      handleAuditExport={workspace.handleAuditExport}
-      loadingWorkspace={workspace.loadingWorkspace}
-      setAuditActionFilter={workspace.setAuditActionFilter}
-      setAuditPage={workspace.setAuditPage}
-      setAuditQuery={workspace.setAuditQuery}
-      setAuditResourceTypeFilter={workspace.setAuditResourceTypeFilter}
+      auditActionFilter={audit.auditActionFilter}
+      auditColumns={audit.auditColumns}
+      auditEvents={audit.auditEvents}
+      auditPage={audit.auditPage}
+      auditPageCount={audit.auditPageCount}
+      auditQuery={audit.auditQuery}
+      auditReport={audit.auditReport}
+      auditResourceTypeFilter={audit.auditResourceTypeFilter}
+      auditTotal={audit.auditTotal}
+      handleAuditExport={audit.handleAuditExport}
+      loadingWorkspace={audit.loadingAudit}
+      setAuditActionFilter={audit.setAuditActionFilter}
+      setAuditPage={audit.setAuditPage}
+      setAuditQuery={audit.setAuditQuery}
+      setAuditResourceTypeFilter={audit.setAuditResourceTypeFilter}
     />
   );
 }

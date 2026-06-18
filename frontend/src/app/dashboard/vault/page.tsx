@@ -1,39 +1,115 @@
 "use client";
 
+import { useEffect } from "react";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
+import { CreateSecretDialog } from "@/features/secrets/components/create-secret-dialog";
+import { RotateSecretDialog } from "@/features/secrets/components/rotate-secret-dialog";
 import { VaultView } from "@/features/secrets/components/vault-view";
-import { SECRET_TYPES } from "@/features/secrets/types/secrets.types";
+import { useVaultWorkspace } from "@/features/secrets/hooks/use-vault-workspace";
+import {
+  GENERATOR_SUPPORTED_SECRET_TYPES,
+  SECRET_TYPES,
+} from "@/features/secrets/types/secrets.types";
 
 export default function DashboardVaultPage() {
-  const workspace = useDashboardWorkspaceContext();
+  const shell = useDashboardWorkspaceContext();
+  const vault = useVaultWorkspace({
+    handleSessionError: shell.handleSessionError,
+    router: shell.router,
+    sessionAccessToken: shell.session?.accessToken,
+    setActionBusy: shell.setActionBusy,
+    setMessage: shell.setMessage,
+    showToast: shell.showToast,
+  });
+
+  useEffect(
+    () => shell.registerRefreshHandler(vault.refreshVault),
+    [shell, vault.refreshVault],
+  );
+
+  useEffect(() => {
+    if (shell.consumeIntent("create-secret")) {
+      vault.setCreateSecretOpen(true);
+    }
+  }, [shell, vault]);
 
   return (
-    <VaultView
-      filteredSecretsLength={workspace.filteredSecrets.length}
-      loadingWorkspace={workspace.loadingWorkspace}
-      onCopyRevealedSecret={workspace.copyText}
-      onCreateSecret={() => workspace.setCreateSecretOpen(true)}
-      onRevealSecret={(secretId) => void workspace.handleRevealSecret(secretId)}
-      onRevokeSecret={() => workspace.setSecretRevokeTarget(workspace.activeSecret)}
-      onRotateSecret={() => workspace.setRotateDialogOpen(true)}
-      onSelectSecret={(secret) => workspace.setSelectedSecretId(secret.id)}
-      paginatedSecrets={workspace.paginatedSecrets}
-      revealedSecret={workspace.revealedSecret}
-      secretColumns={workspace.secretColumns}
-      secrets={workspace.secrets}
-      secretTypeOptions={SECRET_TYPES}
-      selectedSecretDetail={workspace.selectedSecretDetail}
-      selectedSecretLoading={workspace.selectedSecretLoading}
-      selectedSecretId={workspace.selectedSecretId}
-      setVaultPage={workspace.setVaultPage}
-      setVaultSearch={workspace.setVaultSearch}
-      setVaultStatusFilter={workspace.setVaultStatusFilter}
-      setVaultTypeFilter={workspace.setVaultTypeFilter}
-      vaultPage={workspace.vaultPage}
-      vaultPageCount={workspace.vaultPageCount}
-      vaultSearch={workspace.vaultSearch}
-      vaultStatusFilter={workspace.vaultStatusFilter}
-      vaultTypeFilter={workspace.vaultTypeFilter}
-    />
+    <>
+      <VaultView
+        filteredSecretsLength={vault.filteredSecretsLength}
+        loadingWorkspace={vault.loadingVault}
+        onCopyRevealedSecret={shell.copyText}
+        onCreateSecret={() => vault.setCreateSecretOpen(true)}
+        onRevealSecret={(secretId) => void vault.handleRevealSecret(secretId)}
+        onRevokeSecret={() => vault.setSecretRevokeTarget(vault.activeSecret)}
+        onRotateSecret={() => vault.setRotateDialogOpen(true)}
+        onSelectSecret={(secret) => vault.setSelectedSecretId(secret.id)}
+        paginatedSecrets={vault.paginatedSecrets}
+        revealedSecret={vault.revealedSecret}
+        secretColumns={vault.secretColumns}
+        secrets={vault.paginatedSecrets}
+        secretTypeOptions={SECRET_TYPES}
+        selectedSecretDetail={vault.selectedSecretDetail}
+        selectedSecretLoading={vault.selectedSecretLoading}
+        selectedSecretId={vault.selectedSecretId}
+        setVaultPage={vault.setVaultPage}
+        setVaultSearch={vault.setVaultSearch}
+        setVaultStatusFilter={vault.setVaultStatusFilter}
+        setVaultTypeFilter={vault.setVaultTypeFilter}
+        vaultPage={vault.vaultPage}
+        vaultPageCount={vault.vaultPageCount}
+        vaultSearch={vault.vaultSearch}
+        vaultStatusFilter={vault.vaultStatusFilter}
+        vaultTypeFilter={vault.vaultTypeFilter}
+      />
+
+      <CreateSecretDialog
+        actionBusy={shell.actionBusy}
+        createDescription={vault.createDescription}
+        createName={vault.createName}
+        createType={vault.createType}
+        createValue={vault.createValue}
+        generateLength={vault.generateLength}
+        generatorEnabled={GENERATOR_SUPPORTED_SECRET_TYPES.has(vault.createType)}
+        onClose={() => vault.setCreateSecretOpen(false)}
+        onGenerate={() => void vault.handleGenerateSecret()}
+        onSubmit={vault.handleCreateSecret}
+        open={vault.createSecretOpen}
+        secretTypes={SECRET_TYPES}
+        setCreateDescription={vault.setCreateDescription}
+        setCreateName={vault.setCreateName}
+        setCreateType={vault.setCreateType}
+        setCreateValue={vault.setCreateValue}
+        setGenerateLength={vault.setGenerateLength}
+      />
+
+      <RotateSecretDialog
+        actionBusy={shell.actionBusy}
+        onClose={() => vault.setRotateDialogOpen(false)}
+        onSubmit={vault.handleRotateSecret}
+        open={vault.rotateDialogOpen}
+        rotateValue={vault.rotateValue}
+        setRotateValue={vault.setRotateValue}
+      />
+
+      <ConfirmDialog
+        confirmLabel="Revoke secret"
+        description={
+          vault.secretRevokeTarget
+            ? `Revoke ${vault.secretRevokeTarget.secretKey}. This should stop future reveal access for the active vault entry.`
+            : ""
+        }
+        onClose={() => vault.setSecretRevokeTarget(null)}
+        onConfirm={() => {
+          if (vault.secretRevokeTarget) {
+            void vault.handleRevokeSecret(vault.secretRevokeTarget.id);
+          }
+          vault.setSecretRevokeTarget(null);
+        }}
+        open={Boolean(vault.secretRevokeTarget)}
+        title="Revoke vault secret"
+      />
+    </>
   );
 }

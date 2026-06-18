@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildStaticAppUrl } from "@/lib/auth-client";
+import { ApiRequestError } from "@/lib/api/errors";
 import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import type {
@@ -8,7 +9,11 @@ import type {
   SharePreview,
   ShowToast,
 } from "@/features/dashboard/hooks/workspace.types";
-import { fetchShareLinksPage } from "@/features/share-links/api/share-links.api";
+import { fetchSecrets } from "@/features/secrets/api/secrets.api";
+import type { SecretSummary } from "@/features/secrets/types/secrets.types";
+import {
+  fetchShareLinksPage,
+} from "@/features/share-links/api/share-links.api";
 import { useShareLinkActions } from "@/features/share-links/hooks/use-share-link-actions";
 import { useShareLinkFormState } from "@/features/share-links/hooks/use-share-link-form-state";
 import { buildShareLinksPageParams } from "@/features/share-links/hooks/share-link-query-utils";
@@ -17,36 +22,28 @@ import type {
   ContractPermission,
   ShareLinkResponse,
 } from "@/features/share-links/types/share-links.types";
-import type { SecretSummary } from "@/features/secrets/types/secrets.types";
-import { fetchVendorContractsPage } from "@/features/vendors/api/vendors.api";
+import { fetchVendorContractsPage, fetchVendors } from "@/features/vendors/api/vendors.api";
 import type { VendorResponse } from "@/features/vendors/types/vendors.types";
 import type { DataTableColumn } from "@/components/ui/data-table";
 
 export function useShareLinksWorkspace({
-  copyText,
   handleSessionError,
   router,
-  secrets,
   sessionAccessToken,
   setActionBusy,
   setMessage,
-  setPublicToken,
-  shareLinks,
   showToast,
-  vendors,
+  copyText,
 }: {
   copyText: (value: string, label: string) => Promise<void>;
   handleSessionError: (error: unknown, fallback: string) => void;
   router: RouterLike;
-  secrets: SecretSummary[];
   sessionAccessToken?: string;
   setActionBusy: (value: string | null) => void;
   setMessage: (value: string) => void;
-  setPublicToken: (value: string) => void;
-  shareLinks: ShareLinkResponse[];
   showToast: ShowToast;
-  vendors: VendorResponse[];
 }) {
+  const queryClient = useQueryClient();
   const [lastCreatedShare, setLastCreatedShare] = useState<SharePreview | null>(null);
   const [shareRevokeTarget, setShareRevokeTarget] = useState<ShareLinkResponse | null>(null);
   const [selectedShareLinkId, setSelectedShareLinkId] = useState("");
@@ -54,11 +51,43 @@ export function useShareLinksWorkspace({
   const [shareStatusFilter, setShareStatusFilter] = useState("ALL");
   const [sharePermissionFilter, setSharePermissionFilter] = useState("ALL");
   const [sharePage, setSharePage] = useState(1);
-  const formState = useShareLinkFormState(secrets);
+  const [createShareOpen, setCreateShareOpen] = useState(false);
+
+  const secretOptionsQuery = useQuery({
+    queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
+    queryFn: () => fetchSecrets(sessionAccessToken as string),
+    enabled: Boolean(sessionAccessToken && createShareOpen),
+    staleTime: 60_000,
+  });
+  const vendorOptionsQuery = useQuery({
+    queryKey: dashboardQueryKeys.vendors(sessionAccessToken),
+    queryFn: () => fetchVendors(sessionAccessToken as string),
+    enabled: Boolean(sessionAccessToken && createShareOpen),
+    staleTime: 60_000,
+  });
+
+  const secretOptions = secretOptionsQuery.data ?? [];
+  const vendorOptions = vendorOptionsQuery.data ?? [];
+  const formState = useShareLinkFormState(secretOptions, {
+    createShareOpen,
+    setCreateShareOpen,
+  });
 
   useEffect(() => {
     setSharePage(1);
   }, [sharePermissionFilter, shareSearch, shareStatusFilter]);
+
+  useEffect(() => {
+    if (secretOptionsQuery.error) {
+      handleSessionError(secretOptionsQuery.error, "Could not load secret options");
+    }
+  }, [handleSessionError, secretOptionsQuery.error]);
+
+  useEffect(() => {
+    if (vendorOptionsQuery.error) {
+      handleSessionError(vendorOptionsQuery.error, "Could not load vendor options");
+    }
+  }, [handleSessionError, vendorOptionsQuery.error]);
 
   const activeVendorContractsQuery = useQuery({
     queryKey: dashboardQueryKeys.vendorContractsPage(
@@ -76,7 +105,7 @@ export function useShareLinksWorkspace({
         size: 100,
         status: "ACTIVE",
       }),
-    enabled: Boolean(sessionAccessToken && formState.shareVendorId),
+    enabled: Boolean(sessionAccessToken && formState.shareVendorId && createShareOpen),
     placeholderData: (previous) => previous,
   });
 
@@ -90,11 +119,11 @@ export function useShareLinksWorkspace({
       return;
     }
 
-    if (!vendors.some((vendor) => vendor.id === formState.shareVendorId)) {
+    if (!vendorOptions.some((vendor) => vendor.id === formState.shareVendorId)) {
       formState.setShareVendorId("");
       formState.setShareContractId("");
     }
-  }, [formState, vendors]);
+  }, [formState, vendorOptions]);
 
   useEffect(() => {
     if (
@@ -146,10 +175,19 @@ export function useShareLinksWorkspace({
     placeholderData: (previous) => previous,
   });
 
-  const filteredShareLinks = shareLinksPageQuery.data?.items ?? shareLinks;
-  const paginatedShareLinks = filteredShareLinks;
+  useEffect(() => {
+    if (
+      shareLinksPageQuery.error &&
+      !(shareLinksPageQuery.error instanceof ApiRequestError && shareLinksPageQuery.error.status === 403)
+    ) {
+      handleSessionError(shareLinksPageQuery.error, "Could not load share links");
+    }
+  }, [handleSessionError, shareLinksPageQuery.error]);
+
+  const paginatedShareLinks = shareLinksPageQuery.data?.items ?? [];
+  const filteredShareLinksLength = shareLinksPageQuery.data?.totalElements ?? paginatedShareLinks.length;
   const sharePageCount =
-    shareLinksPageQuery.data?.totalPages ?? pageCount(shareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
+    shareLinksPageQuery.data?.totalPages ?? pageCount(paginatedShareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (!paginatedShareLinks.length) {
@@ -165,9 +203,7 @@ export function useShareLinksWorkspace({
   }, [paginatedShareLinks]);
 
   const selectedShareLink =
-    paginatedShareLinks.find((shareLink) => shareLink.id === selectedShareLinkId) ||
-    shareLinks.find((shareLink) => shareLink.id === selectedShareLinkId) ||
-    null;
+    paginatedShareLinks.find((shareLink) => shareLink.id === selectedShareLinkId) || null;
 
   const selectedShareLinkAppUrl =
     selectedShareLink?.shareToken && typeof window !== "undefined"
@@ -197,24 +233,38 @@ export function useShareLinksWorkspace({
     sessionAccessToken,
     setActionBusy,
     setMessage,
-    setPublicToken,
     showToast,
     statusFilter: shareStatusFilter,
   });
 
-  function openCreateShareLink() {
-    router.push("/dashboard/share-links");
-    formState.setCreateShareOpen(true);
+  async function refreshShareLinks() {
+    if (!sessionAccessToken) {
+      return;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", "share-links-page", sessionAccessToken],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.vendors(sessionAccessToken),
+      }),
+    ]);
   }
 
   return {
     ...formState,
-    filteredShareLinks,
+    filteredShareLinksLength,
     handleCreateShareLink,
     handleRevokeShareLink,
     lastCreatedShare,
-    openCreateShareLink,
+    loadingShareLinks: shareLinksPageQuery.isLoading,
     paginatedShareLinks,
+    refreshShareLinks,
+    secrets: secretOptions,
     selectedShareLink,
     selectedShareLinkAppUrl,
     selectedShareLinkId,
@@ -225,13 +275,17 @@ export function useShareLinksWorkspace({
     setShareStatusFilter,
     setSelectedShareLinkId,
     shareColumns,
+    shareLinksAvailable: !(
+      shareLinksPageQuery.error instanceof ApiRequestError && shareLinksPageQuery.error.status === 403
+    ),
     sharePage,
     sharePageCount,
-    shareLinksTotal: shareLinksPageQuery.data?.totalElements ?? shareLinks.length,
     sharePermissionFilter,
     shareRevokeTarget,
     shareSearch,
     shareStatusFilter,
+    shareTotal: filteredShareLinksLength,
     vendorContractsForShare,
+    vendors: vendorOptions,
   };
 }

@@ -10,6 +10,7 @@ import {
   createShareLink,
   revokeShareLink,
 } from "@/features/share-links/api/share-links.api";
+import { saveLastPublicToken } from "@/features/recipient-access/api/recipient-access.api";
 import { invalidateShareLinksQueries } from "@/features/share-links/hooks/share-link-query-utils";
 import type {
   ContractPermission,
@@ -37,7 +38,6 @@ export function useShareLinkActions({
   sessionAccessToken,
   setActionBusy,
   setMessage,
-  setPublicToken,
   showToast,
   statusFilter,
 }: {
@@ -51,7 +51,6 @@ export function useShareLinkActions({
   sessionAccessToken?: string;
   setActionBusy: (value: string | null) => void;
   setMessage: (value: string) => void;
-  setPublicToken: (value: string) => void;
   showToast: ShowToast;
   statusFilter: string;
 }) {
@@ -105,7 +104,7 @@ export function useShareLinkActions({
           : null;
 
       if (created.shareToken) {
-        setPublicToken(created.shareToken);
+        saveLastPublicToken(created.shareToken);
       }
 
       formState.setCreateShareOpen(false);

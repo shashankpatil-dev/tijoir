@@ -107,6 +107,16 @@ export function useSettingsWorkspace({
     }
   }
 
+  async function refreshPolicy() {
+    if (!sessionAccessToken) {
+      return;
+    }
+
+    await queryClient.invalidateQueries({
+      queryKey: dashboardQueryKeys.organizationPolicy(sessionAccessToken),
+    });
+  }
+
   return {
     allowRotationNotifyOnly,
     allowViewOnce,
@@ -116,6 +126,7 @@ export function useSettingsWorkspace({
     loadingPolicy: policyQuery.isLoading,
     policyUpdatedAt: policyQuery.data?.updatedAt || null,
     requireVendorContractForShareLinks,
+    refreshPolicy,
     rotationReminderDays,
     setAllowRotationNotifyOnly,
     setAllowViewOnce,
