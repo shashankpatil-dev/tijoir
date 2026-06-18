@@ -51,6 +51,12 @@ variable "lambda_timeout" {
   default     = 60
 }
 
+variable "lambda_reserved_concurrent_executions" {
+  description = "Reserved concurrency for the backend Lambda to cap database pressure."
+  type        = number
+  default     = 3
+}
+
 variable "database_name" {
   description = "PostgreSQL database name."
   type        = string
@@ -85,6 +91,12 @@ variable "database_deletion_protection" {
   description = "Protect production DB from accidental deletion."
   type        = bool
   default     = true
+}
+
+variable "redis_node_type" {
+  description = "ElastiCache node type for share-link consume locks."
+  type        = string
+  default     = "cache.t4g.micro"
 }
 
 variable "allowed_cors_origins" {

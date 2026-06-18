@@ -123,8 +123,9 @@ resource "aws_lambda_function" "backend" {
   image_uri     = "${aws_ecr_repository.backend.repository_url}:${var.backend_image_tag}"
   role          = aws_iam_role.backend_lambda.arn
 
-  memory_size = var.lambda_memory_size
-  timeout     = var.lambda_timeout
+  memory_size                    = var.lambda_memory_size
+  timeout                        = var.lambda_timeout
+  reserved_concurrent_executions = var.lambda_reserved_concurrent_executions
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -133,14 +134,21 @@ resource "aws_lambda_function" "backend" {
 
   environment {
     variables = {
-      SPRING_PROFILES_ACTIVE      = "prod"
-      DATABASE_SECRET_ARN         = aws_secretsmanager_secret.database.arn
-      SECURITY_CONTROL_TABLE_NAME = aws_dynamodb_table.security_control.name
-      APP_SECRET_NAME_PREFIX      = "${local.name_prefix}/app/"
-      APP_SECRETS_PLACEHOLDER_ARN = aws_secretsmanager_secret.app_secret_prefix.arn
-      AWS_KMS_KEY_ID              = aws_kms_key.app.arn
-      JWT_SECRET                  = random_password.jwt_secret.result
-      CORS_ALLOWED_ORIGINS        = join(",", var.allowed_cors_origins)
+      SPRING_PROFILES_ACTIVE        = "prod"
+      DATABASE_SECRET_ARN           = aws_secretsmanager_secret.database.arn
+      SECURITY_CONTROL_TABLE_NAME   = aws_dynamodb_table.security_control.name
+      APP_SECRET_NAME_PREFIX        = "${local.name_prefix}/app/"
+      APP_SECRETS_PLACEHOLDER_ARN   = aws_secretsmanager_secret.app_secret_prefix.arn
+      AWS_KMS_KEY_ID                = aws_kms_key.app.arn
+      JWT_SECRET                    = random_password.jwt_secret.result
+      CORS_ALLOWED_ORIGINS          = join(",", var.allowed_cors_origins)
+      REDIS_HOST                    = aws_elasticache_replication_group.redis.primary_endpoint_address
+      REDIS_PORT                    = tostring(aws_elasticache_replication_group.redis.port)
+      DB_POOL_MAX_SIZE              = "2"
+      DB_POOL_MIN_IDLE              = "0"
+      DB_POOL_CONNECTION_TIMEOUT_MS = "5000"
+      DB_POOL_IDLE_TIMEOUT_MS       = "60000"
+      DB_POOL_MAX_LIFETIME_MS       = "300000"
     }
   }
 

@@ -30,7 +30,12 @@ public class ProdDataSourceConfig {
             SecretsManagerClient secretsManagerClient,
             ObjectMapper objectMapper,
             DataSourceProperties properties,
-            @Value("${tijoir.aws.database-secret-arn}") String databaseSecretArn
+            @Value("${tijoir.aws.database-secret-arn}") String databaseSecretArn,
+            @Value("${DB_POOL_MAX_SIZE:2}") int maxPoolSize,
+            @Value("${DB_POOL_MIN_IDLE:0}") int minIdle,
+            @Value("${DB_POOL_CONNECTION_TIMEOUT_MS:5000}") long connectionTimeoutMs,
+            @Value("${DB_POOL_IDLE_TIMEOUT_MS:60000}") long idleTimeoutMs,
+            @Value("${DB_POOL_MAX_LIFETIME_MS:300000}") long maxLifetimeMs
     ) throws Exception {
         String secretJson = secretsManagerClient.getSecretValue(GetSecretValueRequest.builder()
                         .secretId(databaseSecretArn)
@@ -44,6 +49,12 @@ public class ProdDataSourceConfig {
         dataSource.setJdbcUrl("jdbc:postgresql://%s:%s/%s".formatted(secret.host(), secret.port(), secret.dbname()));
         dataSource.setUsername(secret.username());
         dataSource.setPassword(secret.password());
+        dataSource.setMaximumPoolSize(maxPoolSize);
+        dataSource.setMinimumIdle(minIdle);
+        dataSource.setConnectionTimeout(connectionTimeoutMs);
+        dataSource.setIdleTimeout(idleTimeoutMs);
+        dataSource.setMaxLifetime(maxLifetimeMs);
+        dataSource.setInitializationFailTimeout(-1);
         return dataSource;
     }
 

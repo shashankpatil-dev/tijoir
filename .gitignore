@@ -22,6 +22,9 @@ frontend/.turbo/
 # Logs
 *.log
 
+# Local-only ops notes
+.local/
+
 # Terraform local runtime/state
 **/.terraform/
 **/.terraform/*

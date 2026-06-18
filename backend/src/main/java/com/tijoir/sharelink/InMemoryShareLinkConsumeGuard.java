@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Primary
-@Profile("test")
+@Profile("!prod")
 public class InMemoryShareLinkConsumeGuard implements ShareLinkConsumeGuard {
     private final Set<String> activeLocks = ConcurrentHashMap.newKeySet();
 

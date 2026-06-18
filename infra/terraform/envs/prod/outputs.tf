@@ -34,3 +34,7 @@ output "security_control_table_name" {
 output "kms_key_arn" {
   value = aws_kms_key.app.arn
 }
+
+output "redis_primary_endpoint" {
+  value = aws_elasticache_replication_group.redis.primary_endpoint_address
+}
