@@ -149,6 +149,7 @@ resource "aws_lambda_function" "backend" {
       TIJOIR_REDIS_SUMMARY_CACHE_ENABLED    = "true"
       TIJOIR_REDIS_POLICY_CACHE_ENABLED     = "true"
       TIJOIR_REDIS_ABUSE_PROTECTION_ENABLED = "true"
+      TIJOIR_REDIS_MFA_ENABLED              = "true"
       DB_POOL_MAX_SIZE                      = "2"
       DB_POOL_MIN_IDLE                      = "0"
       DB_POOL_CONNECTION_TIMEOUT_MS         = "5000"

@@ -17,7 +17,7 @@ export default function DashboardVaultPage() {
   const vault = useVaultWorkspace({
     handleSessionError: shell.handleSessionError,
     router: shell.router,
-    sessionAccessToken: shell.session?.accessToken,
+    sessionAccessToken: shell.session?.accessToken ?? undefined,
     setActionBusy: shell.setActionBusy,
     setMessage: shell.setMessage,
     showToast: shell.showToast,

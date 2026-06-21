@@ -13,10 +13,14 @@ public final class CryptoUtil {
     private CryptoUtil() {
     }
 
-    public static String randomUrlToken(int byteLength) {
+    public static byte[] randomBytes(int byteLength) {
         byte[] bytes = new byte[byteLength];
         SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return bytes;
+    }
+
+    public static String randomUrlToken(int byteLength) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes(byteLength));
     }
 
     public static String randomFromAlphabet(String alphabet, int length) {

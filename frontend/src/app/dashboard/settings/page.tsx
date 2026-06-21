@@ -10,7 +10,7 @@ export default function DashboardSettingsPage() {
   const settings = useSettingsWorkspace({
     handleSessionError: shell.handleSessionError,
     router: shell.router,
-    sessionAccessToken: shell.session?.accessToken,
+    sessionAccessToken: shell.session?.accessToken ?? undefined,
     setActionBusy: shell.setActionBusy,
     setMessage: shell.setMessage,
     showToast: shell.showToast,
@@ -29,6 +29,7 @@ export default function DashboardSettingsPage() {
       defaultShareLinkExpiryHours={settings.defaultShareLinkExpiryHours}
       handleUpdatePolicy={settings.handleUpdatePolicy}
       loadingPolicy={settings.loadingPolicy}
+      mfa={settings.mfa}
       policyUpdatedAt={settings.policyUpdatedAt}
       requireVendorContractForShareLinks={settings.requireVendorContractForShareLinks}
       rotationReminderDays={settings.rotationReminderDays}

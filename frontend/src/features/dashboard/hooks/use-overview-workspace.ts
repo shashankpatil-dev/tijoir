@@ -14,7 +14,7 @@ export function useOverviewWorkspace({
   session: AuthResponse | null;
 }) {
   const queryClient = useQueryClient();
-  const accessToken = session?.accessToken;
+  const accessToken = session?.accessToken ?? undefined;
 
   const summaryQuery = useQuery({
     queryKey: dashboardQueryKeys.dashboardSummary(accessToken),

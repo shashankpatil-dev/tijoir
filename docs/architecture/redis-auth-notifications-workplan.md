@@ -317,9 +317,20 @@ Status: completed
 
 ### Phase 4
 
-Status: pending
+Status: completed
 
 - MFA challenge store
+
+Implemented shape:
+
+- login challenge state is short-lived and stored through the `MfaChallengeStore`
+- production uses Redis only when:
+  - `tijoir.redis.enabled=true`
+  - `tijoir.redis.mfa.enabled=true`
+- local and test environments fall back to the in-memory challenge store
+- durable MFA shared secrets are not stored in Redis
+- durable MFA shared secrets are encrypted and stored on the user account row
+- login challenges are deleted after successful verification or attempt exhaustion
 
 ## Testing Requirements For Redis Work
 

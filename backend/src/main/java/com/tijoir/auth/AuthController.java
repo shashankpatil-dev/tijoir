@@ -2,6 +2,11 @@ package com.tijoir.auth;
 
 import com.tijoir.auth.dto.AuthResponse;
 import com.tijoir.auth.dto.LoginRequest;
+import com.tijoir.auth.dto.MfaChallengeVerifyRequest;
+import com.tijoir.auth.dto.MfaDisableRequest;
+import com.tijoir.auth.dto.MfaEnrollmentConfirmRequest;
+import com.tijoir.auth.dto.MfaEnrollmentStartResponse;
+import com.tijoir.auth.dto.MfaStatusResponse;
 import com.tijoir.auth.dto.RefreshRequest;
 import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
@@ -108,9 +113,42 @@ public class AuthController {
         return authService.resendVerification(request.email());
     }
 
+    @GetMapping("/mfa/status")
+    public MfaStatusResponse mfaStatus(@AuthenticationPrincipal AuthenticatedUser user) {
+        return authService.mfaStatus(user.userId());
+    }
+
+    @PostMapping("/mfa/enroll/start")
+    public MfaEnrollmentStartResponse startMfaEnrollment(@AuthenticationPrincipal AuthenticatedUser user) {
+        return authService.startMfaEnrollment(user.userId());
+    }
+
+    @PostMapping("/mfa/enroll/confirm")
+    public MfaStatusResponse confirmMfaEnrollment(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody MfaEnrollmentConfirmRequest request
+    ) {
+        return authService.confirmMfaEnrollment(user.userId(), user.organizationId(), request);
+    }
+
+    @PostMapping("/mfa/verify")
+    public ResponseEntity<AuthResponse> verifyMfaChallenge(@Valid @RequestBody MfaChallengeVerifyRequest request) {
+        return sessionResponse(authService.verifyMfaChallenge(request));
+    }
+
+    @PostMapping("/mfa/disable")
+    public MfaStatusResponse disableMfa(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody MfaDisableRequest request
+    ) {
+        return authService.disableMfa(user.userId(), user.organizationId(), request);
+    }
+
     private ResponseEntity<AuthResponse> sessionResponse(AuthService.IssuedSession issuedSession) {
         HttpHeaders headers = new HttpHeaders();
-        authCookieService.writeRefreshCookie(headers, issuedSession.rawRefreshToken(), issuedSession.authResponse().refreshExpiresAt());
+        if (issuedSession.rawRefreshToken() != null && issuedSession.authResponse().refreshExpiresAt() != null) {
+            authCookieService.writeRefreshCookie(headers, issuedSession.rawRefreshToken(), issuedSession.authResponse().refreshExpiresAt());
+        }
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(issuedSession.authResponse());

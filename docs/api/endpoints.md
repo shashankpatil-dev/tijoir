@@ -8,6 +8,11 @@ POST /api/auth/login
 GET  /api/auth/me
 POST /api/auth/verify-email
 POST /api/auth/resend-verification
+GET  /api/auth/mfa/status
+POST /api/auth/mfa/enroll/start
+POST /api/auth/mfa/enroll/confirm
+POST /api/auth/mfa/verify
+POST /api/auth/mfa/disable
 ```
 
 ## Secrets
@@ -53,4 +58,3 @@ GET  /api/contracts/{id}/secrets
 POST /api/contracts/{id}/secrets/{secretId}/reveal
 POST /api/contracts/{id}/secrets/{secretId}/revoke
 ```
-

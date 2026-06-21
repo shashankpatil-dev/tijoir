@@ -11,7 +11,7 @@ public class RedisSecurityProperties {
     private final TimedFeature summaryCache = new TimedFeature(20);
     private final TimedFeature policyCache = new TimedFeature(60);
     private final Feature abuseProtection = new Feature();
-    private final Feature mfa = new Feature();
+    private final TimedFeature mfa = new TimedFeature(300);
 
     public boolean isEnabled() {
         return enabled;
@@ -45,7 +45,7 @@ public class RedisSecurityProperties {
         return abuseProtection;
     }
 
-    public Feature getMfa() {
+    public TimedFeature getMfa() {
         return mfa;
     }
 

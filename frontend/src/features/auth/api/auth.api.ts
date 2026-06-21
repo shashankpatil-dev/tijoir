@@ -1,7 +1,12 @@
 "use client";
 
 import { apiRequest } from "@/lib/api/client";
-import type { AuthResponse, RegisterResponse } from "@/features/auth/types/auth.types";
+import type {
+  AuthResponse,
+  MfaEnrollmentStartResponse,
+  MfaStatusResponse,
+  RegisterResponse,
+} from "@/features/auth/types/auth.types";
 
 export async function loginRequest(email: string, password: string) {
   return apiRequest<AuthResponse>("/api/auth/login", {
@@ -52,5 +57,52 @@ export async function refreshRequest() {
 export async function logoutRequest() {
   return apiRequest<void>("/api/auth/logout", {
     method: "POST",
+  });
+}
+
+export async function verifyMfaChallengeRequest(
+  challengeId: string,
+  code: string,
+) {
+  return apiRequest<AuthResponse>("/api/auth/mfa/verify", {
+    method: "POST",
+    body: JSON.stringify({ challengeId, code }),
+  });
+}
+
+export async function fetchMfaStatus(accessToken: string) {
+  return apiRequest<MfaStatusResponse>("/api/auth/mfa/status", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export async function startMfaEnrollmentRequest(accessToken: string) {
+  return apiRequest<MfaEnrollmentStartResponse>("/api/auth/mfa/enroll/start", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export async function confirmMfaEnrollmentRequest(
+  accessToken: string,
+  challengeId: string,
+  code: string,
+) {
+  return apiRequest<MfaStatusResponse>("/api/auth/mfa/enroll/confirm", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ challengeId, code }),
+  });
+}
+
+export async function disableMfaRequest(
+  accessToken: string,
+  password: string,
+  code: string,
+) {
+  return apiRequest<MfaStatusResponse>("/api/auth/mfa/disable", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ password, code }),
   });
 }

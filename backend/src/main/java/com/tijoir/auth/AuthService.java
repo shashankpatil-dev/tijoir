@@ -7,6 +7,12 @@ import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
 import com.tijoir.auth.dto.UserSummary;
 import com.tijoir.auth.dto.VerificationResponse;
+import com.tijoir.auth.dto.MfaChallengeVerifyRequest;
+import com.tijoir.auth.dto.MfaDisableRequest;
+import com.tijoir.auth.dto.MfaEnrollmentConfirmRequest;
+import com.tijoir.auth.dto.MfaEnrollmentStartResponse;
+import com.tijoir.auth.dto.MfaStatusResponse;
+import com.tijoir.auth.mfa.MfaChallengeService;
 import com.tijoir.auth.security.JwtService;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
@@ -35,6 +41,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final MfaChallengeService mfaChallengeService;
     private final long verificationExpirationMinutes;
     private final long refreshTokenExpirationDays;
 
@@ -45,6 +52,7 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
+            MfaChallengeService mfaChallengeService,
             @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes,
             @Value("${tijoir.security.refresh-token-expiration-days}") long refreshTokenExpirationDays
     ) {
@@ -54,6 +62,7 @@ public class AuthService {
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.mfaChallengeService = mfaChallengeService;
         this.verificationExpirationMinutes = verificationExpirationMinutes;
         this.refreshTokenExpirationDays = refreshTokenExpirationDays;
     }
@@ -102,6 +111,9 @@ public class AuthService {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
         ensureActive(user);
+        if (user.isMfaEnabled()) {
+            return new IssuedSession(mfaChallengeService.issueLoginChallenge(user), null);
+        }
         return issueAuthResponse(user, true);
     }
 
@@ -178,6 +190,32 @@ public class AuthService {
         return new RegisterResponse(null, verification.rawToken(), verification.expiresAt());
     }
 
+    @Transactional(readOnly = true)
+    public MfaStatusResponse mfaStatus(UUID userId) {
+        return mfaChallengeService.status(userId);
+    }
+
+    @Transactional
+    public MfaEnrollmentStartResponse startMfaEnrollment(UUID userId) {
+        return mfaChallengeService.startEnrollment(userId);
+    }
+
+    @Transactional
+    public MfaStatusResponse confirmMfaEnrollment(UUID userId, UUID organizationId, MfaEnrollmentConfirmRequest request) {
+        return mfaChallengeService.confirmEnrollment(userId, organizationId, request);
+    }
+
+    @Transactional
+    public IssuedSession verifyMfaChallenge(MfaChallengeVerifyRequest request) {
+        UserAccount user = mfaChallengeService.verifyLoginChallenge(request);
+        return issueAuthResponse(user, true);
+    }
+
+    @Transactional
+    public MfaStatusResponse disableMfa(UUID userId, UUID organizationId, MfaDisableRequest request) {
+        return mfaChallengeService.disable(userId, organizationId, request);
+    }
+
     private IssuedSession issueAuthResponse(UserAccount user, boolean includeRefreshToken) {
         ensureActive(user);
         JwtService.TokenResult accessToken = jwtService.issueToken(user);
@@ -190,7 +228,10 @@ public class AuthService {
                 accessToken.expiresAt(),
                 refreshToken != null ? refreshToken.expiresAt() : null,
                 userSummary(user),
-                organizationSummary(user.getOrganization())
+                organizationSummary(user.getOrganization()),
+                null,
+                null,
+                null
         ), refreshToken != null ? refreshToken.rawToken() : null);
     }
 
@@ -202,6 +243,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole(),
                 user.getEmailVerifiedAt() != null,
+                user.isMfaEnabled(),
                 user.getCreatedAt()
         );
     }

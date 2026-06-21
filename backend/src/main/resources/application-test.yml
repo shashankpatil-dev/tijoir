@@ -25,3 +25,5 @@ tijoir:
       enabled: true
     abuse-protection:
       enabled: true
+    mfa:
+      enabled: true

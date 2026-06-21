@@ -7,3 +7,10 @@ export type OrganizationPolicyResponse = {
   rotationReminderDays?: number | null;
   updatedAt?: string | null;
 };
+
+export type MfaSecurityState = {
+  challengeId: string;
+  expiresAt: string;
+  otpauthUri: string;
+  secret: string;
+};

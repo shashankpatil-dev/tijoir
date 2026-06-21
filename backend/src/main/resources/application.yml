@@ -61,3 +61,4 @@ tijoir:
       enabled: ${TIJOIR_REDIS_ABUSE_PROTECTION_ENABLED:false}
     mfa:
       enabled: ${TIJOIR_REDIS_MFA_ENABLED:false}
+      ttl-seconds: ${TIJOIR_REDIS_MFA_TTL_SECONDS:300}

@@ -40,6 +40,14 @@ public class UserAccount {
 
     private Instant emailVerifiedAt;
 
+    @Column(nullable = false)
+    private boolean mfaEnabled;
+
+    @Column(columnDefinition = "TEXT")
+    private String mfaSecretCiphertext;
+
+    private Instant mfaEnrolledAt;
+
     private Instant deactivatedAt;
 
     @Column(nullable = false)
@@ -80,6 +88,20 @@ public class UserAccount {
         }
     }
 
+    public void enableMfa(String secretCiphertext) {
+        this.mfaEnabled = true;
+        this.mfaSecretCiphertext = secretCiphertext;
+        if (mfaEnrolledAt == null) {
+            mfaEnrolledAt = Instant.now();
+        }
+    }
+
+    public void disableMfa() {
+        this.mfaEnabled = false;
+        this.mfaSecretCiphertext = null;
+        this.mfaEnrolledAt = null;
+    }
+
     public void changeRole(UserRole role) {
         this.role = role;
     }
@@ -116,6 +138,18 @@ public class UserAccount {
 
     public Instant getEmailVerifiedAt() {
         return emailVerifiedAt;
+    }
+
+    public boolean isMfaEnabled() {
+        return mfaEnabled;
+    }
+
+    public String getMfaSecretCiphertext() {
+        return mfaSecretCiphertext;
+    }
+
+    public Instant getMfaEnrolledAt() {
+        return mfaEnrolledAt;
     }
 
     public Instant getCreatedAt() {

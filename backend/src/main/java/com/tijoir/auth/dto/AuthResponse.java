@@ -12,6 +12,9 @@ public record AuthResponse(
         Instant expiresAt,
         Instant refreshExpiresAt,
         UserSummary user,
-        OrganizationSummary organization
+        OrganizationSummary organization,
+        Boolean mfaRequired,
+        String mfaChallengeId,
+        Instant mfaChallengeExpiresAt
 ) {
 }

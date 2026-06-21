@@ -28,7 +28,8 @@ export function readSession(): AuthResponse | null {
   try {
     const session = JSON.parse(raw) as AuthResponse;
     if (
-      new Date(session.expiresAt).getTime() <= Date.now() &&
+      (!session.expiresAt ||
+        new Date(session.expiresAt).getTime() <= Date.now()) &&
       !hasUsableRefreshToken(session)
     ) {
       clearSession();
@@ -44,6 +45,10 @@ export function readSession(): AuthResponse | null {
 export function saveSession(session: AuthResponse) {
   if (typeof window === "undefined") {
     return;
+  }
+
+  if (!session.accessToken || !session.expiresAt) {
+    throw new Error("Cannot persist an incomplete authenticated session.");
   }
 
   const existing = readStoredSession();

@@ -13,7 +13,7 @@ export default function DashboardOrganizationPage() {
   const members = useMembersWorkspace({
     handleSessionError: shell.handleSessionError,
     router: shell.router,
-    sessionAccessToken: shell.session?.accessToken,
+    sessionAccessToken: shell.session?.accessToken ?? undefined,
     sessionUserEmail: shell.session?.user.email,
     sessionUserRole: shell.session?.user.role,
     setActionBusy: shell.setActionBusy,
