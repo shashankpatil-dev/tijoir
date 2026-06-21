@@ -7,5 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface VendorRepository extends JpaRepository<Vendor, UUID>, JpaSpecificationExecutor<Vendor> {
+    long countByOrganizationId(UUID organizationId);
+
     Optional<Vendor> findByIdAndOrganizationId(UUID id, UUID organizationId);
 }

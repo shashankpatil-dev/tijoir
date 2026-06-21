@@ -19,5 +19,9 @@ tijoir:
       enabled: true
     idempotency:
       enabled: true
+    summary-cache:
+      enabled: true
+    policy-cache:
+      enabled: true
     abuse-protection:
       enabled: true

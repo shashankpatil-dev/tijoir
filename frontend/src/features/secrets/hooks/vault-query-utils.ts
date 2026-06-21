@@ -21,6 +21,9 @@ export async function invalidateVaultQueries({
 }) {
   await Promise.all([
     queryClient.invalidateQueries({
+      queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
+    }),
+    queryClient.invalidateQueries({
       queryKey: dashboardQueryKeys.secrets(accessToken),
     }),
     queryClient.invalidateQueries({

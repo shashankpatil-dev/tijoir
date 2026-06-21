@@ -10,6 +10,7 @@ import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
+import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
@@ -43,6 +44,8 @@ public class OrganizationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final AuditEventRepository auditEventRepository;
+    private final OrganizationPolicyCacheService organizationPolicyCacheService;
+    private final DashboardSummaryService dashboardSummaryService;
     private final ObjectMapper objectMapper;
     private final long inviteExpirationHours;
 
@@ -54,6 +57,8 @@ public class OrganizationService {
             PasswordEncoder passwordEncoder,
             AuthService authService,
             AuditEventRepository auditEventRepository,
+            OrganizationPolicyCacheService organizationPolicyCacheService,
+            DashboardSummaryService dashboardSummaryService,
             ObjectMapper objectMapper,
             @Value("${tijoir.security.organization-invite-expiration-hours}") long inviteExpirationHours
     ) {
@@ -64,6 +69,8 @@ public class OrganizationService {
         this.passwordEncoder = passwordEncoder;
         this.authService = authService;
         this.auditEventRepository = auditEventRepository;
+        this.organizationPolicyCacheService = organizationPolicyCacheService;
+        this.dashboardSummaryService = dashboardSummaryService;
         this.objectMapper = objectMapper;
         this.inviteExpirationHours = inviteExpirationHours;
     }
@@ -139,6 +146,7 @@ public class OrganizationService {
                 ))
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return toInviteResponse(invite, rawToken, Instant.now());
     }
 
@@ -166,6 +174,7 @@ public class OrganizationService {
                 ))
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return toInviteResponse(invite, null, Instant.now());
     }
 
@@ -213,6 +222,7 @@ public class OrganizationService {
                 ))
         ));
 
+        dashboardSummaryService.evict(invite.getOrganization().getId());
         return authService.issueSessionForUser(user);
     }
 
@@ -264,14 +274,14 @@ public class OrganizationService {
                         "role", target.getRole().name()
                 ))
         ));
+
+        dashboardSummaryService.evict(principal.organizationId());
     }
 
     @Transactional(readOnly = true)
     public OrganizationPolicyResponse getPolicy(AuthenticatedUser principal) {
         authorizationService.requireOrganizationManager(principal.role());
-        OrganizationPolicy policy = organizationPolicyRepository.findByOrganizationId(principal.organizationId())
-                .orElse(null);
-        return toPolicyResponse(policy);
+        return organizationPolicyCacheService.getPolicyResponse(principal.organizationId());
     }
 
     @Transactional
@@ -321,7 +331,8 @@ public class OrganizationService {
                 toJson(auditDetails)
         ));
 
-        return toPolicyResponse(policy);
+        organizationPolicyCacheService.evict(principal.organizationId());
+        return organizationPolicyCacheService.toResponse(policy);
     }
 
     private MemberResponse toMemberResponse(UserAccount user) {
@@ -347,30 +358,6 @@ public class OrganizationService {
                 invite.getCreatedAt(),
                 rawToken,
                 rawToken != null ? "/invite" : null
-        );
-    }
-
-    private OrganizationPolicyResponse toPolicyResponse(OrganizationPolicy policy) {
-        if (policy == null) {
-            return new OrganizationPolicyResponse(
-                    null,
-                    false,
-                    true,
-                    true,
-                    true,
-                    30,
-                    null
-            );
-        }
-
-        return new OrganizationPolicyResponse(
-                policy.getDefaultShareLinkExpiryHours(),
-                policy.isRequireVendorContractForShareLinks(),
-                policy.isAllowViewOnce(),
-                policy.isAllowViewUntilRevoked(),
-                policy.isAllowRotationNotifyOnly(),
-                policy.getRotationReminderDays(),
-                policy.getUpdatedAt()
         );
     }
 

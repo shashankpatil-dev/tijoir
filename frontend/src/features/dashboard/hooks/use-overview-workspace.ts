@@ -1,11 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
+import { fetchDashboardSummary } from "@/features/dashboard/api/dashboard.api";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
-import { fetchInvitesPage, fetchMembersPage } from "@/features/members/api/members.api";
-import { fetchSecretsPage } from "@/features/secrets/api/secrets.api";
-import { fetchShareLinksPage } from "@/features/share-links/api/share-links.api";
-import { fetchVendorsPage } from "@/features/vendors/api/vendors.api";
 
 export function useOverviewWorkspace({
   handleSessionError,
@@ -19,106 +16,23 @@ export function useOverviewWorkspace({
   const queryClient = useQueryClient();
   const accessToken = session?.accessToken;
 
-  const [secretSummaryQuery, activeShareLinksQuery, vendorSummaryQuery, memberSummaryQuery, inviteSummaryQuery] =
-    useQueries({
-      queries: [
-        {
-          queryKey: dashboardQueryKeys.secretsPage(accessToken, {
-            page: 0,
-            size: 1,
-            query: "",
-            type: "ALL",
-            status: "ALL",
-          }),
-          queryFn: () => fetchSecretsPage(accessToken as string, { page: 0, size: 1 }),
-          enabled: Boolean(accessToken),
-        },
-        {
-          queryKey: dashboardQueryKeys.shareLinksPage(accessToken, {
-            page: 0,
-            size: 1,
-            query: "",
-            permission: "ALL",
-            status: "ACTIVE",
-          }),
-          queryFn: () =>
-            fetchShareLinksPage(accessToken as string, {
-              page: 0,
-              size: 1,
-              status: "ACTIVE",
-            }),
-          enabled: Boolean(accessToken),
-        },
-        {
-          queryKey: dashboardQueryKeys.vendorsPage(accessToken, {
-            page: 0,
-            size: 1,
-            query: "",
-            status: "ALL",
-          }),
-          queryFn: () => fetchVendorsPage(accessToken as string, { page: 0, size: 1 }),
-          enabled: Boolean(accessToken),
-        },
-        {
-          queryKey: dashboardQueryKeys.membersPage(accessToken, {
-            page: 0,
-            size: 1,
-            query: "",
-            role: "ALL",
-          }),
-          queryFn: () => fetchMembersPage(accessToken as string, { page: 0, size: 1 }),
-          enabled: Boolean(accessToken && isOrganizationManager),
-        },
-        {
-          queryKey: dashboardQueryKeys.invitesPage(accessToken, {
-            page: 0,
-            size: 1,
-            query: "",
-            role: "ALL",
-            status: "PENDING",
-          }),
-          queryFn: () =>
-            fetchInvitesPage(accessToken as string, {
-              page: 0,
-              size: 1,
-              status: "PENDING",
-            }),
-          enabled: Boolean(accessToken && isOrganizationManager),
-        },
-      ],
-    });
+  const summaryQuery = useQuery({
+    queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
+    queryFn: () => fetchDashboardSummary(accessToken as string),
+    enabled: Boolean(accessToken),
+  });
 
   useEffect(() => {
-    const firstError =
-      secretSummaryQuery.error ||
-      activeShareLinksQuery.error ||
-      vendorSummaryQuery.error ||
-      memberSummaryQuery.error ||
-      inviteSummaryQuery.error;
-
-    if (firstError) {
-      handleSessionError(firstError, "Could not load overview summary");
+    if (summaryQuery.error) {
+      handleSessionError(summaryQuery.error, "Could not load overview summary");
     }
-  }, [
-    activeShareLinksQuery.error,
-    handleSessionError,
-    inviteSummaryQuery.error,
-    memberSummaryQuery.error,
-    secretSummaryQuery.error,
-    vendorSummaryQuery.error,
-  ]);
+  }, [handleSessionError, summaryQuery.error]);
 
-  const loadingOverview = [
-    secretSummaryQuery,
-    activeShareLinksQuery,
-    vendorSummaryQuery,
-    memberSummaryQuery,
-    inviteSummaryQuery,
-  ].some((query) => query.isLoading);
+  const loadingOverview = summaryQuery.isLoading;
 
   const activeSecret = useMemo(
-    () => secretSummaryQuery.data?.items?.[0] ?? null,
-    [secretSummaryQuery.data],
+    () => summaryQuery.data?.latestSecret ?? null,
+    [summaryQuery.data],
   );
 
   async function refreshOverview() {
@@ -128,31 +42,19 @@ export function useOverviewWorkspace({
 
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["dashboard", "secrets-page", accessToken],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard", "share-links-page", accessToken],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard", "vendors-page", accessToken],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard", "members-page", accessToken],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard", "invites-page", accessToken],
+        queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
       }),
     ]);
   }
 
   return {
     activeSecret,
-    activeShareLinks: activeShareLinksQuery.data?.totalElements ?? 0,
+    activeShareLinks: summaryQuery.data?.activeShareLinks ?? 0,
     loadingOverview,
-    memberCount: memberSummaryQuery.data?.totalElements ?? 0,
-    pendingInvites: inviteSummaryQuery.data?.totalElements ?? 0,
+    memberCount: isOrganizationManager ? summaryQuery.data?.memberCount ?? 0 : 0,
+    pendingInvites: isOrganizationManager ? summaryQuery.data?.pendingInvites ?? 0 : 0,
     refreshOverview,
-    secretCount: secretSummaryQuery.data?.totalElements ?? 0,
-    vendorCount: vendorSummaryQuery.data?.totalElements ?? 0,
+    secretCount: summaryQuery.data?.secretCount ?? 0,
+    vendorCount: summaryQuery.data?.vendorCount ?? 0,
   };
 }

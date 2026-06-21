@@ -123,9 +123,8 @@ resource "aws_lambda_function" "backend" {
   image_uri     = "${aws_ecr_repository.backend.repository_url}:${var.backend_image_tag}"
   role          = aws_iam_role.backend_lambda.arn
 
-  memory_size                    = var.lambda_memory_size
-  timeout                        = var.lambda_timeout
-  reserved_concurrent_executions = var.lambda_reserved_concurrent_executions
+  memory_size = var.lambda_memory_size
+  timeout     = var.lambda_timeout
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -147,6 +146,8 @@ resource "aws_lambda_function" "backend" {
       TIJOIR_REDIS_ENABLED                  = "true"
       TIJOIR_REDIS_RATE_LIMIT_ENABLED       = "true"
       TIJOIR_REDIS_IDEMPOTENCY_ENABLED      = "true"
+      TIJOIR_REDIS_SUMMARY_CACHE_ENABLED    = "true"
+      TIJOIR_REDIS_POLICY_CACHE_ENABLED     = "true"
       TIJOIR_REDIS_ABUSE_PROTECTION_ENABLED = "true"
       DB_POOL_MAX_SIZE                      = "2"
       DB_POOL_MIN_IDLE                      = "0"

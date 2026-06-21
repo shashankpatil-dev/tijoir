@@ -16,11 +16,12 @@ import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.contract.ContractPermission;
-import com.tijoir.organization.OrganizationPolicy;
-import com.tijoir.organization.OrganizationPolicyRepository;
+import com.tijoir.organization.OrganizationPolicyCacheService;
+import com.tijoir.organization.dto.OrganizationPolicyResponse;
 import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
+import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.secret.SecretPayloadStore;
 import com.tijoir.secret.SecretStatus;
 import com.tijoir.secret.SecretVersion;
@@ -58,11 +59,12 @@ public class ShareLinkService {
     private final UserAccountRepository userAccountRepository;
     private final VendorRepository vendorRepository;
     private final VendorAccessContractRepository vendorAccessContractRepository;
-    private final OrganizationPolicyRepository organizationPolicyRepository;
+    private final OrganizationPolicyCacheService organizationPolicyCacheService;
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
     private final ShareLinkConsumeGuard shareLinkConsumeGuard;
+    private final DashboardSummaryService dashboardSummaryService;
 
     public ShareLinkService(
             ShareLinkRepository shareLinkRepository,
@@ -72,11 +74,12 @@ public class ShareLinkService {
             UserAccountRepository userAccountRepository,
             VendorRepository vendorRepository,
             VendorAccessContractRepository vendorAccessContractRepository,
-            OrganizationPolicyRepository organizationPolicyRepository,
+            OrganizationPolicyCacheService organizationPolicyCacheService,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
             ObjectMapper objectMapper,
-            ShareLinkConsumeGuard shareLinkConsumeGuard
+            ShareLinkConsumeGuard shareLinkConsumeGuard,
+            DashboardSummaryService dashboardSummaryService
     ) {
         this.shareLinkRepository = shareLinkRepository;
         this.vaultSecretRepository = vaultSecretRepository;
@@ -85,11 +88,12 @@ public class ShareLinkService {
         this.userAccountRepository = userAccountRepository;
         this.vendorRepository = vendorRepository;
         this.vendorAccessContractRepository = vendorAccessContractRepository;
-        this.organizationPolicyRepository = organizationPolicyRepository;
+        this.organizationPolicyCacheService = organizationPolicyCacheService;
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
         this.objectMapper = objectMapper;
         this.shareLinkConsumeGuard = shareLinkConsumeGuard;
+        this.dashboardSummaryService = dashboardSummaryService;
     }
 
     @Transactional
@@ -102,7 +106,7 @@ public class ShareLinkService {
         }
         Vendor vendor = resolveVendor(principal.organizationId(), request.vendorId(), request.contractId());
         VendorAccessContract contract = resolveContract(principal.organizationId(), request.contractId(), vendor);
-        OrganizationPolicy policy = effectivePolicy(principal.organizationId());
+        OrganizationPolicyResponse policy = effectivePolicy(principal.organizationId());
         validatePolicy(policy, request.permission(), vendor, contract);
         validateContractAlignment(secret, request.permission(), vendor, contract);
         Instant expiresAt = effectiveExpiry(request.expiresAt(), contract, policy);
@@ -137,6 +141,7 @@ public class ShareLinkService {
                 toJson(auditDetails)
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return toResponse(shareLink, rawToken, shareLink.getStatus());
     }
 
@@ -181,6 +186,7 @@ public class ShareLinkService {
                             "permission", shareLink.getContractPermission().name()
                     ))
             ));
+            dashboardSummaryService.evict(principal.organizationId());
         }
 
         return toResponse(shareLink, null, shareLink.getStatus());
@@ -225,6 +231,7 @@ public class ShareLinkService {
 
             if (shareLink.getContractPermission() == ContractPermission.VIEW_ONCE) {
                 shareLink.consume();
+                dashboardSummaryService.evict(shareLink.getOrganization().getId());
             }
 
             auditEventRepository.save(new AuditEvent(
@@ -340,13 +347,12 @@ public class ShareLinkService {
         }
     }
 
-    private OrganizationPolicy effectivePolicy(UUID organizationId) {
-        return organizationPolicyRepository.findByOrganizationId(organizationId)
-                .orElse(null);
+    private OrganizationPolicyResponse effectivePolicy(UUID organizationId) {
+        return organizationPolicyCacheService.getPolicyResponse(organizationId);
     }
 
     private void validatePolicy(
-            OrganizationPolicy policy,
+            OrganizationPolicyResponse policy,
             ContractPermission permission,
             Vendor vendor,
             VendorAccessContract contract
@@ -354,19 +360,19 @@ public class ShareLinkService {
         if (policy == null) {
             return;
         }
-        if (policy.isRequireVendorContractForShareLinks() && contract == null) {
+        if (policy.requireVendorContractForShareLinks() && contract == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Organization policy requires an active vendor contract for share links");
         }
-        if (vendor != null && policy.isRequireVendorContractForShareLinks() && contract == null) {
+        if (vendor != null && policy.requireVendorContractForShareLinks() && contract == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Organization policy requires an active vendor contract for vendor share links");
         }
-        if (permission == ContractPermission.VIEW_ONCE && !policy.isAllowViewOnce()) {
+        if (permission == ContractPermission.VIEW_ONCE && !policy.allowViewOnce()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Organization policy does not allow VIEW_ONCE share links");
         }
-        if (permission == ContractPermission.VIEW_UNTIL_REVOKED && !policy.isAllowViewUntilRevoked()) {
+        if (permission == ContractPermission.VIEW_UNTIL_REVOKED && !policy.allowViewUntilRevoked()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Organization policy does not allow VIEW_UNTIL_REVOKED share links");
         }
-        if (permission == ContractPermission.ROTATION_NOTIFY_ONLY && !policy.isAllowRotationNotifyOnly()) {
+        if (permission == ContractPermission.ROTATION_NOTIFY_ONLY && !policy.allowRotationNotifyOnly()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Organization policy does not allow ROTATION_NOTIFY_ONLY share links");
         }
     }
@@ -374,11 +380,11 @@ public class ShareLinkService {
     private Instant effectiveExpiry(
             Instant requestedExpiry,
             VendorAccessContract contract,
-            OrganizationPolicy policy
+            OrganizationPolicyResponse policy
     ) {
         Instant effectiveRequestedExpiry = requestedExpiry;
-        if (effectiveRequestedExpiry == null && policy != null && policy.getDefaultShareLinkExpiryHours() != null) {
-            effectiveRequestedExpiry = Instant.now().plusSeconds(policy.getDefaultShareLinkExpiryHours() * 60L * 60L);
+        if (effectiveRequestedExpiry == null && policy != null && policy.defaultShareLinkExpiryHours() != null) {
+            effectiveRequestedExpiry = Instant.now().plusSeconds(policy.defaultShareLinkExpiryHours() * 60L * 60L);
         }
         if (contract == null) {
             return effectiveRequestedExpiry;

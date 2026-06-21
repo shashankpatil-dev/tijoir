@@ -1,5 +1,7 @@
 export const dashboardQueryKeys = {
   me: (accessToken?: string) => ["dashboard", "me", accessToken] as const,
+  dashboardSummary: (accessToken?: string) =>
+    ["dashboard", "summary", accessToken] as const,
   secrets: (accessToken?: string) => ["dashboard", "secrets", accessToken] as const,
   secretsPage: (
     accessToken: string | undefined,

@@ -16,6 +16,7 @@ import com.tijoir.connection.dto.VendorResponse;
 import com.tijoir.contract.ContractPermission;
 import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.UserAccount;
+import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.secret.SecretStatus;
 import com.tijoir.secret.VaultSecret;
 import com.tijoir.secret.VaultSecretRepository;
@@ -46,6 +47,7 @@ public class VendorService {
     private final ShareLinkRepository shareLinkRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
+    private final DashboardSummaryService dashboardSummaryService;
     private final ObjectMapper objectMapper;
 
     public VendorService(
@@ -55,6 +57,7 @@ public class VendorService {
             ShareLinkRepository shareLinkRepository,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
+            DashboardSummaryService dashboardSummaryService,
             ObjectMapper objectMapper
     ) {
         this.vendorRepository = vendorRepository;
@@ -63,6 +66,7 @@ public class VendorService {
         this.shareLinkRepository = shareLinkRepository;
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
+        this.dashboardSummaryService = dashboardSummaryService;
         this.objectMapper = objectMapper;
     }
 
@@ -108,6 +112,7 @@ public class VendorService {
                 toJson(auditDetails)
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return toVendorResponse(vendor);
     }
 
@@ -255,6 +260,7 @@ public class VendorService {
                 ))
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return new OffboardVendorResponse(
                 vendor.getId(),
                 vendor.getName(),

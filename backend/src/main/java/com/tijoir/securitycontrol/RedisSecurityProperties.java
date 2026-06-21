@@ -8,8 +8,8 @@ public class RedisSecurityProperties {
     private final Feature shareLinkLock = new Feature();
     private final Feature rateLimit = new Feature();
     private final IdempotencyFeature idempotency = new IdempotencyFeature();
-    private final Feature summaryCache = new Feature();
-    private final Feature policyCache = new Feature();
+    private final TimedFeature summaryCache = new TimedFeature(20);
+    private final TimedFeature policyCache = new TimedFeature(60);
     private final Feature abuseProtection = new Feature();
     private final Feature mfa = new Feature();
 
@@ -33,11 +33,11 @@ public class RedisSecurityProperties {
         return idempotency;
     }
 
-    public Feature getSummaryCache() {
+    public TimedFeature getSummaryCache() {
         return summaryCache;
     }
 
-    public Feature getPolicyCache() {
+    public TimedFeature getPolicyCache() {
         return policyCache;
     }
 
@@ -79,6 +79,25 @@ public class RedisSecurityProperties {
 
         public void setLockSeconds(long lockSeconds) {
             this.lockSeconds = lockSeconds;
+        }
+    }
+
+    public static class TimedFeature extends Feature {
+        private long ttlSeconds;
+
+        public TimedFeature() {
+        }
+
+        public TimedFeature(long ttlSeconds) {
+            this.ttlSeconds = ttlSeconds;
+        }
+
+        public long getTtlSeconds() {
+            return ttlSeconds;
+        }
+
+        public void setTtlSeconds(long ttlSeconds) {
+            this.ttlSeconds = ttlSeconds;
         }
     }
 }

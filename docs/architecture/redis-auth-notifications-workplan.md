@@ -45,13 +45,13 @@ What exists now:
   - auth and public-link rate limiting
   - auth and public-link abuse cooldowns
   - idempotent replay protection for selected mutation APIs
+  - organization dashboard summary caching
+  - organization policy read-model caching
 - Local and test environments use in-memory Redis-compatible stores outside
   production.
 
 What does not exist yet:
 
-- no dashboard summary cache
-- no organization-policy cache
 - no MFA challenge state
 
 ### Notifications and Email
@@ -310,7 +310,7 @@ Status: completed
 
 ### Phase 3
 
-Status: next
+Status: completed
 
 - dashboard summary cache
 - policy cache

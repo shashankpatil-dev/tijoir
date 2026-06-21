@@ -52,6 +52,9 @@ export async function invalidateMembersQueries({
 }) {
   await Promise.all([
     queryClient.invalidateQueries({
+      queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
+    }),
+    queryClient.invalidateQueries({
       queryKey: dashboardQueryKeys.members(accessToken),
     }),
     queryClient.invalidateQueries({
@@ -77,6 +80,9 @@ export async function invalidateInvitesQueries({
   status: string;
 }) {
   await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
+    }),
     queryClient.invalidateQueries({
       queryKey: dashboardQueryKeys.invites(accessToken),
     }),

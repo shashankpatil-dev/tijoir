@@ -9,6 +9,7 @@ import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
+import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
@@ -42,6 +43,7 @@ public class SecretService {
     private final OrganizationAuthorizationService authorizationService;
     private final SecretPayloadStore secretPayloadStore;
     private final AuditEventRepository auditEventRepository;
+    private final DashboardSummaryService dashboardSummaryService;
     private final ObjectMapper objectMapper;
 
     public SecretService(
@@ -51,6 +53,7 @@ public class SecretService {
             OrganizationAuthorizationService authorizationService,
             SecretPayloadStore secretPayloadStore,
             AuditEventRepository auditEventRepository,
+            DashboardSummaryService dashboardSummaryService,
             ObjectMapper objectMapper
     ) {
         this.vaultSecretRepository = vaultSecretRepository;
@@ -59,6 +62,7 @@ public class SecretService {
         this.authorizationService = authorizationService;
         this.secretPayloadStore = secretPayloadStore;
         this.auditEventRepository = auditEventRepository;
+        this.dashboardSummaryService = dashboardSummaryService;
         this.objectMapper = objectMapper;
     }
 
@@ -101,6 +105,7 @@ public class SecretService {
                 ))
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return detail(secret);
     }
 

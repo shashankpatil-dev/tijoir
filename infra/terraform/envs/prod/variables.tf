@@ -51,12 +51,6 @@ variable "lambda_timeout" {
   default     = 60
 }
 
-variable "lambda_reserved_concurrent_executions" {
-  description = "Reserved concurrency for the backend Lambda to cap database pressure."
-  type        = number
-  default     = 3
-}
-
 variable "database_name" {
   description = "PostgreSQL database name."
   type        = string

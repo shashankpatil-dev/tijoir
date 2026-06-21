@@ -39,6 +39,9 @@ export async function invalidateShareLinksQueries({
 }) {
   await Promise.all([
     queryClient.invalidateQueries({
+      queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
+    }),
+    queryClient.invalidateQueries({
       queryKey: dashboardQueryKeys.shareLinks(accessToken),
     }),
     queryClient.invalidateQueries({

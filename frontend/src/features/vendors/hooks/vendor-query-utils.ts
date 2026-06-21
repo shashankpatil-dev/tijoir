@@ -23,6 +23,9 @@ export async function invalidateVendorWorkspaceQueries({
 }) {
   await Promise.all([
     queryClient.invalidateQueries({
+      queryKey: dashboardQueryKeys.dashboardSummary(accessToken),
+    }),
+    queryClient.invalidateQueries({
       queryKey: dashboardQueryKeys.vendors(accessToken),
     }),
     queryClient.invalidateQueries({
