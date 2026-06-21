@@ -9,12 +9,15 @@ import com.tijoir.auth.dto.ResendVerificationRequest;
 import com.tijoir.auth.dto.VerificationResponse;
 import com.tijoir.auth.dto.VerifyEmailRequest;
 import com.tijoir.auth.security.AuthenticatedUser;
+import com.tijoir.securitycontrol.AuthSecurityService;
+import com.tijoir.securitycontrol.ClientIpResolver;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,21 +30,40 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthService authService;
     private final AuthCookieService authCookieService;
+    private final AuthSecurityService authSecurityService;
+    private final ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthService authService, AuthCookieService authCookieService) {
+    public AuthController(
+            AuthService authService,
+            AuthCookieService authCookieService,
+            AuthSecurityService authSecurityService,
+            ClientIpResolver clientIpResolver
+    ) {
         this.authService = authService;
         this.authCookieService = authCookieService;
+        this.authSecurityService = authSecurityService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
+    public RegisterResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpServletRequest) {
+        authSecurityService.assertRegisterAllowed(request, clientIpResolver.resolve(httpServletRequest));
         return authService.register(request);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return sessionResponse(authService.login(request));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
+        String clientIp = clientIpResolver.resolve(httpServletRequest);
+        authSecurityService.assertLoginAllowed(request, clientIp);
+        try {
+            ResponseEntity<AuthResponse> response = sessionResponse(authService.login(request));
+            authSecurityService.recordSuccessfulLogin(request, clientIp);
+            return response;
+        } catch (BadCredentialsException exception) {
+            authSecurityService.recordFailedLogin(request, clientIp);
+            throw exception;
+        }
     }
 
     @PostMapping("/refresh")
@@ -49,6 +71,7 @@ public class AuthController {
             @RequestBody(required = false) RefreshRequest request,
             HttpServletRequest httpServletRequest
     ) {
+        authSecurityService.assertRefreshAllowed(clientIpResolver.resolve(httpServletRequest));
         String refreshToken = resolveRefreshToken(request, httpServletRequest);
         return sessionResponse(authService.refresh(refreshToken));
     }
@@ -74,12 +97,14 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public VerificationResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+    public VerificationResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest request, HttpServletRequest httpServletRequest) {
+        authSecurityService.assertVerifyEmailAllowed(request.token(), clientIpResolver.resolve(httpServletRequest));
         return authService.verifyEmail(request.token());
     }
 
     @PostMapping("/resend-verification")
-    public RegisterResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+    public RegisterResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request, HttpServletRequest httpServletRequest) {
+        authSecurityService.assertResendVerificationAllowed(request.email(), clientIpResolver.resolve(httpServletRequest));
         return authService.resendVerification(request.email());
     }
 

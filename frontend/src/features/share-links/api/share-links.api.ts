@@ -1,6 +1,7 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
+import { createIdempotencyKey } from "@/lib/api/idempotency";
 import type { PageResponse } from "@/lib/api/types";
 import type {
   ContractPermission,
@@ -48,7 +49,11 @@ export async function createShareLink(
   return authenticatedApiRequest<ShareLinkResponse>(
     "/api/share-links",
     accessToken,
-    { method: "POST", body: JSON.stringify(payload) },
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": createIdempotencyKey() },
+      body: JSON.stringify(payload),
+    },
   );
 }
 

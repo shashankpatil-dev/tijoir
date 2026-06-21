@@ -158,4 +158,107 @@ class AuthControllerIntegrationTest {
                         .cookie(loginResult.getResponse().getCookie("tijoir_refresh")))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void failedLoginAttemptsTriggerCooldownForSameEmailAndNetwork() throws Exception {
+        String registerResponse = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "Acme Cooldown",
+                                  "organizationEmail": "security@acme-cooldown.test",
+                                  "userName": "Acme Owner",
+                                  "userEmail": "owner@acme-cooldown.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String verificationToken = objectMapper.readTree(registerResponse).get("emailVerificationToken").asText();
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .header("X-Forwarded-For", "203.0.113.10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + verificationToken + "\"}"))
+                .andExpect(status().isOk());
+
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .header("X-Forwarded-For", "203.0.113.10")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "email": "owner@acme-cooldown.test",
+                                      "password": "WrongPass@123"
+                                    }
+                                    """))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", "203.0.113.10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-cooldown.test",
+                                  "password": "WrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many failed login attempts. Try again later."));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", "203.0.113.10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-cooldown.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many failed login attempts. Try again later."));
+    }
+
+    @Test
+    void resendVerificationIsRateLimitedPerEmail() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .header("X-Forwarded-For", "198.51.100.22")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "Acme Resend",
+                                  "organizationEmail": "security@acme-resend.test",
+                                  "userName": "Acme Owner",
+                                  "userEmail": "owner@acme-resend.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            mockMvc.perform(post("/api/auth/resend-verification")
+                            .header("X-Forwarded-For", "198.51.100.22")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "email": "owner@acme-resend.test"
+                                    }
+                                    """))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .header("X-Forwarded-For", "198.51.100.23")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-resend.test"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many verification resend attempts for this email. Try again later."));
+    }
 }

@@ -2,7 +2,9 @@ package com.tijoir.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import com.tijoir.securitycontrol.RateLimitException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,6 +19,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {
         return build(ex.getStatus(), ex.getMessage(), request, List.of());
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimit(RateLimitException ex, HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()));
+        return build(ex.getStatus(), ex.getMessage(), request, List.of("retryAfterSeconds: " + ex.getRetryAfterSeconds()), headers);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
@@ -49,6 +58,10 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request, List<String> details) {
+        return build(status, message, request, details, new HttpHeaders());
+    }
+
+    private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request, List<String> details, HttpHeaders headers) {
         ErrorResponse body = new ErrorResponse(
                 Instant.now(),
                 status.value(),
@@ -57,7 +70,8 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 details
         );
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status)
+                .headers(headers)
+                .body(body);
     }
 }
-

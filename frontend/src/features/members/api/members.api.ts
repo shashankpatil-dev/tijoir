@@ -1,6 +1,7 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
+import { createIdempotencyKey } from "@/lib/api/idempotency";
 import type { PageResponse } from "@/lib/api/types";
 import type {
   InviteSummary,
@@ -66,7 +67,11 @@ export async function createInvite(
   return authenticatedApiRequest<InviteSummary>(
     "/api/organization/invites",
     accessToken,
-    { method: "POST", body: JSON.stringify(payload) },
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": createIdempotencyKey() },
+      body: JSON.stringify(payload),
+    },
   );
 }
 

@@ -5,6 +5,8 @@ import com.tijoir.auth.AuthCookieService;
 import com.tijoir.auth.AuthService;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.paging.PageResponse;
+import com.tijoir.securitycontrol.IdempotencyService;
+import com.tijoir.securitycontrol.IdempotentResponse;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,10 +38,16 @@ import java.util.UUID;
 public class OrganizationController {
     private final OrganizationService organizationService;
     private final AuthCookieService authCookieService;
+    private final IdempotencyService idempotencyService;
 
-    public OrganizationController(OrganizationService organizationService, AuthCookieService authCookieService) {
+    public OrganizationController(
+            OrganizationService organizationService,
+            AuthCookieService authCookieService,
+            IdempotencyService idempotencyService
+    ) {
         this.organizationService = organizationService;
         this.authCookieService = authCookieService;
+        this.idempotencyService = idempotencyService;
     }
 
     @GetMapping("/members")
@@ -96,12 +105,20 @@ public class OrganizationController {
     }
 
     @PostMapping("/invites")
-    @ResponseStatus(HttpStatus.CREATED)
-    public InviteResponse createInvite(
+    public ResponseEntity<InviteResponse> createInvite(
             @AuthenticationPrincipal AuthenticatedUser user,
-            @Valid @RequestBody CreateInviteRequest request
+            @Valid @RequestBody CreateInviteRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
-        return organizationService.createInvite(user, request);
+        IdempotentResponse<InviteResponse> response = idempotencyService.execute(
+                user,
+                "organization-invite-create",
+                idempotencyKey,
+                request,
+                InviteResponse.class,
+                () -> IdempotentResponse.created(organizationService.createInvite(user, request))
+        );
+        return ResponseEntity.status(response.status()).body(response.body());
     }
 
     @PostMapping("/invites/{inviteId}/revoke")

@@ -313,6 +313,75 @@ class ShareLinkControllerIntegrationTest {
                 .andExpect(jsonPath("$.permission").value("VIEW_UNTIL_REVOKED"));
     }
 
+    @Test
+    void repeatedMissingPublicShareTokenRequestsTriggerCooldown() throws Exception {
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            mockMvc.perform(get("/api/public/share-links/missing-token-" + attempt)
+                            .header("X-Forwarded-For", "203.0.113.44"))
+                    .andExpect(status().isNotFound());
+        }
+
+        mockMvc.perform(get("/api/public/share-links/missing-token-5")
+                        .header("X-Forwarded-For", "203.0.113.44"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many invalid public share link attempts. Try again later."));
+
+        mockMvc.perform(get("/api/public/share-links/another-missing-token")
+                        .header("X-Forwarded-For", "203.0.113.44"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many invalid public share link attempts. Try again later."));
+    }
+
+    @Test
+    void createShareLinkWithSameIdempotencyKeyReturnsOriginalResponse() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Share Replay", "owner@acme-share-replay.test");
+        String secretId = createSecret(ownerToken, "Vendor Shared Secret", "API_KEY", "shared-secret-value");
+        String idempotencyKey = "share-link-create-key";
+
+        String firstResponse = mockMvc.perform(post("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "recipientLabel": "Primary vendor",
+                                  "permission": "VIEW_ONCE"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String secondResponse = mockMvc.perform(post("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "recipientLabel": "Primary vendor",
+                                  "permission": "VIEW_ONCE"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode first = objectMapper.readTree(firstResponse);
+        JsonNode second = objectMapper.readTree(secondResponse);
+
+        org.junit.jupiter.api.Assertions.assertEquals(first.get("id").asText(), second.get("id").asText());
+        org.junit.jupiter.api.Assertions.assertEquals(first.get("shareToken").asText(), second.get("shareToken").asText());
+
+        mockMvc.perform(get("/api/share-links")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
     private String createSecret(String ownerToken, String name, String type, String value) throws Exception {
         String createResponse = mockMvc.perform(post("/api/secrets")
                         .header("Authorization", "Bearer " + ownerToken)

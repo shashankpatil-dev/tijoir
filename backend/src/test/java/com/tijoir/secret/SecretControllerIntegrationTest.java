@@ -261,6 +261,87 @@ class SecretControllerIntegrationTest {
                 .andExpect(jsonPath("$.items[0].name").value("Vendor Webhook Secret"));
     }
 
+    @Test
+    void createSecretWithSameIdempotencyKeyReturnsOriginalResponse() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Idempotent Vault", "owner@acme-idempotent-vault.test");
+        String idempotencyKey = "secret-create-key";
+
+        String firstResponse = mockMvc.perform(post("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Vendor API Secret",
+                                  "type": "API_KEY",
+                                  "value": "super-secret-key"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String secondResponse = mockMvc.perform(post("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Vendor API Secret",
+                                  "type": "API_KEY",
+                                  "value": "super-secret-key"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode first = objectMapper.readTree(firstResponse);
+        JsonNode second = objectMapper.readTree(secondResponse);
+
+        org.junit.jupiter.api.Assertions.assertEquals(first.get("id").asText(), second.get("id").asText());
+
+        mockMvc.perform(get("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    void reusedIdempotencyKeyWithDifferentSecretPayloadConflicts() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Conflict Vault", "owner@acme-conflict-vault.test");
+        String idempotencyKey = "secret-conflict-key";
+
+        mockMvc.perform(post("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Primary API Secret",
+                                  "type": "API_KEY",
+                                  "value": "first-secret-value"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/secrets")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Secondary API Secret",
+                                  "type": "API_KEY",
+                                  "value": "second-secret-value"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Idempotency key was already used for a different request"));
+    }
+
     private String registerVerifyAndLogin(String organizationName, String ownerEmail) throws Exception {
         String registerResponse = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

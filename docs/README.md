@@ -11,4 +11,5 @@ Recommended starting points:
 
 - [architecture/aws-production.md](architecture/aws-production.md)
 - [architecture/performance-and-cache-roadmap.md](architecture/performance-and-cache-roadmap.md)
+- [architecture/redis-auth-notifications-workplan.md](architecture/redis-auth-notifications-workplan.md)
 - [frontend/ui-ux-spec.md](frontend/ui-ux-spec.md)

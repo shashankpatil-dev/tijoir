@@ -11,3 +11,13 @@ spring:
       ddl-auto: create-drop
   flyway:
     enabled: false
+
+tijoir:
+  redis:
+    enabled: true
+    rate-limit:
+      enabled: true
+    idempotency:
+      enabled: true
+    abuse-protection:
+      enabled: true

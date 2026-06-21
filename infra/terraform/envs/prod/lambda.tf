@@ -134,21 +134,25 @@ resource "aws_lambda_function" "backend" {
 
   environment {
     variables = {
-      SPRING_PROFILES_ACTIVE        = "prod"
-      DATABASE_SECRET_ARN           = aws_secretsmanager_secret.database.arn
-      SECURITY_CONTROL_TABLE_NAME   = aws_dynamodb_table.security_control.name
-      APP_SECRET_NAME_PREFIX        = "${local.name_prefix}/app/"
-      APP_SECRETS_PLACEHOLDER_ARN   = aws_secretsmanager_secret.app_secret_prefix.arn
-      AWS_KMS_KEY_ID                = aws_kms_key.app.arn
-      JWT_SECRET                    = random_password.jwt_secret.result
-      CORS_ALLOWED_ORIGINS          = join(",", var.allowed_cors_origins)
-      REDIS_HOST                    = aws_elasticache_replication_group.redis.primary_endpoint_address
-      REDIS_PORT                    = tostring(aws_elasticache_replication_group.redis.port)
-      DB_POOL_MAX_SIZE              = "2"
-      DB_POOL_MIN_IDLE              = "0"
-      DB_POOL_CONNECTION_TIMEOUT_MS = "5000"
-      DB_POOL_IDLE_TIMEOUT_MS       = "60000"
-      DB_POOL_MAX_LIFETIME_MS       = "300000"
+      SPRING_PROFILES_ACTIVE                = "prod"
+      DATABASE_SECRET_ARN                   = aws_secretsmanager_secret.database.arn
+      SECURITY_CONTROL_TABLE_NAME           = aws_dynamodb_table.security_control.name
+      APP_SECRET_NAME_PREFIX                = "${local.name_prefix}/app/"
+      APP_SECRETS_PLACEHOLDER_ARN           = aws_secretsmanager_secret.app_secret_prefix.arn
+      AWS_KMS_KEY_ID                        = aws_kms_key.app.arn
+      JWT_SECRET                            = random_password.jwt_secret.result
+      CORS_ALLOWED_ORIGINS                  = join(",", var.allowed_cors_origins)
+      REDIS_HOST                            = aws_elasticache_replication_group.redis.primary_endpoint_address
+      REDIS_PORT                            = tostring(aws_elasticache_replication_group.redis.port)
+      TIJOIR_REDIS_ENABLED                  = "true"
+      TIJOIR_REDIS_RATE_LIMIT_ENABLED       = "true"
+      TIJOIR_REDIS_IDEMPOTENCY_ENABLED      = "true"
+      TIJOIR_REDIS_ABUSE_PROTECTION_ENABLED = "true"
+      DB_POOL_MAX_SIZE                      = "2"
+      DB_POOL_MIN_IDLE                      = "0"
+      DB_POOL_CONNECTION_TIMEOUT_MS         = "5000"
+      DB_POOL_IDLE_TIMEOUT_MS               = "60000"
+      DB_POOL_MAX_LIFETIME_MS               = "300000"
     }
   }
 
