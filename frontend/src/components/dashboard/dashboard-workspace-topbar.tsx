@@ -54,6 +54,9 @@ export function DashboardWorkspaceTopbarActions({
           </>
         }
       >
+        <MenuItem onClick={() => workspace.router.push("/dashboard/notifications")}>
+          <MenuHint label="Notifications" text="Review verification and invite delivery activity." />
+        </MenuItem>
         {workspace.isOrganizationManager ? (
           <MenuItem onClick={() => workspace.router.push("/dashboard/organization")}>
             <MenuHint label="Organization" text="Open team and access administration." />

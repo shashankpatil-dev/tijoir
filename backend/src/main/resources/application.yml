@@ -24,6 +24,8 @@ server:
   port: ${SERVER_PORT:8080}
 
 tijoir:
+  app:
+    public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:3000}
   security:
     jwt-secret: ${JWT_SECRET:change-me-in-local-env}
     jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:15}
@@ -62,3 +64,14 @@ tijoir:
     mfa:
       enabled: ${TIJOIR_REDIS_MFA_ENABLED:false}
       ttl-seconds: ${TIJOIR_REDIS_MFA_TTL_SECONDS:300}
+  notifications:
+    enabled: ${TIJOIR_NOTIFICATIONS_ENABLED:true}
+    expose-dev-tokens: ${TIJOIR_NOTIFICATIONS_EXPOSE_DEV_TOKENS:true}
+    email:
+      enabled: ${TIJOIR_NOTIFICATION_EMAIL_ENABLED:true}
+      provider: ${TIJOIR_NOTIFICATION_EMAIL_PROVIDER:noop}
+      from-address: ${TIJOIR_NOTIFICATION_EMAIL_FROM_ADDRESS:no-reply@localhost}
+      verification:
+        enabled: ${TIJOIR_NOTIFICATION_EMAIL_VERIFICATION_ENABLED:true}
+      invites:
+        enabled: ${TIJOIR_NOTIFICATION_EMAIL_INVITES_ENABLED:true}

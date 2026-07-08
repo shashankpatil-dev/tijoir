@@ -22,12 +22,14 @@ export type AuthResponse = {
 };
 
 export type RegisterResponse = {
+  verificationRequired?: boolean;
+  verificationEmailRequested?: boolean;
   emailVerificationToken?: string;
   emailVerificationExpiresAt?: string;
 };
 
 export type PendingVerification = {
-  token: string;
+  token?: string;
   email: string;
   expiresAt?: string;
 };

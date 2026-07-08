@@ -1,5 +1,6 @@
 package com.tijoir.organization.dto;
 
+import com.tijoir.notification.NotificationEmailDeliveryStatus;
 import com.tijoir.organization.OrganizationInviteStatus;
 import com.tijoir.organization.UserRole;
 
@@ -15,6 +16,7 @@ public record InviteResponse(
         Instant expiresAt,
         Instant acceptedAt,
         Instant createdAt,
+        NotificationEmailDeliveryStatus emailDeliveryStatus,
         String inviteToken,
         String acceptPath
 ) {

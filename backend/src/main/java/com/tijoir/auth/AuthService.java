@@ -16,6 +16,8 @@ import com.tijoir.auth.mfa.MfaChallengeService;
 import com.tijoir.auth.security.JwtService;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
+import com.tijoir.notification.NotificationEventPublisher;
+import com.tijoir.notification.NotificationProperties;
 import com.tijoir.organization.Organization;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
@@ -42,6 +44,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final MfaChallengeService mfaChallengeService;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final NotificationProperties notificationProperties;
     private final long verificationExpirationMinutes;
     private final long refreshTokenExpirationDays;
 
@@ -53,6 +57,8 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             MfaChallengeService mfaChallengeService,
+            NotificationEventPublisher notificationEventPublisher,
+            NotificationProperties notificationProperties,
             @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes,
             @Value("${tijoir.security.refresh-token-expiration-days}") long refreshTokenExpirationDays
     ) {
@@ -63,6 +69,8 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.mfaChallengeService = mfaChallengeService;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.notificationProperties = notificationProperties;
         this.verificationExpirationMinutes = verificationExpirationMinutes;
         this.refreshTokenExpirationDays = refreshTokenExpirationDays;
     }
@@ -92,10 +100,13 @@ public class AuthService {
                 UserRole.ORG_OWNER
         ));
         VerificationTokenResult verification = createVerificationToken(user);
+        notificationEventPublisher.publishVerificationRequested(user, verification.rawToken(), verification.expiresAt(), false);
 
         return new RegisterResponse(
                 null,
-                verification.rawToken(),
+                true,
+                true,
+                notificationProperties.isExposeDevTokens() ? verification.rawToken() : null,
                 verification.expiresAt()
         );
     }
@@ -184,10 +195,17 @@ public class AuthService {
         UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(email))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         if (user.getEmailVerifiedAt() != null) {
-            return new RegisterResponse(null, null, null);
+            return new RegisterResponse(null, false, false, null, null);
         }
         VerificationTokenResult verification = createVerificationToken(user);
-        return new RegisterResponse(null, verification.rawToken(), verification.expiresAt());
+        notificationEventPublisher.publishVerificationRequested(user, verification.rawToken(), verification.expiresAt(), true);
+        return new RegisterResponse(
+                null,
+                true,
+                true,
+                notificationProperties.isExposeDevTokens() ? verification.rawToken() : null,
+                verification.expiresAt()
+        );
     }
 
     @Transactional(readOnly = true)

@@ -133,14 +133,16 @@ export function FormField({
 export function PrimaryButton({
   children,
   busy,
+  disabled,
 }: {
   children: ReactNode;
   busy?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       className="w-full rounded-2xl bg-[var(--color-brand)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-strong)] disabled:cursor-not-allowed disabled:opacity-60"
-      disabled={busy}
+      disabled={busy || disabled}
       type="submit"
     >
       {children}

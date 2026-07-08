@@ -17,3 +17,9 @@ database_deletion_protection  = true
 redis_node_type               = "cache.t4g.micro"
 lambda_memory_size            = 1024
 lambda_timeout                = 30
+
+notifications_enabled         = true
+notification_expose_dev_tokens = true
+notification_email_enabled    = false
+notification_email_provider   = "noop"
+notification_email_from_address = "no-reply@example.com"

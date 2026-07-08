@@ -27,3 +27,13 @@ tijoir:
       enabled: true
     mfa:
       enabled: true
+  notifications:
+    enabled: true
+    expose-dev-tokens: true
+    email:
+      enabled: true
+      provider: noop
+      verification:
+        enabled: true
+      invites:
+        enabled: true

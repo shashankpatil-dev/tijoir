@@ -90,6 +90,7 @@ export function DashboardWorkspaceProvider({
       { id: "vault", label: "Vault", note: "Secrets and rotation" },
       { id: "vendors", label: "Vendors", note: "Entities and contracts" },
       { id: "share", label: "Share Links", note: "Recipient access" },
+      { id: "notifications", label: "Notifications", note: "Verification and invite delivery" },
     ];
 
     if (isOrganizationManager) {

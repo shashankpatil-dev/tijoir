@@ -104,3 +104,33 @@ variable "enable_secrets_manager_vpc_endpoint" {
   type        = bool
   default     = true
 }
+
+variable "notifications_enabled" {
+  description = "Enable in-app notification creation."
+  type        = bool
+  default     = true
+}
+
+variable "notification_expose_dev_tokens" {
+  description = "Expose verification and invite tokens directly when SES delivery is not configured yet."
+  type        = bool
+  default     = true
+}
+
+variable "notification_email_enabled" {
+  description = "Enable transactional email delivery."
+  type        = bool
+  default     = false
+}
+
+variable "notification_email_provider" {
+  description = "Transactional email provider."
+  type        = string
+  default     = "noop"
+}
+
+variable "notification_email_from_address" {
+  description = "Verified sender email address for transactional notifications."
+  type        = string
+  default     = "no-reply@localhost"
+}

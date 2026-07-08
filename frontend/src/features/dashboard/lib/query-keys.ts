@@ -15,6 +15,10 @@ export const dashboardQueryKeys = {
     accessToken: string | undefined,
     params: { page: number; size: number; query: string; permission: string; status: string },
   ) => ["dashboard", "share-links-page", accessToken, params] as const,
+  notificationsPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number },
+  ) => ["dashboard", "notifications-page", accessToken, params] as const,
   vendors: (accessToken?: string) => ["dashboard", "vendors", accessToken] as const,
   vendorsPage: (
     accessToken: string | undefined,

@@ -3,6 +3,7 @@ export type DashboardViewKey =
   | "vault"
   | "vendors"
   | "share"
+  | "notifications"
   | "organization"
   | "audit"
   | "settings"
@@ -17,6 +18,9 @@ export function viewFromPath(pathname: string): DashboardViewKey {
   }
   if (pathname.includes("/dashboard/vendors")) {
     return "vendors";
+  }
+  if (pathname.includes("/dashboard/notifications")) {
+    return "notifications";
   }
   if (pathname.includes("/dashboard/organization")) {
     return "organization";
@@ -44,6 +48,8 @@ export function viewPath(view: DashboardViewKey) {
       return "/dashboard/vendors";
     case "share":
       return "/dashboard/share-links";
+    case "notifications":
+      return "/dashboard/notifications";
     case "organization":
       return "/dashboard/organization";
     case "audit":
@@ -66,6 +72,8 @@ export function titleForView(view: DashboardViewKey) {
       return "Vendors";
     case "share":
       return "Share Links";
+    case "notifications":
+      return "Notifications";
     case "organization":
       return "Organization";
     case "audit":

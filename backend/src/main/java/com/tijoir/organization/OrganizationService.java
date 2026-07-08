@@ -11,6 +11,9 @@ import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.dashboard.DashboardSummaryService;
+import com.tijoir.notification.NotificationEmailDeliveryStatus;
+import com.tijoir.notification.NotificationEventPublisher;
+import com.tijoir.notification.NotificationProperties;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
@@ -46,6 +49,8 @@ public class OrganizationService {
     private final AuditEventRepository auditEventRepository;
     private final OrganizationPolicyCacheService organizationPolicyCacheService;
     private final DashboardSummaryService dashboardSummaryService;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final NotificationProperties notificationProperties;
     private final ObjectMapper objectMapper;
     private final long inviteExpirationHours;
 
@@ -59,6 +64,8 @@ public class OrganizationService {
             AuditEventRepository auditEventRepository,
             OrganizationPolicyCacheService organizationPolicyCacheService,
             DashboardSummaryService dashboardSummaryService,
+            NotificationEventPublisher notificationEventPublisher,
+            NotificationProperties notificationProperties,
             ObjectMapper objectMapper,
             @Value("${tijoir.security.organization-invite-expiration-hours}") long inviteExpirationHours
     ) {
@@ -71,6 +78,8 @@ public class OrganizationService {
         this.auditEventRepository = auditEventRepository;
         this.organizationPolicyCacheService = organizationPolicyCacheService;
         this.dashboardSummaryService = dashboardSummaryService;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.notificationProperties = notificationProperties;
         this.objectMapper = objectMapper;
         this.inviteExpirationHours = inviteExpirationHours;
     }
@@ -147,7 +156,12 @@ public class OrganizationService {
         ));
 
         dashboardSummaryService.evict(principal.organizationId());
-        return toInviteResponse(invite, rawToken, Instant.now());
+        notificationEventPublisher.publishInviteCreated(actor, invite, rawToken);
+        return toInviteResponse(
+                invite,
+                notificationProperties.isExposeDevTokens() ? rawToken : null,
+                Instant.now()
+        );
     }
 
     @Transactional
@@ -356,6 +370,7 @@ public class OrganizationService {
                 invite.getExpiresAt(),
                 invite.getAcceptedAt(),
                 invite.getCreatedAt(),
+                rawToken != null ? NotificationEmailDeliveryStatus.SKIPPED : NotificationEmailDeliveryStatus.NOT_REQUESTED,
                 rawToken,
                 rawToken != null ? "/invite" : null
         );

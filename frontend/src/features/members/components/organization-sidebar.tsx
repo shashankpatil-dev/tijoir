@@ -15,8 +15,8 @@ export function OrganizationSidebar({
   return (
     <div className="space-y-5">
       <PageSection
-        description="The newest invite package is staged here so the owner or admin can hand it to the recipient while email delivery remains out of scope."
-        title="Latest invite package"
+        description="A development invite package is shown here only when raw invite tokens are exposed. In production, recipients should accept from email."
+        title="Latest invite preview"
       >
         {lastCreatedInvite ? (
           <div className="space-y-4">
@@ -33,8 +33,8 @@ export function OrganizationSidebar({
           </div>
         ) : (
           <EmptyState
-            description="Create an invite to stage the member onboarding URL and token."
-            title="No invite package yet"
+            description="Create an invite to send a member onboarding email. A raw preview appears only in development-style flows."
+            title="No invite preview available"
           />
         )}
       </PageSection>
@@ -54,7 +54,7 @@ export function OrganizationSidebar({
           />
           <SurfaceNote
             label="Invite handoff"
-            value="Use the latest invite package to onboard users until email delivery is enabled."
+            value="Use email delivery for recipient onboarding. Share raw invite tokens only in local or test flows."
           />
         </div>
       </PageSection>

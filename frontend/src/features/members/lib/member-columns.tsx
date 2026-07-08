@@ -127,6 +127,15 @@ export function buildInviteColumns({
       render: (invite) => <Badge tone={statusTone(invite.status)}>{invite.status}</Badge>,
     },
     {
+      key: "delivery",
+      label: "Delivery",
+      render: (invite) => (
+        <Badge tone={invite.emailDeliveryStatus === "FAILED" ? "warning" : "info"}>
+          {invite.emailDeliveryStatus || "UNKNOWN"}
+        </Badge>
+      ),
+    },
+    {
       key: "expiresAt",
       label: "Expiry",
       render: (invite) => formatInstant(invite.expiresAt),

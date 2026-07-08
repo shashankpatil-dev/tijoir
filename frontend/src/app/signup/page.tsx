@@ -46,18 +46,18 @@ export default function SignupPage() {
         }),
       });
 
-      if (result.emailVerificationToken) {
-        savePendingVerification({
-          token: result.emailVerificationToken,
-          email: userEmail,
-          expiresAt: result.emailVerificationExpiresAt,
-        });
-      }
+      savePendingVerification({
+        token: result.emailVerificationToken,
+        email: userEmail,
+        expiresAt: result.emailVerificationExpiresAt,
+      });
 
-      setMessage("Registration complete. Continue to email verification.");
+      setMessage("Registration complete. Check email to verify the owner account.");
       showToast({
         title: "Signup complete",
-        description: "Organization owner created. Continue to verification.",
+        description: result.emailVerificationToken
+          ? "Organization owner created. Continue to verification."
+          : "Organization owner created. Check the inbox for the verification link.",
         tone: "success",
       });
       router.push("/verify");

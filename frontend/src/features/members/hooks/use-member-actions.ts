@@ -119,7 +119,9 @@ export function useMemberActions({
       setMessage(`Invite created for ${created.email}.`);
       showToast({
         title: "Invite created",
-        description: `${created.email} can now accept the organization invite.`,
+        description: preview
+          ? `${created.email} can now accept the organization invite.`
+          : `${created.email} can now accept the invite from the emailed link.`,
         tone: "success",
       });
     } catch (error) {
