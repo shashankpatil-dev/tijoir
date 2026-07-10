@@ -4,7 +4,12 @@ import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
+import com.tijoir.notification.email.EmailMessage;
+import com.tijoir.notification.email.EmailSender;
+import com.tijoir.notification.email.EmailTemplateFactory;
 import com.tijoir.notification.dto.NotificationResponse;
+import com.tijoir.organization.OrganizationInvite;
+import com.tijoir.organization.UserAccount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -12,14 +17,29 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
 public class NotificationService {
     private final NotificationRecordRepository notificationRecordRepository;
+    private final NotificationProperties notificationProperties;
+    private final NotificationLinkFactory notificationLinkFactory;
+    private final EmailTemplateFactory emailTemplateFactory;
+    private final EmailSender emailSender;
 
-    public NotificationService(NotificationRecordRepository notificationRecordRepository) {
+    public NotificationService(
+            NotificationRecordRepository notificationRecordRepository,
+            NotificationProperties notificationProperties,
+            NotificationLinkFactory notificationLinkFactory,
+            EmailTemplateFactory emailTemplateFactory,
+            EmailSender emailSender
+    ) {
         this.notificationRecordRepository = notificationRecordRepository;
+        this.notificationProperties = notificationProperties;
+        this.notificationLinkFactory = notificationLinkFactory;
+        this.emailTemplateFactory = emailTemplateFactory;
+        this.emailSender = emailSender;
     }
 
     @Transactional(readOnly = true)
@@ -38,6 +58,81 @@ public class NotificationService {
         return toResponse(record);
     }
 
+    @Transactional
+    public void recordVerificationRequested(UserAccount user, String rawToken, Instant expiresAt, boolean resend) {
+        if (!notificationProperties.isEnabled()) {
+            return;
+        }
+
+        NotificationType type = resend ? NotificationType.EMAIL_VERIFICATION_RESEND : NotificationType.EMAIL_VERIFICATION;
+        String actionUrl = notificationLinkFactory.verificationLink(rawToken, user.getEmail());
+        boolean shouldSendEmail = notificationProperties.getEmail().isEnabled()
+                && notificationProperties.getEmail().getVerification().isEnabled();
+
+        NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
+                user.getOrganization(),
+                user,
+                type,
+                resend ? "Verification email resent" : "Verification email prepared",
+                resend
+                        ? "A fresh verification link was issued for %s.".formatted(user.getEmail())
+                        : "A verification link was issued for %s.".formatted(user.getEmail()),
+                actionUrl,
+                user.getEmail(),
+                shouldSendEmail ? NotificationEmailDeliveryStatus.NOT_REQUESTED : NotificationEmailDeliveryStatus.SKIPPED
+        ));
+
+        if (!shouldSendEmail) {
+            record.markSkipped();
+            return;
+        }
+
+        EmailMessage message = emailTemplateFactory.verificationMessage(
+                user.getEmail(),
+                user.getName(),
+                user.getOrganization().getName(),
+                actionUrl,
+                expiresAt,
+                resend
+        );
+        applyDeliveryResult(record, emailSender.send(message));
+    }
+
+    @Transactional
+    public void recordInviteCreated(UserAccount actor, OrganizationInvite invite, String rawToken) {
+        if (!notificationProperties.isEnabled()) {
+            return;
+        }
+
+        String actionUrl = notificationLinkFactory.inviteLink(rawToken);
+        boolean shouldSendEmail = notificationProperties.getEmail().isEnabled()
+                && notificationProperties.getEmail().getInvites().isEnabled();
+
+        NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
+                actor.getOrganization(),
+                actor,
+                NotificationType.ORGANIZATION_INVITE,
+                "Organization invite created",
+                "An organization invite was issued for %s.".formatted(invite.getEmail()),
+                actionUrl,
+                invite.getEmail(),
+                shouldSendEmail ? NotificationEmailDeliveryStatus.NOT_REQUESTED : NotificationEmailDeliveryStatus.SKIPPED
+        ));
+
+        if (!shouldSendEmail) {
+            record.markSkipped();
+            return;
+        }
+
+        EmailMessage message = emailTemplateFactory.inviteMessage(
+                invite.getEmail(),
+                actor.getOrganization().getName(),
+                actionUrl,
+                invite.getExpiresAt()
+        );
+        applyDeliveryResult(record, emailSender.send(message));
+    }
+
     private NotificationResponse toResponse(NotificationRecord record) {
         return new NotificationResponse(
                 record.getId(),
@@ -51,5 +146,17 @@ public class NotificationService {
                 record.getDeliveredAt(),
                 record.getCreatedAt()
         );
+    }
+
+    private void applyDeliveryResult(NotificationRecord record, EmailSender.DeliveryResult result) {
+        if (result.delivered()) {
+            record.markDelivered();
+            return;
+        }
+        if (result.skipped()) {
+            record.markSkipped();
+            return;
+        }
+        record.markFailed(result.error());
     }
 }

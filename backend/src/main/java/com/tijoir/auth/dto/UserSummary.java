@@ -12,7 +12,6 @@ public record UserSummary(
         String email,
         UserRole role,
         boolean emailVerified,
-        boolean mfaEnabled,
         Instant createdAt
 ) {
 }

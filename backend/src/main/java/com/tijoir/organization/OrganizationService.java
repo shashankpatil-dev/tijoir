@@ -12,8 +12,8 @@ import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.notification.NotificationEmailDeliveryStatus;
-import com.tijoir.notification.NotificationEventPublisher;
 import com.tijoir.notification.NotificationProperties;
+import com.tijoir.notification.NotificationService;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
@@ -47,9 +47,8 @@ public class OrganizationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final AuditEventRepository auditEventRepository;
-    private final OrganizationPolicyCacheService organizationPolicyCacheService;
     private final DashboardSummaryService dashboardSummaryService;
-    private final NotificationEventPublisher notificationEventPublisher;
+    private final NotificationService notificationService;
     private final NotificationProperties notificationProperties;
     private final ObjectMapper objectMapper;
     private final long inviteExpirationHours;
@@ -62,9 +61,8 @@ public class OrganizationService {
             PasswordEncoder passwordEncoder,
             AuthService authService,
             AuditEventRepository auditEventRepository,
-            OrganizationPolicyCacheService organizationPolicyCacheService,
             DashboardSummaryService dashboardSummaryService,
-            NotificationEventPublisher notificationEventPublisher,
+            NotificationService notificationService,
             NotificationProperties notificationProperties,
             ObjectMapper objectMapper,
             @Value("${tijoir.security.organization-invite-expiration-hours}") long inviteExpirationHours
@@ -76,9 +74,8 @@ public class OrganizationService {
         this.passwordEncoder = passwordEncoder;
         this.authService = authService;
         this.auditEventRepository = auditEventRepository;
-        this.organizationPolicyCacheService = organizationPolicyCacheService;
         this.dashboardSummaryService = dashboardSummaryService;
-        this.notificationEventPublisher = notificationEventPublisher;
+        this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
         this.objectMapper = objectMapper;
         this.inviteExpirationHours = inviteExpirationHours;
@@ -156,7 +153,7 @@ public class OrganizationService {
         ));
 
         dashboardSummaryService.evict(principal.organizationId());
-        notificationEventPublisher.publishInviteCreated(actor, invite, rawToken);
+        notificationService.recordInviteCreated(actor, invite, rawToken);
         return toInviteResponse(
                 invite,
                 notificationProperties.isExposeDevTokens() ? rawToken : null,
@@ -295,7 +292,7 @@ public class OrganizationService {
     @Transactional(readOnly = true)
     public OrganizationPolicyResponse getPolicy(AuthenticatedUser principal) {
         authorizationService.requireOrganizationManager(principal.role());
-        return organizationPolicyCacheService.getPolicyResponse(principal.organizationId());
+        return toPolicyResponse(organizationPolicyRepository.findByOrganizationId(principal.organizationId()).orElse(null));
     }
 
     @Transactional
@@ -345,8 +342,7 @@ public class OrganizationService {
                 toJson(auditDetails)
         ));
 
-        organizationPolicyCacheService.evict(principal.organizationId());
-        return organizationPolicyCacheService.toResponse(policy);
+        return toPolicyResponse(policy);
     }
 
     private MemberResponse toMemberResponse(UserAccount user) {
@@ -373,6 +369,29 @@ public class OrganizationService {
                 rawToken != null ? NotificationEmailDeliveryStatus.SKIPPED : NotificationEmailDeliveryStatus.NOT_REQUESTED,
                 rawToken,
                 rawToken != null ? "/invite" : null
+        );
+    }
+
+    private OrganizationPolicyResponse toPolicyResponse(OrganizationPolicy policy) {
+        if (policy == null) {
+            return new OrganizationPolicyResponse(
+                    null,
+                    false,
+                    true,
+                    true,
+                    true,
+                    30,
+                    null
+            );
+        }
+        return new OrganizationPolicyResponse(
+                policy.getDefaultShareLinkExpiryHours(),
+                policy.isRequireVendorContractForShareLinks(),
+                policy.isAllowViewOnce(),
+                policy.isAllowViewUntilRevoked(),
+                policy.isAllowRotationNotifyOnly(),
+                policy.getRotationReminderDays(),
+                policy.getUpdatedAt()
         );
     }
 

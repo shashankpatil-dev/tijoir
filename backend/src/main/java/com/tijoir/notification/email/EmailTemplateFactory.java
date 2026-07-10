@@ -1,9 +1,8 @@
 package com.tijoir.notification.email;
 
-import com.tijoir.notification.NotificationEvent;
-import com.tijoir.notification.NotificationType;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
@@ -11,17 +10,15 @@ import java.time.format.DateTimeFormatter;
 public class EmailTemplateFactory {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneOffset.UTC);
 
-    public EmailMessage build(NotificationEvent event) {
-        return switch (event.type()) {
-            case EMAIL_VERIFICATION, EMAIL_VERIFICATION_RESEND -> verificationMessage(event);
-            case ORGANIZATION_INVITE -> inviteMessage(event);
-        };
-    }
-
-    private EmailMessage verificationMessage(NotificationEvent event) {
-        String subject = event.type() == NotificationType.EMAIL_VERIFICATION_RESEND
-                ? "Your Tijoir verification link"
-                : "Verify your Tijoir account";
+    public EmailMessage verificationMessage(
+            String recipientEmail,
+            String recipientName,
+            String organizationName,
+            String actionUrl,
+            Instant expiresAt,
+            boolean resend
+    ) {
+        String subject = resend ? "Your Tijoir verification link" : "Verify your Tijoir account";
         String body = """
                 Hello %s,
 
@@ -32,15 +29,20 @@ public class EmailTemplateFactory {
 
                 If you did not initiate this request, you can ignore this email.
                 """.formatted(
-                safeName(event.recipientName()),
-                event.organizationName(),
-                event.actionUrl(),
-                FORMATTER.format(event.expiresAt())
+                safeName(recipientName),
+                organizationName,
+                actionUrl,
+                FORMATTER.format(expiresAt)
         );
-        return new EmailMessage(event.recipientEmail(), subject, body);
+        return new EmailMessage(recipientEmail, subject, body);
     }
 
-    private EmailMessage inviteMessage(NotificationEvent event) {
+    public EmailMessage inviteMessage(
+            String recipientEmail,
+            String organizationName,
+            String actionUrl,
+            Instant expiresAt
+    ) {
         String body = """
                 Hello,
 
@@ -51,11 +53,11 @@ public class EmailTemplateFactory {
 
                 This invite expires at %s.
                 """.formatted(
-                event.organizationName(),
-                event.actionUrl(),
-                FORMATTER.format(event.expiresAt())
+                organizationName,
+                actionUrl,
+                FORMATTER.format(expiresAt)
         );
-        return new EmailMessage(event.recipientEmail(), "You're invited to Tijoir", body);
+        return new EmailMessage(recipientEmail, "You're invited to Tijoir", body);
     }
 
     private String safeName(String name) {

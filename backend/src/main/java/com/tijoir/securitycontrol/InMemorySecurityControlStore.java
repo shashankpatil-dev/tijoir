@@ -1,7 +1,5 @@
 package com.tijoir.securitycontrol;
 
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -10,8 +8,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-@Primary
-@Profile("!prod")
 public class InMemorySecurityControlStore implements SecurityControlStore {
     private final ConcurrentHashMap<String, Entry> entries = new ConcurrentHashMap<>();
 

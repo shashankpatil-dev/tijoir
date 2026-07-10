@@ -13,20 +13,6 @@ spring:
     enabled: false
 
 tijoir:
-  redis:
-    enabled: true
-    rate-limit:
-      enabled: true
-    idempotency:
-      enabled: true
-    summary-cache:
-      enabled: true
-    policy-cache:
-      enabled: true
-    abuse-protection:
-      enabled: true
-    mfa:
-      enabled: true
   notifications:
     enabled: true
     expose-dev-tokens: true

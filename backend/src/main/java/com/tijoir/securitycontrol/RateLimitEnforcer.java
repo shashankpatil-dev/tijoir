@@ -13,18 +13,12 @@ public class RateLimitEnforcer {
     private static final Logger log = LoggerFactory.getLogger(RateLimitEnforcer.class);
 
     private final SecurityControlStore store;
-    private final RedisSecurityProperties properties;
 
-    public RateLimitEnforcer(SecurityControlStore store, RedisSecurityProperties properties) {
+    public RateLimitEnforcer(SecurityControlStore store) {
         this.store = store;
-        this.properties = properties;
     }
 
     public void assertWithinLimit(String scope, String identifier, RateLimitRule rule) {
-        if (!properties.isEnabled() || !properties.getRateLimit().isEnabled()) {
-            return;
-        }
-
         try {
             SecurityControlStore.CounterState state = store.increment(rateKey(scope, identifier), rule.window());
             if (state.value() > rule.limit()) {

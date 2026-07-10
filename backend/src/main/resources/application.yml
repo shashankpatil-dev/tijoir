@@ -11,14 +11,6 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: ${REDIS_TIMEOUT:2s}
-      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
-      repositories:
-        enabled: false
 
 server:
   port: ${SERVER_PORT:8080}
@@ -41,29 +33,7 @@ tijoir:
     region: ${AWS_REGION:ap-south-1}
     database-secret-arn: ${DATABASE_SECRET_ARN:}
     app-secret-name-prefix: ${APP_SECRET_NAME_PREFIX:tijoir/local/app/}
-    security-control-table-name: ${SECURITY_CONTROL_TABLE_NAME:}
     kms-key-id: ${AWS_KMS_KEY_ID:}
-  redis:
-    enabled: ${TIJOIR_REDIS_ENABLED:false}
-    share-link-lock:
-      enabled: ${TIJOIR_REDIS_SHARE_LINK_LOCK_ENABLED:false}
-    rate-limit:
-      enabled: ${TIJOIR_REDIS_RATE_LIMIT_ENABLED:false}
-    idempotency:
-      enabled: ${TIJOIR_REDIS_IDEMPOTENCY_ENABLED:false}
-      ttl-hours: ${TIJOIR_REDIS_IDEMPOTENCY_TTL_HOURS:24}
-      lock-seconds: ${TIJOIR_REDIS_IDEMPOTENCY_LOCK_SECONDS:30}
-    summary-cache:
-      enabled: ${TIJOIR_REDIS_SUMMARY_CACHE_ENABLED:false}
-      ttl-seconds: ${TIJOIR_REDIS_SUMMARY_CACHE_TTL_SECONDS:20}
-    policy-cache:
-      enabled: ${TIJOIR_REDIS_POLICY_CACHE_ENABLED:false}
-      ttl-seconds: ${TIJOIR_REDIS_POLICY_CACHE_TTL_SECONDS:60}
-    abuse-protection:
-      enabled: ${TIJOIR_REDIS_ABUSE_PROTECTION_ENABLED:false}
-    mfa:
-      enabled: ${TIJOIR_REDIS_MFA_ENABLED:false}
-      ttl-seconds: ${TIJOIR_REDIS_MFA_TTL_SECONDS:300}
   notifications:
     enabled: ${TIJOIR_NOTIFICATIONS_ENABLED:true}
     expose-dev-tokens: ${TIJOIR_NOTIFICATIONS_EXPOSE_DEV_TOKENS:true}

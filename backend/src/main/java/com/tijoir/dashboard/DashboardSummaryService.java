@@ -1,7 +1,6 @@
 package com.tijoir.dashboard;
 
 import com.tijoir.auth.security.AuthenticatedUser;
-import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.connection.VendorRepository;
 import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.OrganizationInviteRepository;
@@ -11,12 +10,9 @@ import com.tijoir.organization.UserRole;
 import com.tijoir.secret.VaultSecret;
 import com.tijoir.secret.VaultSecretRepository;
 import com.tijoir.secret.dto.SecretSummaryResponse;
-import com.tijoir.securitycontrol.ReadModelCacheService;
-import com.tijoir.securitycontrol.RedisSecurityProperties;
 import com.tijoir.sharelink.ShareLinkRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -28,8 +24,6 @@ public class DashboardSummaryService {
     private final UserAccountRepository userAccountRepository;
     private final OrganizationInviteRepository organizationInviteRepository;
     private final OrganizationAuthorizationService organizationAuthorizationService;
-    private final ReadModelCacheService readModelCacheService;
-    private final RedisSecurityProperties redisSecurityProperties;
 
     public DashboardSummaryService(
             VaultSecretRepository vaultSecretRepository,
@@ -37,9 +31,7 @@ public class DashboardSummaryService {
             VendorRepository vendorRepository,
             UserAccountRepository userAccountRepository,
             OrganizationInviteRepository organizationInviteRepository,
-            OrganizationAuthorizationService organizationAuthorizationService,
-            ReadModelCacheService readModelCacheService,
-            RedisSecurityProperties redisSecurityProperties
+            OrganizationAuthorizationService organizationAuthorizationService
     ) {
         this.vaultSecretRepository = vaultSecretRepository;
         this.shareLinkRepository = shareLinkRepository;
@@ -47,34 +39,14 @@ public class DashboardSummaryService {
         this.userAccountRepository = userAccountRepository;
         this.organizationInviteRepository = organizationInviteRepository;
         this.organizationAuthorizationService = organizationAuthorizationService;
-        this.readModelCacheService = readModelCacheService;
-        this.redisSecurityProperties = redisSecurityProperties;
     }
 
     public DashboardSummaryResponse getSummary(AuthenticatedUser principal) {
         UserAccount actor = organizationAuthorizationService.requireActor(principal);
-        UUID organizationId = actor.getOrganization().getId();
-        if (!cacheEnabled()) {
-            return loadSummary(actor);
-        }
-
-        String cacheKey = cacheKey(organizationId);
-        return readModelCacheService.get(cacheKey, DashboardSummaryResponse.class)
-                .orElseGet(() -> {
-                    DashboardSummaryResponse response = loadSummary(actor);
-                    readModelCacheService.put(
-                            cacheKey,
-                            response,
-                            Duration.ofSeconds(redisSecurityProperties.getSummaryCache().getTtlSeconds())
-                    );
-                    return response;
-                });
+        return loadSummary(actor);
     }
 
     public void evict(UUID organizationId) {
-        if (cacheEnabled()) {
-            readModelCacheService.evict(cacheKey(organizationId));
-        }
     }
 
     private DashboardSummaryResponse loadSummary(UserAccount actor) {
@@ -103,13 +75,5 @@ public class DashboardSummaryService {
                 secret.getCurrentVersionNumber(),
                 secret.getCreatedAt()
         );
-    }
-
-    private boolean cacheEnabled() {
-        return redisSecurityProperties.isEnabled() && redisSecurityProperties.getSummaryCache().isEnabled();
-    }
-
-    private String cacheKey(UUID organizationId) {
-        return "tijoir:read-model:summary:%s".formatted(CryptoUtil.sha256Hex(organizationId.toString()));
     }
 }

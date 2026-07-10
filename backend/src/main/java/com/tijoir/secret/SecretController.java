@@ -2,8 +2,6 @@ package com.tijoir.secret;
 
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.paging.PageResponse;
-import com.tijoir.securitycontrol.IdempotencyService;
-import com.tijoir.securitycontrol.IdempotentResponse;
 import com.tijoir.secret.dto.CreateSecretRequest;
 import com.tijoir.secret.dto.GenerateSecretRequest;
 import com.tijoir.secret.dto.GeneratedSecretResponse;
@@ -20,38 +18,25 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/secrets")
 public class SecretController {
     private final SecretService secretService;
-    private final IdempotencyService idempotencyService;
 
-    public SecretController(SecretService secretService, IdempotencyService idempotencyService) {
+    public SecretController(SecretService secretService) {
         this.secretService = secretService;
-        this.idempotencyService = idempotencyService;
     }
 
     @PostMapping
     public ResponseEntity<SecretDetailResponse> create(
             @AuthenticationPrincipal AuthenticatedUser user,
-            @Valid @RequestBody CreateSecretRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+            @Valid @RequestBody CreateSecretRequest request
     ) {
-        IdempotentResponse<SecretDetailResponse> response = idempotencyService.execute(
-                user,
-                "secret-create",
-                idempotencyKey,
-                request,
-                SecretDetailResponse.class,
-                () -> IdempotentResponse.created(secretService.create(user, request))
-        );
-        return ResponseEntity.status(response.status()).body(response.body());
+        return ResponseEntity.status(201).body(secretService.create(user, request));
     }
 
     @PostMapping("/generate")
@@ -102,17 +87,8 @@ public class SecretController {
     public ResponseEntity<SecretDetailResponse> rotate(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID secretId,
-            @Valid @RequestBody RotateSecretRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+            @Valid @RequestBody RotateSecretRequest request
     ) {
-        IdempotentResponse<SecretDetailResponse> response = idempotencyService.execute(
-                user,
-                "secret-rotate",
-                idempotencyKey,
-                Map.of("secretId", secretId, "request", request),
-                SecretDetailResponse.class,
-                () -> IdempotentResponse.ok(secretService.rotate(user, secretId, request))
-        );
-        return ResponseEntity.status(response.status()).body(response.body());
+        return ResponseEntity.ok(secretService.rotate(user, secretId, request));
     }
 }

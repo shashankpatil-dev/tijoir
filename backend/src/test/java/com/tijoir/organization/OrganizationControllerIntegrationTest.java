@@ -262,52 +262,6 @@ class OrganizationControllerIntegrationTest {
                 .andExpect(jsonPath("$.requireVendorContractForShareLinks").value(true));
     }
 
-    @Test
-    void createInviteWithSameIdempotencyKeyReturnsOriginalResponse() throws Exception {
-        String ownerToken = registerVerifyAndLogin("Acme Invite Replay", "owner@acme-invite-replay.test");
-        String idempotencyKey = "invite-create-key";
-
-        String firstResponse = mockMvc.perform(post("/api/organization/invites")
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .header("Idempotency-Key", idempotencyKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "member@acme-invite-replay.test",
-                                  "role": "MEMBER"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        String secondResponse = mockMvc.perform(post("/api/organization/invites")
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .header("Idempotency-Key", idempotencyKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "member@acme-invite-replay.test",
-                                  "role": "MEMBER"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        JsonNode first = objectMapper.readTree(firstResponse);
-        JsonNode second = objectMapper.readTree(secondResponse);
-
-        org.junit.jupiter.api.Assertions.assertEquals(first.get("id").asText(), second.get("id").asText());
-        org.junit.jupiter.api.Assertions.assertEquals(first.get("inviteToken").asText(), second.get("inviteToken").asText());
-
-        mockMvc.perform(get("/api/organization/invites")
-                        .header("Authorization", "Bearer " + ownerToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items.length()").value(1));
-    }
 
     private String inviteAndAccept(
             String managerToken,

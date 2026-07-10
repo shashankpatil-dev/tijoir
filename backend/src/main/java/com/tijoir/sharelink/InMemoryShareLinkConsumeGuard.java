@@ -1,8 +1,6 @@
 package com.tijoir.sharelink;
 
 import com.tijoir.common.exception.ApiException;
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -10,8 +8,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-@Primary
-@Profile("!prod")
 public class InMemoryShareLinkConsumeGuard implements ShareLinkConsumeGuard {
     private final Set<String> activeLocks = ConcurrentHashMap.newKeySet();
 

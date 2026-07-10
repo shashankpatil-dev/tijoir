@@ -7,8 +7,6 @@ import com.tijoir.connection.dto.CreateVendorRequest;
 import com.tijoir.connection.dto.OffboardVendorResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
 import com.tijoir.connection.dto.VendorResponse;
-import com.tijoir.securitycontrol.IdempotencyService;
-import com.tijoir.securitycontrol.IdempotentResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,23 +15,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/vendors")
 public class VendorController {
     private final VendorService vendorService;
-    private final IdempotencyService idempotencyService;
 
-    public VendorController(VendorService vendorService, IdempotencyService idempotencyService) {
+    public VendorController(VendorService vendorService) {
         this.vendorService = vendorService;
-        this.idempotencyService = idempotencyService;
     }
 
     @GetMapping
@@ -97,17 +91,8 @@ public class VendorController {
     @PostMapping("/{vendorId}/offboard")
     public ResponseEntity<OffboardVendorResponse> offboard(
             @AuthenticationPrincipal AuthenticatedUser user,
-            @PathVariable UUID vendorId,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+            @PathVariable UUID vendorId
     ) {
-        IdempotentResponse<OffboardVendorResponse> response = idempotencyService.execute(
-                user,
-                "vendor-offboard",
-                idempotencyKey,
-                Map.of("vendorId", vendorId),
-                OffboardVendorResponse.class,
-                () -> IdempotentResponse.ok(vendorService.offboard(user, vendorId))
-        );
-        return ResponseEntity.status(response.status()).body(response.body());
+        return ResponseEntity.ok(vendorService.offboard(user, vendorId));
     }
 }

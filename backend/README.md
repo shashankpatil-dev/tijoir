@@ -21,6 +21,5 @@ common        config, exceptions, security controls, AWS, and shared utilities
 
 ```text
 PostgreSQL
-Redis
-AWS credentials for production secret storage
+AWS credentials for the deferred production secret-storage path
 ```

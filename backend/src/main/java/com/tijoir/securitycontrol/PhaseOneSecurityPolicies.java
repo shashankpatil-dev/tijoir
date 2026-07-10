@@ -28,11 +28,8 @@ public final class PhaseOneSecurityPolicies {
             new RateLimitRule(100, Duration.ofMinutes(10), "Too many share link reveal attempts. Try again later.");
     public static final RateLimitRule PUBLIC_SHARE_CONSUME_PER_TOKEN =
             new RateLimitRule(10, Duration.ofMinutes(10), "Too many share link reveal attempts for this token. Try again later.");
-
-    public static final AbuseCooldownRule LOGIN_FAILURE_PER_EMAIL_AND_IP =
-            new AbuseCooldownRule(5, Duration.ofMinutes(15), Duration.ofMinutes(15), "Too many failed login attempts. Try again later.");
-    public static final AbuseCooldownRule LOGIN_FAILURE_PER_IP =
-            new AbuseCooldownRule(12, Duration.ofMinutes(15), Duration.ofMinutes(15), "Too many failed login attempts from this network. Try again later.");
-    public static final AbuseCooldownRule INVALID_PUBLIC_SHARE_TOKEN_PER_IP =
-            new AbuseCooldownRule(5, Duration.ofMinutes(10), Duration.ofMinutes(15), "Too many invalid public share link attempts. Try again later.");
+    public static final RateLimitRule LOGIN_FAILURE_PER_IP =
+            new RateLimitRule(4, Duration.ofMinutes(15), "Too many failed login attempts from this network. Try again later.");
+    public static final RateLimitRule INVALID_PUBLIC_SHARE_TOKEN_PER_IP =
+            new RateLimitRule(4, Duration.ofMinutes(15), "Too many invalid public share link attempts. Try again later.");
 }

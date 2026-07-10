@@ -16,9 +16,10 @@ import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.contract.ContractPermission;
-import com.tijoir.organization.OrganizationPolicyCacheService;
 import com.tijoir.organization.dto.OrganizationPolicyResponse;
 import com.tijoir.organization.OrganizationAuthorizationService;
+import com.tijoir.organization.OrganizationPolicy;
+import com.tijoir.organization.OrganizationPolicyRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
 import com.tijoir.dashboard.DashboardSummaryService;
@@ -59,7 +60,7 @@ public class ShareLinkService {
     private final UserAccountRepository userAccountRepository;
     private final VendorRepository vendorRepository;
     private final VendorAccessContractRepository vendorAccessContractRepository;
-    private final OrganizationPolicyCacheService organizationPolicyCacheService;
+    private final OrganizationPolicyRepository organizationPolicyRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
     private final ObjectMapper objectMapper;
@@ -74,7 +75,7 @@ public class ShareLinkService {
             UserAccountRepository userAccountRepository,
             VendorRepository vendorRepository,
             VendorAccessContractRepository vendorAccessContractRepository,
-            OrganizationPolicyCacheService organizationPolicyCacheService,
+            OrganizationPolicyRepository organizationPolicyRepository,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
             ObjectMapper objectMapper,
@@ -88,7 +89,7 @@ public class ShareLinkService {
         this.userAccountRepository = userAccountRepository;
         this.vendorRepository = vendorRepository;
         this.vendorAccessContractRepository = vendorAccessContractRepository;
-        this.organizationPolicyCacheService = organizationPolicyCacheService;
+        this.organizationPolicyRepository = organizationPolicyRepository;
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
         this.objectMapper = objectMapper;
@@ -348,7 +349,7 @@ public class ShareLinkService {
     }
 
     private OrganizationPolicyResponse effectivePolicy(UUID organizationId) {
-        return organizationPolicyCacheService.getPolicyResponse(organizationId);
+        return toPolicyResponse(organizationPolicyRepository.findByOrganizationId(organizationId).orElse(null));
     }
 
     private void validatePolicy(
@@ -375,6 +376,29 @@ public class ShareLinkService {
         if (permission == ContractPermission.ROTATION_NOTIFY_ONLY && !policy.allowRotationNotifyOnly()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Organization policy does not allow ROTATION_NOTIFY_ONLY share links");
         }
+    }
+
+    private OrganizationPolicyResponse toPolicyResponse(OrganizationPolicy policy) {
+        if (policy == null) {
+            return new OrganizationPolicyResponse(
+                    null,
+                    false,
+                    true,
+                    true,
+                    true,
+                    30,
+                    null
+            );
+        }
+        return new OrganizationPolicyResponse(
+                policy.getDefaultShareLinkExpiryHours(),
+                policy.isRequireVendorContractForShareLinks(),
+                policy.isAllowViewOnce(),
+                policy.isAllowViewUntilRevoked(),
+                policy.isAllowRotationNotifyOnly(),
+                policy.getRotationReminderDays(),
+                policy.getUpdatedAt()
+        );
     }
 
     private Instant effectiveExpiry(
