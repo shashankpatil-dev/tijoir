@@ -53,10 +53,7 @@ export function SettingsView({
 
   return (
     <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-      <PageSection
-        description="Set the default organization rules for share duration, permission modes, and rotation review."
-        title="Organization policy"
-      >
+      <PageSection title="Organization policy">
         {showLoadingState ? (
           <SurfaceNoteListSkeleton rows={5} />
         ) : (
@@ -110,10 +107,7 @@ export function SettingsView({
       </PageSection>
 
       <div className="space-y-5">
-        <PageSection
-          description="A compact readout of the currently staged organization policy."
-          title="Current policy"
-        >
+        <PageSection title="Current policy">
           {showLoadingState ? (
             <SurfaceNoteListSkeleton rows={5} />
           ) : (
@@ -154,46 +148,6 @@ export function SettingsView({
               />
             </div>
           )}
-        </PageSection>
-
-        <PageSection
-          description="Use policy defaults to reduce unsafe sharing and keep operators inside one consistent workflow."
-          title="Policy guardrails"
-        >
-          <div className="space-y-3">
-            <SurfaceNote
-              label="Default expiry"
-              value="Use a short default duration when recipient access is temporary or task-based."
-            />
-            <SurfaceNote
-              label="Contract requirement"
-              value="Require a vendor contract when each share should trace back to a known external party."
-            />
-            <SurfaceNote
-              label="Permission modes"
-              value="Keep only the permission types the organization actually intends to support."
-            />
-          </div>
-        </PageSection>
-
-        <PageSection
-          description="Use one clear policy posture so operators do not need to guess how access should be issued."
-          title="Operating guidance"
-        >
-          <div className="space-y-3">
-            <SurfaceNote
-              label="Temporary access"
-              value="Use short expiries and tighter permission modes for task-based or vendor onboarding work."
-            />
-            <SurfaceNote
-              label="Stable integrations"
-              value="Use a contract-backed path when a relationship is ongoing and needs traceable ownership."
-            />
-            <SurfaceNote
-              label="Rotation posture"
-              value="Keep reminder windows realistic enough that teams review secrets before external breakage happens."
-            />
-          </div>
         </PageSection>
       </div>
     </div>

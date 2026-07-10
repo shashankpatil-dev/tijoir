@@ -28,7 +28,7 @@ export type DashboardWorkspaceValue = {
   handleSessionError: (error: unknown, fallback: string) => void;
   isOrganizationManager: boolean;
   logout: () => Promise<void>;
-  navigationItems: Array<{ id: string; label: string; note: string }>;
+  navigationItems: Array<{ id: string; label: string }>;
   router: RouterLike;
   session: AuthResponse | null;
   setActionBusy: (value: string | null) => void;
@@ -82,40 +82,15 @@ export function DashboardWorkspaceProvider({
   );
 
   const navigationItems = useMemo(() => {
-    const items: Array<{ id: string; label: string; note: string }> = [
-      { id: "overview", label: "Overview", note: "Workspace status" },
-      { id: "vault", label: "Vault", note: "Secrets and rotation" },
-      { id: "vendors", label: "Vendors", note: "Entities and contracts" },
-      { id: "share", label: "Share Links", note: "Recipient access" },
-      { id: "notifications", label: "Notifications", note: "Verification and invite delivery" },
+    const items: Array<{ id: string; label: string }> = [
+      { id: "overview", label: "Overview" },
+      { id: "vault", label: "Vault" },
+      { id: "vendors", label: "Vendors" },
+      { id: "share", label: "Share Links" },
     ];
 
-    if (isOrganizationManager) {
-      items.push({
-        id: "organization",
-        label: "Organization",
-        note: "Profile, team and access",
-      });
-    }
-
-    if (canReviewAudit) {
-      items.push({
-        id: "audit",
-        label: "Audit Log",
-        note: "Security activity",
-      });
-    }
-
-    if (isOrganizationManager) {
-      items.push({
-        id: "settings",
-        label: "Settings",
-        note: "Policy and controls",
-      });
-    }
-
     return items;
-  }, [canReviewAudit, isOrganizationManager]);
+  }, []);
 
   const handleSessionError = useCallback(
     (error: unknown, fallback: string) => {

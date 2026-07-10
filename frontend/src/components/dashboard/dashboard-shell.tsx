@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
 import { SkeletonBlock } from "@/components/ui/skeleton";
 
 export type DashboardNavItem = {
   id: string;
   label: string;
-  note: string;
   badge?: string;
 };
 
@@ -102,7 +100,6 @@ export function DashboardShell({
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-xs text-blue-100/70">{item.note}</p>
                   </button>
                 );
               })}
@@ -119,20 +116,17 @@ export function DashboardShell({
         <div className="min-w-0">
           <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
             <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:px-8">
-              <div className="min-w-0 space-y-1.5">
-                <div className="flex items-center gap-3">
-                  <button
-                    className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] lg:hidden"
-                    onClick={() => setSidebarOpen(true)}
-                    type="button"
-                  >
-                    Menu
-                  </button>
-                  <Badge tone="brand">Organization workspace</Badge>
-                </div>
-                {userMeta}
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] lg:hidden"
+                  onClick={() => setSidebarOpen(true)}
+                  type="button"
+                >
+                  Menu
+                </button>
               </div>
               <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+                {userMeta}
                 {topbarActions}
               </div>
             </div>

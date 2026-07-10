@@ -12,7 +12,6 @@ import {
   SearchInput,
   TableToolbar,
 } from "@/components/ui/table-controls";
-import { SurfaceNote } from "@/features/dashboard/components/surface-note";
 import type {
   VendorContractResponse,
   VendorResponse,
@@ -84,10 +83,7 @@ export function VendorsView({
       ) : (
         <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
-            <PageSection
-              description="Maintain external vendors as first-class entities before issuing contracts or public share links."
-              title="Vendors"
-            >
+            <PageSection title="Vendors">
               <div className="space-y-4">
                 <TableToolbar
                   actions={
@@ -134,14 +130,7 @@ export function VendorsView({
               </div>
             </PageSection>
 
-            <PageSection
-              description={
-                selectedVendor
-                  ? `Contracts currently attached to ${selectedVendor.name}.`
-                  : "Select a vendor to inspect and manage contract relationships."
-              }
-              title="Vendor contracts"
-            >
+            <PageSection title="Vendor contracts">
               {selectedVendor ? (
                 <div className="space-y-4">
                   <TableToolbar
@@ -195,10 +184,7 @@ export function VendorsView({
           </div>
 
           <div className="space-y-5">
-            <PageSection
-              description="Review the selected vendor state before extending access or offboarding the relationship."
-              title="Vendor profile"
-            >
+            <PageSection title="Vendor profile">
               {selectedVendor ? (
                 <div className="space-y-4">
                   <DetailList
@@ -250,26 +236,6 @@ export function VendorsView({
                   title="No vendor profile selected"
                 />
               )}
-            </PageSection>
-
-            <PageSection
-              description="Tighten the vendor lifecycle before broadening share-link usage."
-              title="Operational notes"
-            >
-              <div className="space-y-3">
-                <SurfaceNote
-                  label="Vendor record first"
-                  value="Create the vendor entity before distributing share links. That keeps contracts and offboarding traceable."
-                />
-                <SurfaceNote
-                  label="Contract before reveal"
-                  value="Use a vendor contract when a secret should map to a known external relationship and permission policy."
-                />
-                <SurfaceNote
-                  label="Offboarding"
-                  value="Offboarding revokes active contracts and associated share links, then closes future vendor access."
-                />
-              </div>
             </PageSection>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { Badge, statusTone } from "@/components/ui/badge";
 import type { DataTableColumn } from "@/components/ui/data-table";
-import { Menu, MenuHint, MenuItem } from "@/components/ui/menu";
+import { Menu, MenuItem } from "@/components/ui/menu";
 import type { AuditEventResponse } from "@/features/audit/types/audit.types";
 import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
@@ -120,20 +120,13 @@ export function buildVendorContractColumns({
           label={<span aria-label="Contract actions">•••</span>}
         >
           <MenuItem
-            onClick={() => {
+          onClick={() => {
               if (contract.status === "ACTIVE") {
                 onRevoke(contract);
               }
             }}
           >
-            <MenuHint
-              label="Revoke contract"
-              text={
-                contract.status === "ACTIVE"
-                  ? "Disable this active vendor contract."
-                  : "Only active contracts can be revoked."
-              }
-            />
+            <span>Revoke contract</span>
           </MenuItem>
         </Menu>
       ),

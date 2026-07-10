@@ -1,6 +1,6 @@
 import { Badge, statusTone } from "@/components/ui/badge";
 import type { DataTableColumn } from "@/components/ui/data-table";
-import { Menu, MenuHint, MenuItem } from "@/components/ui/menu";
+import { Menu, MenuItem } from "@/components/ui/menu";
 import {
   canEditMember,
   canRemoveMember,
@@ -67,14 +67,7 @@ export function buildMemberColumns({
               }
             }}
           >
-            <MenuHint
-              label="Change role"
-              text={
-                canEditMember(actorRole, member, actorEmail)
-                  ? "Update this member's organization role."
-                  : "Role change is not available for this member."
-              }
-            />
+            <span>Change role</span>
           </MenuItem>
           <MenuItem
             onClick={() => {
@@ -83,14 +76,7 @@ export function buildMemberColumns({
               }
             }}
           >
-            <MenuHint
-              label="Remove member"
-              text={
-                canRemoveMember(actorRole, member, actorEmail)
-                  ? "Remove this member from the organization."
-                  : "Removal is not available for this member."
-              }
-            />
+            <span>Remove member</span>
           </MenuItem>
         </Menu>
       ),
@@ -155,14 +141,7 @@ export function buildInviteColumns({
               }
             }}
           >
-            <MenuHint
-              label="Revoke invite"
-              text={
-                invite.status === "PENDING"
-                  ? "Cancel this outstanding invitation."
-                  : "Only pending invites can be revoked."
-              }
-            />
+            <span>Revoke invite</span>
           </MenuItem>
         </Menu>
       ),

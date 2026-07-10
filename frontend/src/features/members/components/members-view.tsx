@@ -10,13 +10,12 @@ import type {
 } from "@/features/members/types/members.types";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
 import {
-  OrganizationAccessModelSection,
   OrganizationInvitesSection,
   OrganizationMembersSection,
   OrganizationProfileSection,
 } from "@/features/members/components/organization-sections";
 
-type OrganizationTabKey = "profile" | "members" | "invites" | "access";
+type OrganizationTabKey = "profile" | "members" | "invites";
 
 export function MembersView({
   filteredInvitesLength,
@@ -97,7 +96,6 @@ export function MembersView({
               { key: "profile", label: "Profile" },
               { key: "members", label: "Members" },
               { key: "invites", label: "Invites" },
-              { key: "access", label: "Access model" },
             ]}
             onChange={setActiveTab}
           />
@@ -146,8 +144,6 @@ export function MembersView({
               totalInvites={totalInvites}
             />
           ) : null}
-
-          {activeTab === "access" ? <OrganizationAccessModelSection /> : null}
         </div>
       )}
     </div>

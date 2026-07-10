@@ -8,7 +8,6 @@ import {
   SearchInput,
   TableToolbar,
 } from "@/components/ui/table-controls";
-import { SurfaceNote } from "@/features/dashboard/components/surface-note";
 import type {
   AuditAction,
   AuditEventResponse,
@@ -53,10 +52,7 @@ export function AuditView({
 
   return (
     <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-      <PageSection
-        description="Review the organization event trail with action and resource filters."
-        title="Audit log"
-      >
+      <PageSection title="Audit log">
         <div className="space-y-4">
           <TableToolbar>
             <SearchInput
@@ -128,32 +124,29 @@ export function AuditView({
       </PageSection>
 
       <div className="space-y-5">
-        <PageSection
-          description="Current audit scope and export action for the visible filters."
-          title="Audit summary"
-        >
-          <div className="space-y-3">
-            <SurfaceNote
-              label="Matched events"
-              value={String(auditReport?.totalEvents ?? auditTotal)}
-            />
-            <SurfaceNote
-              label="Last 24 hours"
-              value={String(auditReport?.eventsInLast24Hours ?? 0)}
-            />
-            <SurfaceNote
-              label="Current action filter"
-              value={auditActionFilter === "ALL" ? "All actions" : auditActionFilter}
-            />
-            <SurfaceNote
-              label="Current resource filter"
-              value={
-                auditResourceTypeFilter === "ALL"
+        <PageSection title="Audit summary">
+          <div className="space-y-3 text-sm text-[var(--color-ink-strong)]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[var(--color-muted)]">Matched events</span>
+              <span>{String(auditReport?.totalEvents ?? auditTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[var(--color-muted)]">Last 24 hours</span>
+              <span>{String(auditReport?.eventsInLast24Hours ?? 0)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[var(--color-muted)]">Action filter</span>
+              <span>{auditActionFilter === "ALL" ? "All actions" : auditActionFilter}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[var(--color-muted)]">Resource filter</span>
+              <span>
+                {auditResourceTypeFilter === "ALL"
                   ? "All resources"
-                  : auditResourceTypeFilter
-              }
-            />
-            <div className="flex flex-wrap gap-3 pt-1">
+                  : auditResourceTypeFilter}
+              </span>
+            </div>
+            <div className="pt-1">
               <Button
                 onClick={() => void handleAuditExport()}
                 type="button"
@@ -165,10 +158,7 @@ export function AuditView({
           </div>
         </PageSection>
 
-        <PageSection
-          description="Most frequent matching actions in the current audit slice."
-          title="Action breakdown"
-        >
+        <PageSection title="Action breakdown">
           <div className="flex flex-wrap gap-2">
             {actionBreakdown.length ? (
               actionBreakdown.map(([label, count]) => (
@@ -185,10 +175,7 @@ export function AuditView({
           </div>
         </PageSection>
 
-        <PageSection
-          description="Most frequent matching resource types in the current audit slice."
-          title="Resource breakdown"
-        >
+        <PageSection title="Resource breakdown">
           <div className="flex flex-wrap gap-2">
             {resourceBreakdown.length ? (
               resourceBreakdown.map(([label, count]) => (
@@ -202,26 +189,6 @@ export function AuditView({
                 title="No resource data yet"
               />
             )}
-          </div>
-        </PageSection>
-
-        <PageSection
-          description="Keep the audit surface useful for reviews, incidents, and handoff evidence."
-          title="Investigation notes"
-        >
-          <div className="space-y-3">
-            <SurfaceNote
-              label="Start narrow"
-              value="Use action and resource filters first, then search by actor or target object."
-            />
-            <SurfaceNote
-              label="Export when ready"
-              value="Download the filtered slice only after the scope is clean enough to hand to another reviewer."
-            />
-            <SurfaceNote
-              label="Watch policy changes"
-              value="Policy updates, contract revokes, and member-role changes usually deserve the fastest follow-up."
-            />
           </div>
         </PageSection>
       </div>

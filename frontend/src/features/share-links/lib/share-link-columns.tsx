@@ -1,6 +1,6 @@
 import { Badge, statusTone } from "@/components/ui/badge";
 import type { DataTableColumn } from "@/components/ui/data-table";
-import { Menu, MenuHint, MenuItem } from "@/components/ui/menu";
+import { Menu, MenuItem } from "@/components/ui/menu";
 import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
 
@@ -63,15 +63,15 @@ export function buildShareColumns({
         >
           {shareLink.shareToken ? (
             <MenuItem
-              onClick={() => {
+            onClick={() => {
                 void copyText(shareLink.shareToken || "", "Share token");
               }}
             >
-              <MenuHint label="Copy token" text="Copy the recipient token." />
+              <span>Copy token</span>
             </MenuItem>
           ) : null}
           <MenuItem onClick={() => onRevoke(shareLink)}>
-            <MenuHint label="Revoke link" text="Disable this recipient access link." />
+            <span>Revoke link</span>
           </MenuItem>
         </Menu>
       ),

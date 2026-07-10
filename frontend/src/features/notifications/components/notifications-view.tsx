@@ -65,10 +65,7 @@ export function NotificationsView({
         />
       ) : null}
 
-      <PageSection
-        description="Verification and invite notifications are stored here as in-app history."
-        title="Inbox"
-      >
+      <PageSection title="Inbox">
         {loading && !notifications.length ? (
           <div className="grid gap-4 lg:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
