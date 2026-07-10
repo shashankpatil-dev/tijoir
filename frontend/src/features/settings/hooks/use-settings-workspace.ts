@@ -1,18 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  confirmMfaEnrollmentRequest,
-  disableMfaRequest,
-  fetchMfaStatus,
-  startMfaEnrollmentRequest,
-} from "@/features/auth/api/auth.api";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import type { RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 import {
   fetchOrganizationPolicy,
   updateOrganizationPolicy,
 } from "@/features/settings/api/settings.api";
-import type { MfaSecurityState } from "@/features/settings/types/settings.types";
 
 export function useSettingsWorkspace({
   handleSessionError,
@@ -37,22 +30,10 @@ export function useSettingsWorkspace({
   const [allowViewUntilRevoked, setAllowViewUntilRevoked] = useState("true");
   const [allowRotationNotifyOnly, setAllowRotationNotifyOnly] = useState("true");
   const [rotationReminderDays, setRotationReminderDays] = useState("30");
-  const [mfaSetup, setMfaSetup] = useState<MfaSecurityState | null>(null);
-  const [mfaEnrollmentCode, setMfaEnrollmentCode] = useState("");
-  const [mfaDisableCode, setMfaDisableCode] = useState("");
-  const [mfaDisablePassword, setMfaDisablePassword] = useState("");
-  const [mfaEnrollmentOpen, setMfaEnrollmentOpen] = useState(false);
-  const [mfaDisableOpen, setMfaDisableOpen] = useState(false);
 
   const policyQuery = useQuery({
     queryKey: dashboardQueryKeys.organizationPolicy(sessionAccessToken),
     queryFn: () => fetchOrganizationPolicy(sessionAccessToken as string),
-    enabled: Boolean(sessionAccessToken),
-  });
-
-  const mfaStatusQuery = useQuery({
-    queryKey: ["mfa-status", sessionAccessToken],
-    queryFn: () => fetchMfaStatus(sessionAccessToken as string),
     enabled: Boolean(sessionAccessToken),
   });
 
@@ -84,12 +65,6 @@ export function useSettingsWorkspace({
     }
   }, [handleSessionError, policyQuery.error]);
 
-  useEffect(() => {
-    if (mfaStatusQuery.error) {
-      handleSessionError(mfaStatusQuery.error, "Could not load MFA security status");
-    }
-  }, [handleSessionError, mfaStatusQuery.error]);
-
   const updatePolicyMutation = useMutation({
     mutationFn: () =>
       updateOrganizationPolicy(sessionAccessToken as string, {
@@ -103,28 +78,6 @@ export function useSettingsWorkspace({
         allowRotationNotifyOnly: allowRotationNotifyOnly === "true",
         rotationReminderDays: rotationReminderDays ? Number(rotationReminderDays) : null,
       }),
-  });
-
-  const startMfaMutation = useMutation({
-    mutationFn: () => startMfaEnrollmentRequest(sessionAccessToken as string),
-  });
-
-  const confirmMfaMutation = useMutation({
-    mutationFn: () =>
-      confirmMfaEnrollmentRequest(
-        sessionAccessToken as string,
-        mfaSetup?.challengeId as string,
-        mfaEnrollmentCode,
-      ),
-  });
-
-  const disableMfaMutation = useMutation({
-    mutationFn: () =>
-      disableMfaRequest(
-        sessionAccessToken as string,
-        mfaDisablePassword,
-        mfaDisableCode,
-      ),
   });
 
   async function handleUpdatePolicy(event: FormEvent<HTMLFormElement>) {
@@ -164,97 +117,6 @@ export function useSettingsWorkspace({
     });
   }
 
-  async function openMfaEnrollment() {
-    if (!sessionAccessToken) {
-      router.replace("/login");
-      return;
-    }
-
-    setActionBusy("start-mfa-enrollment");
-    setMessage("Preparing MFA enrollment");
-    try {
-      const response = await startMfaMutation.mutateAsync();
-      setMfaSetup({
-        challengeId: response.challengeId,
-        expiresAt: response.expiresAt,
-        otpauthUri: response.otpauthUri,
-        secret: response.secret,
-      });
-      setMfaEnrollmentCode("");
-      setMfaEnrollmentOpen(true);
-      showToast({
-        title: "MFA enrollment started",
-        description: "Register the shared secret in your authenticator app, then confirm with a code.",
-        tone: "success",
-      });
-      setMessage("MFA enrollment challenge created.");
-    } catch (error) {
-      handleSessionError(error, "Could not start MFA enrollment");
-    } finally {
-      setActionBusy(null);
-    }
-  }
-
-  async function handleConfirmMfaEnrollment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!sessionAccessToken || !mfaSetup) {
-      router.replace("/login");
-      return;
-    }
-
-    setActionBusy("confirm-mfa-enrollment");
-    setMessage("Confirming MFA enrollment");
-    try {
-      await confirmMfaMutation.mutateAsync();
-      await queryClient.invalidateQueries({
-        queryKey: ["mfa-status", sessionAccessToken],
-      });
-      setMfaEnrollmentOpen(false);
-      setMfaSetup(null);
-      setMfaEnrollmentCode("");
-      showToast({
-        title: "MFA enabled",
-        description: "Authenticator-based verification is now required at login.",
-        tone: "success",
-      });
-      setMessage("MFA enrollment confirmed.");
-    } catch (error) {
-      handleSessionError(error, "Could not confirm MFA enrollment");
-    } finally {
-      setActionBusy(null);
-    }
-  }
-
-  async function handleDisableMfa(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!sessionAccessToken) {
-      router.replace("/login");
-      return;
-    }
-
-    setActionBusy("disable-mfa");
-    setMessage("Disabling MFA");
-    try {
-      await disableMfaMutation.mutateAsync();
-      await queryClient.invalidateQueries({
-        queryKey: ["mfa-status", sessionAccessToken],
-      });
-      setMfaDisableOpen(false);
-      setMfaDisableCode("");
-      setMfaDisablePassword("");
-      showToast({
-        title: "MFA disabled",
-        description: "Authenticator verification has been removed from this account.",
-        tone: "success",
-      });
-      setMessage("MFA disabled.");
-    } catch (error) {
-      handleSessionError(error, "Could not disable MFA");
-    } finally {
-      setActionBusy(null);
-    }
-  }
-
   return {
     allowRotationNotifyOnly,
     allowViewOnce,
@@ -262,28 +124,6 @@ export function useSettingsWorkspace({
     defaultShareLinkExpiryHours,
     handleUpdatePolicy,
     loadingPolicy: policyQuery.isLoading,
-    mfa: {
-      confirmEnrollment: handleConfirmMfaEnrollment,
-      disable: handleDisableMfa,
-      disableBusy: disableMfaMutation.isPending,
-      disableCode: mfaDisableCode,
-      disableOpen: mfaDisableOpen,
-      disablePassword: mfaDisablePassword,
-      enabled: mfaStatusQuery.data?.enabled ?? false,
-      enrolledAt: mfaStatusQuery.data?.enrolledAt ?? null,
-      enrollmentBusy: startMfaMutation.isPending || confirmMfaMutation.isPending,
-      enrollmentCode: mfaEnrollmentCode,
-      enrollmentOpen: mfaEnrollmentOpen,
-      loading: mfaStatusQuery.isLoading,
-      openDisable: () => setMfaDisableOpen(true),
-      openEnrollment: openMfaEnrollment,
-      setDisableCode: setMfaDisableCode,
-      setDisableOpen: setMfaDisableOpen,
-      setDisablePassword: setMfaDisablePassword,
-      setEnrollmentCode: setMfaEnrollmentCode,
-      setEnrollmentOpen: setMfaEnrollmentOpen,
-      setup: mfaSetup,
-    },
     policyUpdatedAt: policyQuery.data?.updatedAt || null,
     requireVendorContractForShareLinks,
     refreshPolicy,

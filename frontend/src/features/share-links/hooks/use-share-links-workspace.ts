@@ -1,30 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildStaticAppUrl } from "@/lib/auth-client";
 import { ApiRequestError } from "@/lib/api/errors";
-import { DASHBOARD_ITEMS_PER_PAGE, pageCount } from "@/features/dashboard/lib/dashboard-pagination";
+import type { DataTableColumn } from "@/components/ui/data-table";
+import {
+  DASHBOARD_ITEMS_PER_PAGE,
+  pageCount,
+} from "@/features/dashboard/lib/dashboard-pagination";
 import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import type {
   RouterLike,
   SharePreview,
   ShowToast,
 } from "@/features/dashboard/hooks/workspace.types";
+import { saveLastPublicToken } from "@/features/recipient-access/api/recipient-access.api";
 import { fetchSecrets } from "@/features/secrets/api/secrets.api";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import {
+  createShareLink,
   fetchShareLinksPage,
+  revokeShareLink,
 } from "@/features/share-links/api/share-links.api";
-import { useShareLinkActions } from "@/features/share-links/hooks/use-share-link-actions";
-import { useShareLinkFormState } from "@/features/share-links/hooks/use-share-link-form-state";
-import { buildShareLinksPageParams } from "@/features/share-links/hooks/share-link-query-utils";
 import { buildShareColumns } from "@/features/share-links/lib/share-link-columns";
 import type {
   ContractPermission,
   ShareLinkResponse,
 } from "@/features/share-links/types/share-links.types";
-import { fetchVendorContractsPage, fetchVendors } from "@/features/vendors/api/vendors.api";
-import type { VendorResponse } from "@/features/vendors/types/vendors.types";
-import type { DataTableColumn } from "@/components/ui/data-table";
+import {
+  fetchVendorContractsPage,
+  fetchVendors,
+} from "@/features/vendors/api/vendors.api";
 
 export function useShareLinksWorkspace({
   handleSessionError,
@@ -52,6 +57,19 @@ export function useShareLinksWorkspace({
   const [sharePermissionFilter, setSharePermissionFilter] = useState("ALL");
   const [sharePage, setSharePage] = useState(1);
   const [createShareOpen, setCreateShareOpen] = useState(false);
+  const [shareSecretId, setShareSecretId] = useState("");
+  const [shareVendorId, setShareVendorId] = useState("");
+  const [shareContractId, setShareContractId] = useState("");
+  const [shareRecipientLabel, setShareRecipientLabel] = useState(
+    "Primary vendor operator",
+  );
+  const [sharePermission, setSharePermission] =
+    useState<ContractPermission>("VIEW_ONCE");
+  const [shareExpiry, setShareExpiry] = useState("");
+
+  useEffect(() => {
+    setSharePage(1);
+  }, [sharePermissionFilter, shareSearch, shareStatusFilter]);
 
   const secretOptionsQuery = useQuery({
     queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
@@ -59,6 +77,7 @@ export function useShareLinksWorkspace({
     enabled: Boolean(sessionAccessToken && createShareOpen),
     staleTime: 60_000,
   });
+
   const vendorOptionsQuery = useQuery({
     queryKey: dashboardQueryKeys.vendors(sessionAccessToken),
     queryFn: () => fetchVendors(sessionAccessToken as string),
@@ -68,14 +87,17 @@ export function useShareLinksWorkspace({
 
   const secretOptions = secretOptionsQuery.data ?? [];
   const vendorOptions = vendorOptionsQuery.data ?? [];
-  const formState = useShareLinkFormState(secretOptions, {
-    createShareOpen,
-    setCreateShareOpen,
-  });
 
   useEffect(() => {
-    setSharePage(1);
-  }, [sharePermissionFilter, shareSearch, shareStatusFilter]);
+    if (!secretOptions.length) {
+      setShareSecretId("");
+      return;
+    }
+
+    setShareSecretId((current) =>
+      current && secretOptions.some((secret) => secret.id === current) ? current : secretOptions[0].id,
+    );
+  }, [secretOptions]);
 
   useEffect(() => {
     if (secretOptionsQuery.error) {
@@ -90,73 +112,66 @@ export function useShareLinksWorkspace({
   }, [handleSessionError, vendorOptionsQuery.error]);
 
   const activeVendorContractsQuery = useQuery({
-    queryKey: dashboardQueryKeys.vendorContractsPage(
-      sessionAccessToken,
-      formState.shareVendorId,
-      {
-        page: 0,
-        size: 100,
-        status: "ACTIVE",
-      },
-    ),
+    queryKey: dashboardQueryKeys.vendorContractsPage(sessionAccessToken, shareVendorId, {
+      page: 0,
+      size: 100,
+      status: "ACTIVE",
+    }),
     queryFn: () =>
-      fetchVendorContractsPage(sessionAccessToken as string, formState.shareVendorId, {
+      fetchVendorContractsPage(sessionAccessToken as string, shareVendorId, {
         page: 0,
         size: 100,
         status: "ACTIVE",
       }),
-    enabled: Boolean(sessionAccessToken && formState.shareVendorId && createShareOpen),
+    enabled: Boolean(sessionAccessToken && shareVendorId && createShareOpen),
     placeholderData: (previous) => previous,
   });
 
   const vendorContractsForShare = activeVendorContractsQuery.data?.items ?? [];
 
   useEffect(() => {
-    if (!formState.shareVendorId) {
-      if (formState.shareContractId) {
-        formState.setShareContractId("");
+    if (!shareVendorId) {
+      if (shareContractId) {
+        setShareContractId("");
       }
       return;
     }
 
-    if (!vendorOptions.some((vendor) => vendor.id === formState.shareVendorId)) {
-      formState.setShareVendorId("");
-      formState.setShareContractId("");
+    if (!vendorOptions.some((vendor) => vendor.id === shareVendorId)) {
+      setShareVendorId("");
+      setShareContractId("");
     }
-  }, [formState, vendorOptions]);
+  }, [shareContractId, shareVendorId, vendorOptions]);
 
   useEffect(() => {
-    if (
-      formState.shareContractId &&
-      !vendorContractsForShare.some((contract) => contract.id === formState.shareContractId)
-    ) {
-      formState.setShareContractId("");
+    if (shareContractId && !vendorContractsForShare.some((contract) => contract.id === shareContractId)) {
+      setShareContractId("");
     }
-  }, [formState, vendorContractsForShare]);
+  }, [shareContractId, vendorContractsForShare]);
 
   const selectedContract =
-    vendorContractsForShare.find((contract) => contract.id === formState.shareContractId) ||
-    null;
+    vendorContractsForShare.find((contract) => contract.id === shareContractId) || null;
 
   useEffect(() => {
     if (!selectedContract) {
       return;
     }
 
-    if (formState.shareSecretId !== selectedContract.secretId) {
-      formState.setShareSecretId(selectedContract.secretId);
+    if (shareSecretId !== selectedContract.secretId) {
+      setShareSecretId(selectedContract.secretId);
     }
-    if (formState.sharePermission !== selectedContract.permission) {
-      formState.setSharePermission(selectedContract.permission);
+    if (sharePermission !== selectedContract.permission) {
+      setSharePermission(selectedContract.permission);
     }
-  }, [formState, selectedContract]);
+  }, [selectedContract, sharePermission, shareSecretId]);
 
-  const shareLinksPageParams = buildShareLinksPageParams({
-    page: sharePage,
+  const shareLinksPageParams = {
+    page: sharePage - 1,
+    size: DASHBOARD_ITEMS_PER_PAGE,
     query: shareSearch,
     permission: sharePermissionFilter,
     status: shareStatusFilter,
-  });
+  };
 
   const shareLinksPageQuery = useQuery({
     queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, shareLinksPageParams),
@@ -185,9 +200,11 @@ export function useShareLinksWorkspace({
   }, [handleSessionError, shareLinksPageQuery.error]);
 
   const paginatedShareLinks = shareLinksPageQuery.data?.items ?? [];
-  const filteredShareLinksLength = shareLinksPageQuery.data?.totalElements ?? paginatedShareLinks.length;
+  const filteredShareLinksLength =
+    shareLinksPageQuery.data?.totalElements ?? paginatedShareLinks.length;
   const sharePageCount =
-    shareLinksPageQuery.data?.totalPages ?? pageCount(paginatedShareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
+    shareLinksPageQuery.data?.totalPages ??
+    pageCount(paginatedShareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (!paginatedShareLinks.length) {
@@ -219,72 +236,159 @@ export function useShareLinksWorkspace({
     [copyText],
   );
 
-  const { handleCreateShareLink, handleRevokeShareLink } = useShareLinkActions({
-    formState,
-    handleSessionError,
-    onCreateSuccess: (created, preview) => {
-      setLastCreatedShare(preview);
-      setSelectedShareLinkId(created.id);
-    },
-    page: sharePage,
-    permissionFilter: sharePermissionFilter,
-    query: shareSearch,
-    router,
-    sessionAccessToken,
-    setActionBusy,
-    setMessage,
-    showToast,
-    statusFilter: shareStatusFilter,
+  const createShareLinkMutation = useMutation({
+    mutationFn: (payload: {
+      secretId: string;
+      recipientLabel: string | null;
+      permission: ContractPermission;
+      expiresAt: string | null;
+      vendorId?: string | null;
+      contractId?: string | null;
+    }) => createShareLink(sessionAccessToken as string, payload),
   });
 
-  async function refreshShareLinks() {
+  const revokeShareLinkMutation = useMutation({
+    mutationFn: (shareLinkId: string) => revokeShareLink(shareLinkId, sessionAccessToken as string),
+  });
+
+  async function invalidateShareLinks() {
     if (!sessionAccessToken) {
       return;
     }
 
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: ["dashboard", "share-links-page", sessionAccessToken],
+        queryKey: dashboardQueryKeys.dashboardSummary(sessionAccessToken),
       }),
       queryClient.invalidateQueries({
-        queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
+        queryKey: dashboardQueryKeys.shareLinks(sessionAccessToken),
       }),
       queryClient.invalidateQueries({
-        queryKey: dashboardQueryKeys.vendors(sessionAccessToken),
+        queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, shareLinksPageParams),
       }),
     ]);
   }
 
+  async function handleCreateShareLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!sessionAccessToken) {
+      router.replace("/login");
+      return;
+    }
+    if (!shareSecretId) {
+      setMessage("Select a secret before creating a share link.");
+      return;
+    }
+
+    setActionBusy("create-share-link");
+    setMessage("Creating share link");
+
+    try {
+      const created = await createShareLinkMutation.mutateAsync({
+        secretId: shareSecretId,
+        recipientLabel: shareRecipientLabel || null,
+        permission: sharePermission,
+        expiresAt: shareExpiry ? new Date(shareExpiry).toISOString() : null,
+        vendorId: shareVendorId || null,
+        contractId: shareContractId || null,
+      });
+
+      const preview =
+        created.shareToken && typeof window !== "undefined"
+          ? {
+              token: created.shareToken,
+              appUrl: buildStaticAppUrl("/access", { token: created.shareToken }),
+            }
+          : null;
+
+      if (created.shareToken) {
+        saveLastPublicToken(created.shareToken);
+      }
+
+      setCreateShareOpen(false);
+      await invalidateShareLinks();
+      setLastCreatedShare(preview);
+      setSelectedShareLinkId(created.id);
+      setMessage(`Share link created for ${created.secretKey}.`);
+      showToast({
+        title: "Share link created",
+        description: `${created.secretKey} is ready for recipient testing.`,
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not create share link");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRevokeShareLink(shareLinkId: string) {
+    if (!sessionAccessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    setActionBusy(`revoke-share-${shareLinkId}`);
+    setMessage("Revoking share link");
+
+    try {
+      await revokeShareLinkMutation.mutateAsync(shareLinkId);
+      await invalidateShareLinks();
+      setMessage("Share link revoked.");
+      showToast({
+        title: "Share link revoked",
+        description: "Recipient access for this link has been closed.",
+        tone: "warning",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not revoke share link");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   return {
-    ...formState,
+    createShareOpen,
     filteredShareLinksLength,
     handleCreateShareLink,
     handleRevokeShareLink,
     lastCreatedShare,
     loadingShareLinks: shareLinksPageQuery.isLoading,
     paginatedShareLinks,
-    refreshShareLinks,
     secrets: secretOptions,
     selectedShareLink,
     selectedShareLinkAppUrl,
     selectedShareLinkId,
+    setCreateShareOpen,
+    setSelectedShareLinkId,
+    setShareContractId,
+    setShareExpiry,
     setSharePage,
+    setSharePermission,
     setSharePermissionFilter,
+    setShareRecipientLabel,
     setShareRevokeTarget,
     setShareSearch,
+    setShareSecretId,
     setShareStatusFilter,
-    setSelectedShareLinkId,
+    setShareVendorId,
     shareColumns,
+    shareContractId,
+    shareExpiry,
     shareLinksAvailable: !(
       shareLinksPageQuery.error instanceof ApiRequestError && shareLinksPageQuery.error.status === 403
     ),
     sharePage,
     sharePageCount,
+    sharePermission,
     sharePermissionFilter,
+    shareRecipientLabel,
     shareRevokeTarget,
     shareSearch,
+    shareSecretId,
     shareStatusFilter,
     shareTotal: filteredShareLinksLength,
+    shareVendorId,
     vendorContractsForShare,
     vendors: vendorOptions,
   };

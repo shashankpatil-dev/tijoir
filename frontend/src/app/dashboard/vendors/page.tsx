@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateVendorContractDialog } from "@/features/vendors/components/create-vendor-contract-dialog";
@@ -19,17 +18,6 @@ export default function DashboardVendorsPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
-
-  useEffect(
-    () => shell.registerRefreshHandler(vendors.refreshVendors),
-    [shell, vendors.refreshVendors],
-  );
-
-  useEffect(() => {
-    if (shell.consumeIntent("create-vendor")) {
-      vendors.setCreateVendorOpen(true);
-    }
-  }, [shell, vendors]);
 
   return (
     <>

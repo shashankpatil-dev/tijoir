@@ -1,7 +1,6 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
-import { createIdempotencyKey } from "@/lib/api/idempotency";
 import type { ContractPermission } from "@/features/share-links/types/share-links.types";
 import type { PageResponse } from "@/lib/api/types";
 import type {
@@ -106,6 +105,6 @@ export async function offboardVendor(accessToken: string, vendorId: string) {
   return authenticatedApiRequest<OffboardVendorResponse>(
     `/api/vendors/${vendorId}/offboard`,
     accessToken,
-    { method: "POST", headers: { "Idempotency-Key": createIdempotencyKey() } },
+    { method: "POST" },
   );
 }

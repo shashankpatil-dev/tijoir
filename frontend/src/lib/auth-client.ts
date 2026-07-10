@@ -46,7 +46,6 @@ export type {
   PublicShareLinkMetadataResponse,
 } from "@/features/recipient-access/types/recipient-access.types";
 
-export { readWorkspaceCache, saveWorkspaceCache, type WorkspaceCache } from "@/features/dashboard/lib/workspace-cache";
 export { readLastPublicToken, saveLastPublicToken } from "@/features/recipient-access/api/recipient-access.api";
 
 export function buildStaticAppUrl(path: string, params?: Record<string, string>): string {

@@ -24,10 +24,7 @@ export function SelectedShareLinkSection({
   selectedShareLinkAppUrl: string | null;
 }) {
   return (
-    <PageSection
-      description="Inspect the selected recipient contract before copying, handing off, or revoking it."
-      title="Selected share link"
-    >
+    <PageSection title="Selected share link">
       {selectedShareLink ? (
         <div className="space-y-5">
           <DetailList

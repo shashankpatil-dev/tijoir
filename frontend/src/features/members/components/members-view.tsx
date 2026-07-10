@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PageSection } from "@/components/dashboard/dashboard-shell";
 import { DashboardSectionTabs } from "@/components/dashboard/dashboard-section-tabs";
 import { type DataTableColumn } from "@/components/ui/data-table";
 import { InlineMessage } from "@/components/ui/feedback";
@@ -10,19 +9,16 @@ import type {
   MemberSummary,
 } from "@/features/members/types/members.types";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
-import type { InvitePreview } from "@/features/dashboard/hooks/workspace.types";
 import {
   OrganizationAccessModelSection,
   OrganizationInvitesSection,
   OrganizationMembersSection,
   OrganizationProfileSection,
-  OrganizationSidebar,
 } from "@/features/members/components/organization-sections";
 
 type OrganizationTabKey = "profile" | "members" | "invites" | "access";
 
 export function MembersView({
-  copyText,
   filteredInvitesLength,
   filteredMembersLength,
   inviteColumns,
@@ -31,7 +27,6 @@ export function MembersView({
   inviteSearch,
   inviteStatusFilter,
   invites,
-  lastCreatedInvite,
   loadingWorkspace,
   memberColumns,
   memberPage,
@@ -54,7 +49,6 @@ export function MembersView({
   totalInvites,
   totalMembers,
 }: {
-  copyText: (value: string, label: string) => Promise<void>;
   filteredInvitesLength: number;
   filteredMembersLength: number;
   inviteColumns: DataTableColumn<InviteSummary>[];
@@ -63,7 +57,6 @@ export function MembersView({
   inviteSearch: string;
   inviteStatusFilter: string;
   invites: InviteSummary[];
-  lastCreatedInvite: InvitePreview | null;
   loadingWorkspace: boolean;
   memberColumns: DataTableColumn<MemberSummary>[];
   memberPage: number;
@@ -97,72 +90,64 @@ export function MembersView({
           tone="warning"
         />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-5">
-            <PageSection title="Organization workspace">
-              <DashboardSectionTabs
-                activeTab={activeTab}
-                items={[
-                  { key: "profile", label: "Profile" },
-                  { key: "members", label: "Members" },
-                  { key: "invites", label: "Invites" },
-                  { key: "access", label: "Access model" },
-                ]}
-                onChange={setActiveTab}
-              />
-            </PageSection>
+        <div className="space-y-5">
+          <DashboardSectionTabs
+            activeTab={activeTab}
+            items={[
+              { key: "profile", label: "Profile" },
+              { key: "members", label: "Members" },
+              { key: "invites", label: "Invites" },
+              { key: "access", label: "Access model" },
+            ]}
+            onChange={setActiveTab}
+          />
 
-            {activeTab === "profile" ? (
-              <OrganizationProfileSection
-                onCreateInvite={onCreateInvite}
-                onOpenSettings={onOpenSettings}
-                session={session}
-              />
-            ) : null}
+          {activeTab === "profile" ? (
+            <OrganizationProfileSection
+              onCreateInvite={onCreateInvite}
+              onOpenSettings={onOpenSettings}
+              session={session}
+            />
+          ) : null}
 
-            {activeTab === "members" ? (
-              <OrganizationMembersSection
-                filteredMembersLength={filteredMembersLength}
-                loadingWorkspace={loadingWorkspace}
-                memberColumns={memberColumns}
-                memberPage={memberPage}
-                memberPageCount={memberPageCount}
-                memberRoleFilter={memberRoleFilter}
-                memberSearch={memberSearch}
-                members={members}
-                onCreateInvite={onCreateInvite}
-                paginatedMembers={paginatedMembers}
-                setMemberPage={setMemberPage}
-                setMemberRoleFilter={setMemberRoleFilter}
-                setMemberSearch={setMemberSearch}
-                totalMembers={totalMembers}
-              />
-            ) : null}
+          {activeTab === "members" ? (
+            <OrganizationMembersSection
+              filteredMembersLength={filteredMembersLength}
+              loadingWorkspace={loadingWorkspace}
+              memberColumns={memberColumns}
+              memberPage={memberPage}
+              memberPageCount={memberPageCount}
+              memberRoleFilter={memberRoleFilter}
+              memberSearch={memberSearch}
+              members={members}
+              onCreateInvite={onCreateInvite}
+              paginatedMembers={paginatedMembers}
+              setMemberPage={setMemberPage}
+              setMemberRoleFilter={setMemberRoleFilter}
+              setMemberSearch={setMemberSearch}
+              totalMembers={totalMembers}
+            />
+          ) : null}
 
-            {activeTab === "invites" ? (
-              <OrganizationInvitesSection
-                filteredInvitesLength={filteredInvitesLength}
-                inviteColumns={inviteColumns}
-                invitePage={invitePage}
-                invitePageCount={invitePageCount}
-                inviteSearch={inviteSearch}
-                inviteStatusFilter={inviteStatusFilter}
-                invites={invites}
-                loadingWorkspace={loadingWorkspace}
-                paginatedInvites={paginatedInvites}
-                setInvitePage={setInvitePage}
-                setInviteSearch={setInviteSearch}
-                setInviteStatusFilter={setInviteStatusFilter}
-                totalInvites={totalInvites}
-              />
-            ) : null}
+          {activeTab === "invites" ? (
+            <OrganizationInvitesSection
+              filteredInvitesLength={filteredInvitesLength}
+              inviteColumns={inviteColumns}
+              invitePage={invitePage}
+              invitePageCount={invitePageCount}
+              inviteSearch={inviteSearch}
+              inviteStatusFilter={inviteStatusFilter}
+              invites={invites}
+              loadingWorkspace={loadingWorkspace}
+              paginatedInvites={paginatedInvites}
+              setInvitePage={setInvitePage}
+              setInviteSearch={setInviteSearch}
+              setInviteStatusFilter={setInviteStatusFilter}
+              totalInvites={totalInvites}
+            />
+          ) : null}
 
-            {activeTab === "access" ? (
-              <OrganizationAccessModelSection />
-            ) : null}
-          </div>
-
-          <OrganizationSidebar copyText={copyText} lastCreatedInvite={lastCreatedInvite} />
+          {activeTab === "access" ? <OrganizationAccessModelSection /> : null}
         </div>
       )}
     </div>

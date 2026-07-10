@@ -9,14 +9,14 @@ import {
   readRememberedEmail,
   saveSession,
 } from "@/lib/auth-client";
-import { loginRequest, verifyMfaChallengeRequest } from "@/features/auth/api/auth.api";
+import { loginRequest } from "@/features/auth/api/auth.api";
 import {
   AuthShell,
   PrimaryButton,
   StatusPanel,
 } from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 export default function LoginPage() {
@@ -24,9 +24,6 @@ export default function LoginPage() {
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mfaCode, setMfaCode] = useState("");
-  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
-  const [mfaChallengeExpiresAt, setMfaChallengeExpiresAt] = useState<string | null>(null);
   const [message, setMessage] = useState("Login after email verification.");
   const [busy, setBusy] = useState(false);
 
@@ -40,37 +37,10 @@ export default function LoginPage() {
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setMessage(mfaChallengeId ? "Verifying MFA challenge" : "Signing in");
+    setMessage("Signing in");
 
     try {
-      if (mfaChallengeId) {
-        const verifiedSession = await verifyMfaChallengeRequest(mfaChallengeId, mfaCode);
-        saveSession(verifiedSession);
-        const targetPath = consumeRedirectPath("/dashboard/overview");
-        setMessage("MFA verified. Redirecting to workspace.");
-        showToast({
-          title: "Login successful",
-          description: "Multi-factor verification completed. Redirecting to the workspace.",
-          tone: "success",
-        });
-        router.push(targetPath);
-        return;
-      }
-
       const result = await loginRequest(email, password);
-      if (result.mfaRequired && result.mfaChallengeId) {
-        setMfaChallengeId(result.mfaChallengeId);
-        setMfaChallengeExpiresAt(result.mfaChallengeExpiresAt ?? null);
-        setMfaCode("");
-        setMessage("Enter the 6-digit code from your authenticator app.");
-        showToast({
-          title: "Additional verification required",
-          description: "Enter the current authenticator code to finish login.",
-          tone: "warning",
-        });
-        return;
-      }
-
       saveSession(result);
       const targetPath = consumeRedirectPath("/dashboard/overview");
       setMessage("Login complete. Redirecting to workspace.");
@@ -130,19 +100,10 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {mfaChallengeId ? (
-            <InlineMessage
-              body={`The password step is complete. Enter the current authenticator code${mfaChallengeExpiresAt ? ` before ${new Date(mfaChallengeExpiresAt).toLocaleTimeString()}` : ""}.`}
-              title="Multi-factor verification"
-              tone="warning"
-            />
-          ) : null}
-
           <TextField
             hint="Use the verified owner or member email for this organization."
             label="Email"
             onChange={setEmail}
-            disabled={Boolean(mfaChallengeId)}
             type="email"
             value={email}
           />
@@ -150,35 +111,10 @@ export default function LoginPage() {
             hint="Passwords stay masked by default. Use Show only when needed."
             label="Password"
             onChange={setPassword}
-            disabled={Boolean(mfaChallengeId)}
             value={password}
           />
-          {mfaChallengeId ? (
-            <TextField
-              hint="Use the current 6-digit code from your authenticator app."
-              label="Authenticator code"
-              onChange={setMfaCode}
-              value={mfaCode}
-            />
-          ) : null}
 
-          <PrimaryButton busy={busy}>
-            {mfaChallengeId ? "Verify and continue" : "Sign in"}
-          </PrimaryButton>
-          {mfaChallengeId ? (
-            <button
-              className="w-full text-sm font-medium text-[var(--color-brand-strong)]"
-              onClick={() => {
-                setMfaChallengeId(null);
-                setMfaChallengeExpiresAt(null);
-                setMfaCode("");
-                setMessage("Login after email verification.");
-              }}
-              type="button"
-            >
-              Start over
-            </button>
-          ) : null}
+          <PrimaryButton busy={busy}>Sign in</PrimaryButton>
         </form>
 
         <div className="mt-6 flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">

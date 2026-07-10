@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { SettingsView } from "@/features/settings/components/settings-view";
 import { useSettingsWorkspace } from "@/features/settings/hooks/use-settings-workspace";
@@ -16,11 +15,6 @@ export default function DashboardSettingsPage() {
     showToast: shell.showToast,
   });
 
-  useEffect(
-    () => shell.registerRefreshHandler(settings.refreshPolicy),
-    [settings.refreshPolicy, shell],
-  );
-
   return (
     <SettingsView
       allowRotationNotifyOnly={settings.allowRotationNotifyOnly}
@@ -29,7 +23,6 @@ export default function DashboardSettingsPage() {
       defaultShareLinkExpiryHours={settings.defaultShareLinkExpiryHours}
       handleUpdatePolicy={settings.handleUpdatePolicy}
       loadingPolicy={settings.loadingPolicy}
-      mfa={settings.mfa}
       policyUpdatedAt={settings.policyUpdatedAt}
       requireVendorContractForShareLinks={settings.requireVendorContractForShareLinks}
       rotationReminderDays={settings.rotationReminderDays}

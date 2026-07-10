@@ -1,23 +1,15 @@
 import { InlineMessage } from "@/components/ui/feedback";
 import type { DataTableColumn } from "@/components/ui/data-table";
 import { ShareLinkInventorySection } from "@/features/share-links/components/share-link-inventory-section";
-import { ShareLinkSidebar } from "@/features/share-links/components/share-link-sidebar";
 import { SelectedShareLinkSection } from "@/features/share-links/components/selected-share-link-section";
 import type {
   ContractPermission,
   ShareLinkResponse,
 } from "@/features/share-links/types/share-links.types";
 
-type SharePreview = {
-  token: string;
-  appUrl: string;
-};
-
 export function ShareLinksView({
   contractPermissions,
-  copyText,
   filteredShareLinksLength,
-  lastCreatedShare,
   loadingWorkspace,
   onCopySelectedAppUrl,
   onCopySelectedToken,
@@ -43,9 +35,7 @@ export function ShareLinksView({
   shareTotal,
 }: {
   contractPermissions: ContractPermission[];
-  copyText: (value: string, label: string) => Promise<void>;
   filteredShareLinksLength: number;
-  lastCreatedShare: SharePreview | null;
   loadingWorkspace: boolean;
   onCopySelectedAppUrl: (value: string) => void;
   onCopySelectedToken: (value: string) => void;
@@ -110,11 +100,6 @@ export function ShareLinksView({
             onRevokeSelectedShareLink={onRevokeSelectedShareLink}
             selectedShareLink={selectedShareLink}
             selectedShareLinkAppUrl={selectedShareLinkAppUrl}
-          />
-          <ShareLinkSidebar
-            copyText={copyText}
-            lastCreatedShare={lastCreatedShare}
-            selectedShareLink={selectedShareLink}
           />
         </div>
       </div>

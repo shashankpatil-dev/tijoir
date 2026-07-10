@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { RecipientView } from "@/features/recipient-access/components/recipient-view";
 import { useRecipientWorkspace } from "@/features/recipient-access/hooks/use-recipient-workspace";
@@ -13,11 +12,6 @@ export default function DashboardRecipientPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
-
-  useEffect(
-    () => shell.registerRefreshHandler(recipient.refreshRecipient),
-    [recipient.refreshRecipient, shell],
-  );
 
   return (
     <RecipientView

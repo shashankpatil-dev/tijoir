@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { NotificationsView } from "@/features/notifications/components/notifications-view";
 import { useNotificationsWorkspace } from "@/features/notifications/hooks/use-notifications-workspace";
@@ -16,11 +15,6 @@ export default function DashboardNotificationsPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
-
-  useEffect(
-    () => shell.registerRefreshHandler(notifications.refreshNotifications),
-    [notifications.refreshNotifications, shell],
-  );
 
   return (
     <NotificationsView

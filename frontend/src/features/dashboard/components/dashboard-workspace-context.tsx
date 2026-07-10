@@ -1,50 +1,38 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { ApiRequestError } from "@/lib/api/errors";
 import { logoutRequest } from "@/features/auth/api/auth.api";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
 import { clearSession } from "@/features/auth/lib/auth-storage";
-import {
-  canRoleReviewAudit,
-  hasOrganizationManagerRole,
-} from "@/features/dashboard/hooks/workspace-core.utils";
 import { titleForView, viewFromPath } from "@/features/dashboard/lib/dashboard-routing";
 import type { DashboardHookArgs, RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 
-type DashboardIntent =
-  | "create-secret"
-  | "create-share-link"
-  | "create-vendor"
-  | "create-invite"
-  | null;
+function hasOrganizationManagerRole(role?: string) {
+  return role === "ORG_OWNER" || role === "ADMIN";
+}
 
-type RefreshHandler = null | (() => Promise<void> | void);
+function canRoleReviewAudit(role?: string) {
+  return role === "ORG_OWNER" || role === "ADMIN" || role === "AUDITOR";
+}
 
 export type DashboardWorkspaceValue = {
   actionBusy: string | null;
   activeView: ReturnType<typeof viewFromPath>;
-  consumeIntent: (intent: Exclude<DashboardIntent, null>) => boolean;
+  canManageOrganization: boolean;
+  canManageSecrets: boolean;
+  canManageShareLinks: boolean;
+  canManageVendors: boolean;
+  canReviewAudit: boolean;
   copyText: (value: string, label: string) => Promise<void>;
   handleSessionError: (error: unknown, fallback: string) => void;
   isOrganizationManager: boolean;
-  isRefreshingView: boolean;
   logout: () => Promise<void>;
   navigationItems: Array<{ id: string; label: string; note: string }>;
-  refreshCurrentView: () => Promise<void>;
-  registerRefreshHandler: (handler: RefreshHandler) => () => void;
-  requestCreateInvite: () => void;
-  requestCreateSecret: () => void;
-  requestCreateShareLink: () => void;
-  requestCreateVendor: () => void;
   router: RouterLike;
   session: AuthResponse | null;
   setActionBusy: (value: string | null) => void;
   setMessage: (value: string) => void;
-  showCreateInvite: boolean;
-  showCreateSecret: boolean;
-  showCreateShareLink: boolean;
-  showCreateVendor: boolean;
   showToast: ShowToast;
   title: string;
 };
@@ -69,9 +57,6 @@ export function DashboardWorkspaceProvider({
   const [session, setSession] = useState<AuthResponse | null>(initialSession);
   const [message, setMessage] = useState("");
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-  const [pendingIntent, setPendingIntent] = useState<DashboardIntent>(null);
-  const [isRefreshingView, setIsRefreshingView] = useState(false);
-  const refreshHandlerRef = useRef<RefreshHandler>(null);
 
   const activeView = useMemo(() => viewFromPath(pathname), [pathname]);
   const title = useMemo(() => titleForView(activeView), [activeView]);
@@ -81,6 +66,18 @@ export function DashboardWorkspaceProvider({
   );
   const canReviewAudit = useMemo(
     () => canRoleReviewAudit(session?.user.role),
+    [session?.user.role],
+  );
+  const canManageSecrets = useMemo(
+    () => Boolean(session?.user.role && ["ORG_OWNER", "ADMIN", "MEMBER"].includes(session.user.role)),
+    [session?.user.role],
+  );
+  const canManageShareLinks = useMemo(
+    () => Boolean(session?.user.role && ["ORG_OWNER", "ADMIN", "MEMBER"].includes(session.user.role)),
+    [session?.user.role],
+  );
+  const canManageVendors = useMemo(
+    () => Boolean(session?.user.role && ["ORG_OWNER", "ADMIN", "MEMBER"].includes(session.user.role)),
     [session?.user.role],
   );
 
@@ -116,12 +113,6 @@ export function DashboardWorkspaceProvider({
         note: "Policy and controls",
       });
     }
-
-    items.push({
-      id: "recipient",
-      label: "Recipient Access",
-      note: "Open shared secrets",
-    });
 
     return items;
   }, [canReviewAudit, isOrganizationManager]);
@@ -178,56 +169,6 @@ export function DashboardWorkspaceProvider({
     [showToast],
   );
 
-  const registerRefreshHandler = useCallback((handler: RefreshHandler) => {
-    refreshHandlerRef.current = handler;
-    return () => {
-      if (refreshHandlerRef.current === handler) {
-        refreshHandlerRef.current = null;
-      }
-    };
-  }, []);
-
-  const refreshCurrentView = useCallback(async () => {
-    if (!refreshHandlerRef.current) {
-      return;
-    }
-
-    setIsRefreshingView(true);
-    try {
-      await refreshHandlerRef.current();
-    } finally {
-      setIsRefreshingView(false);
-    }
-  }, []);
-
-  const requestCreateSecret = useCallback(() => {
-    setPendingIntent("create-secret");
-    router.push("/dashboard/vault");
-  }, [router]);
-
-  const requestCreateShareLink = useCallback(() => {
-    setPendingIntent("create-share-link");
-    router.push("/dashboard/share-links");
-  }, [router]);
-
-  const requestCreateVendor = useCallback(() => {
-    setPendingIntent("create-vendor");
-    router.push("/dashboard/vendors");
-  }, [router]);
-
-  const requestCreateInvite = useCallback(() => {
-    setPendingIntent("create-invite");
-    router.push("/dashboard/organization");
-  }, [router]);
-
-  const consumeIntent = useCallback((intent: Exclude<DashboardIntent, null>) => {
-    if (pendingIntent !== intent) {
-      return false;
-    }
-    setPendingIntent(null);
-    return true;
-  }, [pendingIntent]);
-
   const logout = useCallback(async () => {
     try {
       await logoutRequest();
@@ -250,46 +191,35 @@ export function DashboardWorkspaceProvider({
     () => ({
       actionBusy,
       activeView,
-      consumeIntent,
+      canManageOrganization: isOrganizationManager,
+      canManageSecrets,
+      canManageShareLinks,
+      canManageVendors,
+      canReviewAudit,
       copyText,
       handleSessionError,
       isOrganizationManager,
-      isRefreshingView,
       logout,
       navigationItems,
-      refreshCurrentView,
-      registerRefreshHandler,
-      requestCreateInvite,
-      requestCreateSecret,
-      requestCreateShareLink,
-      requestCreateVendor,
       router,
       session,
       setActionBusy,
       setMessage,
-      showCreateInvite: isOrganizationManager,
-      showCreateSecret: Boolean(session?.user.role && ["ORG_OWNER", "ADMIN", "MEMBER"].includes(session.user.role)),
-      showCreateShareLink: Boolean(session?.user.role && ["ORG_OWNER", "ADMIN", "MEMBER"].includes(session.user.role)),
-      showCreateVendor: Boolean(session?.user.role && ["ORG_OWNER", "ADMIN", "MEMBER"].includes(session.user.role)),
       showToast,
       title,
     }),
     [
       actionBusy,
       activeView,
-      consumeIntent,
+      canManageSecrets,
+      canManageShareLinks,
+      canManageVendors,
+      canReviewAudit,
       copyText,
       handleSessionError,
       isOrganizationManager,
-      isRefreshingView,
       logout,
       navigationItems,
-      refreshCurrentView,
-      registerRefreshHandler,
-      requestCreateInvite,
-      requestCreateSecret,
-      requestCreateShareLink,
-      requestCreateVendor,
       router,
       session,
       showToast,

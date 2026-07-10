@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Menu, MenuDivider, MenuHint, MenuItem } from "@/components/ui/menu";
 import type { DashboardWorkspaceValue } from "@/features/dashboard/components/dashboard-workspace-context";
 
@@ -20,31 +19,27 @@ export function DashboardWorkspaceTopbarActions({
           </>
         }
       >
-        {workspace.showCreateSecret ? (
-          <MenuItem onClick={workspace.requestCreateSecret}>
+        {workspace.canManageSecrets ? (
+          <MenuItem onClick={() => workspace.router.push("/dashboard/vault")}>
             <MenuHint label="New secret" text="Store a new secret in the vault." />
           </MenuItem>
         ) : null}
-        {workspace.showCreateShareLink ? (
-          <MenuItem onClick={workspace.requestCreateShareLink}>
+        {workspace.canManageShareLinks ? (
+          <MenuItem onClick={() => workspace.router.push("/dashboard/share-links")}>
             <MenuHint label="Share access" text="Prepare recipient access for a secret." />
           </MenuItem>
         ) : null}
-        {workspace.showCreateVendor ? (
-          <MenuItem onClick={workspace.requestCreateVendor}>
+        {workspace.canManageVendors ? (
+          <MenuItem onClick={() => workspace.router.push("/dashboard/vendors")}>
             <MenuHint label="New vendor" text="Add an external entity before sharing." />
           </MenuItem>
         ) : null}
-        {workspace.showCreateInvite ? (
-          <MenuItem onClick={workspace.requestCreateInvite}>
+        {workspace.canManageOrganization ? (
+          <MenuItem onClick={() => workspace.router.push("/dashboard/organization")}>
             <MenuHint label="Invite member" text="Add another user to the organization." />
           </MenuItem>
         ) : null}
       </Menu>
-
-      <Button onClick={() => void workspace.refreshCurrentView()} type="button" variant="secondary">
-        {workspace.isRefreshingView ? "Refreshing..." : "Refresh"}
-      </Button>
 
       <Menu
         label={

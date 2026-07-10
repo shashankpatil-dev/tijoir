@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { AuditView } from "@/features/audit/components/audit-view";
 import { useAuditWorkspace } from "@/features/audit/hooks/use-audit-workspace";
@@ -15,11 +14,6 @@ export default function DashboardAuditPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
-
-  useEffect(
-    () => shell.registerRefreshHandler(audit.refreshAudit),
-    [audit.refreshAudit, shell],
-  );
 
   return (
     <AuditView

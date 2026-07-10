@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateShareLinkDialog } from "@/features/share-links/components/create-share-link-dialog";
@@ -20,24 +19,11 @@ export default function DashboardShareLinksPage() {
     showToast: shell.showToast,
   });
 
-  useEffect(
-    () => shell.registerRefreshHandler(share.refreshShareLinks),
-    [share.refreshShareLinks, shell],
-  );
-
-  useEffect(() => {
-    if (shell.consumeIntent("create-share-link")) {
-      share.setCreateShareOpen(true);
-    }
-  }, [share, shell]);
-
   return (
     <>
       <ShareLinksView
         contractPermissions={CONTRACT_PERMISSIONS}
-        copyText={shell.copyText}
         filteredShareLinksLength={share.filteredShareLinksLength}
-        lastCreatedShare={share.lastCreatedShare}
         loadingWorkspace={share.loadingShareLinks}
         onCopySelectedAppUrl={(value) => void shell.copyText(value, "Recipient URL")}
         onCopySelectedToken={(value) => void shell.copyText(value, "Share token")}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { ChangeMemberRoleDialog } from "@/features/members/components/change-member-role-dialog";
@@ -21,21 +20,9 @@ export default function DashboardOrganizationPage() {
     showToast: shell.showToast,
   });
 
-  useEffect(
-    () => shell.registerRefreshHandler(members.refreshMembers),
-    [members.refreshMembers, shell],
-  );
-
-  useEffect(() => {
-    if (shell.consumeIntent("create-invite")) {
-      members.setCreateInviteOpen(true);
-    }
-  }, [members, shell]);
-
   return (
     <>
       <MembersView
-        copyText={shell.copyText}
         filteredInvitesLength={members.filteredInvitesLength}
         filteredMembersLength={members.filteredMembersLength}
         inviteColumns={members.inviteColumns}
@@ -44,7 +31,6 @@ export default function DashboardOrganizationPage() {
         inviteSearch={members.inviteSearch}
         inviteStatusFilter={members.inviteStatusFilter}
         invites={members.invites}
-        lastCreatedInvite={members.lastCreatedInvite}
         loadingWorkspace={members.loadingMembers}
         memberColumns={members.memberColumns}
         memberPage={members.memberPage}

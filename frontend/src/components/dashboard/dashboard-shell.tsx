@@ -151,7 +151,7 @@ export function DashboardSectionHeader({
   title,
 }: {
   actions?: ReactNode;
-  description: string;
+  description?: string;
   title: string;
 }) {
   return (
@@ -160,9 +160,11 @@ export function DashboardSectionHeader({
         <h1 className="text-[28px] font-semibold leading-tight text-[var(--color-ink-strong)]">
           {title}
         </h1>
-        <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
-          {description}
-        </p>
+        {description ? (
+          <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
+            {description}
+          </p>
+        ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
     </div>
@@ -280,6 +282,28 @@ export function DetailList({
           <dd className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">
             {item.value}
           </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export function DefinitionRows({
+  items,
+}: {
+  items: Array<{ label: string; value: ReactNode }>;
+}) {
+  return (
+    <dl className="divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+      {items.map((item) => (
+        <div
+          className="grid gap-2 px-4 py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start"
+          key={item.label}
+        >
+          <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+            {item.label}
+          </dt>
+          <dd className="text-sm leading-6 text-[var(--color-ink-strong)]">{item.value}</dd>
         </div>
       ))}
     </dl>

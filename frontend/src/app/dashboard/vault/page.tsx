@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateSecretDialog } from "@/features/secrets/components/create-secret-dialog";
@@ -22,17 +21,6 @@ export default function DashboardVaultPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
-
-  useEffect(
-    () => shell.registerRefreshHandler(vault.refreshVault),
-    [shell, vault.refreshVault],
-  );
-
-  useEffect(() => {
-    if (shell.consumeIntent("create-secret")) {
-      vault.setCreateSecretOpen(true);
-    }
-  }, [shell, vault]);
 
   return (
     <>

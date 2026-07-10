@@ -1,15 +1,12 @@
 import {
-  DetailList,
-  DetailListSkeleton,
+  DefinitionRows,
   EmptyState,
   PageSection,
   StatCard,
   StatCardSkeleton,
-  SurfaceNoteListSkeleton,
 } from "@/components/dashboard/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
-import { SurfaceNote } from "@/features/dashboard/components/surface-note";
 import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 
@@ -82,95 +79,58 @@ export function OverviewView({
         )}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <PageSection
-          description="A clear view of the current organization workspace and its main activity."
-          title="Workspace summary"
+      <div className="flex flex-wrap gap-3">
+        <Button disabled={showLoadingState} onClick={onCreateSecret} type="button">
+          Create secret
+        </Button>
+        <Button
+          disabled={showLoadingState}
+          onClick={onCreateShareLink}
+          type="button"
+          variant="secondary"
         >
-          {showLoadingState ? (
-            <DetailListSkeleton />
-          ) : session ? (
-            <DetailList
-              items={[
-                { label: "Organization", value: organizationName },
-                { label: "Signed in as", value: session.user.name },
-                { label: "Role", value: session.user.role },
-                { label: "Email", value: session.user.email },
-                { label: "Current session", value: formatInstant(session.expiresAt) },
-                { label: "Workspace slug", value: session.organization.slug },
-              ]}
-            />
-          ) : (
-            <EmptyState
-              description="No session is available. Return to login to restore the workspace."
-              title="No session"
-            />
-          )}
-        </PageSection>
-
-        <div className="space-y-5">
-          <PageSection
-            description="The next things that matter most in the current workspace."
-            title="Focus"
+          Create share link
+        </Button>
+        {isOrganizationManager ? (
+          <Button
+            disabled={showLoadingState}
+            onClick={onInviteMember}
+            type="button"
+            variant="outline"
           >
-            {showLoadingState ? (
-              <SurfaceNoteListSkeleton />
-            ) : (
-              <div className="space-y-3">
-                <SurfaceNote
-                  label="Selected secret"
-                  value={activeSecret ? activeSecret.secretKey : "No secret selected"}
-                />
-                <SurfaceNote
-                  label="Last share link"
-                  value={
-                    lastCreatedShareReady
-                      ? "A new recipient access package is ready."
-                      : "No recent recipient package is staged."
-                  }
-                />
-                <SurfaceNote
-                  label="Team access"
-                  value={
-                    isOrganizationManager
-                      ? `${memberCount} members and ${pendingInvites} pending invites in the workspace.`
-                      : "Team administration is available to organization managers."
-                  }
-                />
-              </div>
-            )}
-          </PageSection>
-
-          <PageSection
-            description="Fast entry points for the main workflows."
-            title="Quick actions"
-          >
-            <div className="flex flex-wrap gap-3">
-              <Button disabled={showLoadingState} onClick={onCreateSecret} type="button">
-                Create secret
-              </Button>
-              <Button
-                disabled={showLoadingState}
-                onClick={onCreateShareLink}
-                type="button"
-                variant="secondary"
-              >
-                Create share link
-              </Button>
-              {isOrganizationManager ? (
-                <Button
-                  disabled={showLoadingState}
-                  onClick={onInviteMember}
-                  type="button"
-                  variant="outline"
-                >
-                  Invite member
-                </Button>
-              ) : null}
-            </div>
-          </PageSection>
-        </div>
+            Invite member
+          </Button>
+        ) : null}
       </div>
+
+      <PageSection title="Workspace summary">
+        {showLoadingState ? (
+          <div className="space-y-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                className="h-12 animate-pulse rounded-xl bg-[var(--color-surface-strong)]"
+                key={index}
+              />
+            ))}
+          </div>
+        ) : session ? (
+          <DefinitionRows
+            items={[
+              { label: "Organization", value: organizationName },
+              { label: "Signed in as", value: session.user.name },
+              { label: "Role", value: session.user.role },
+              { label: "Email", value: session.user.email },
+              { label: "Current session", value: formatInstant(session.expiresAt) },
+              { label: "Workspace slug", value: session.organization.slug },
+            ]}
+          />
+        ) : (
+          <EmptyState
+            description="No session is available. Return to login to restore the workspace."
+            title="No session"
+          />
+        )}
+      </PageSection>
     </div>
   );
 }

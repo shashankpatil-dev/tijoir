@@ -1,7 +1,6 @@
 "use client";
 
 import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
-import { createIdempotencyKey } from "@/lib/api/idempotency";
 import type { PageResponse } from "@/lib/api/types";
 import type {
   GeneratedSecretResponse,
@@ -56,7 +55,6 @@ export async function createSecret(
 ) {
   return authenticatedApiRequest<SecretDetail>("/api/secrets", accessToken, {
     method: "POST",
-    headers: { "Idempotency-Key": createIdempotencyKey() },
     body: JSON.stringify(payload),
   });
 }
@@ -90,7 +88,6 @@ export async function rotateSecret(
     accessToken,
     {
       method: "POST",
-      headers: { "Idempotency-Key": createIdempotencyKey() },
       body: JSON.stringify({ value }),
     },
   );

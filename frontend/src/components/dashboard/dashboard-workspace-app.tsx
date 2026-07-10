@@ -28,10 +28,7 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
       />
 
       <section className="space-y-5">
-        <DashboardSectionHeader
-          description="Manage secrets, vendors, recipient access, team members, and security activity from one workspace."
-          title={workspace.title}
-        />
+        <DashboardSectionHeader title={workspace.title} />
 
         {children}
       </section>

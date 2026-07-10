@@ -1,5 +1,5 @@
 import {
-  DetailList,
+  DefinitionRows,
   EmptyState,
   PageSection,
 } from "@/components/dashboard/dashboard-shell";
@@ -78,10 +78,7 @@ export function VaultView({
 }) {
   return (
     <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-      <PageSection
-        description="All vault entries for the current organization. Select a row to inspect its current detail and actions."
-        title="Vault inventory"
-      >
+      <PageSection title="Vault inventory">
         <div className="space-y-4">
           <TableToolbar
             actions={
@@ -137,10 +134,7 @@ export function VaultView({
       </PageSection>
 
       <div className="space-y-5">
-        <PageSection
-          description="Inspect metadata, reveal the active value, rotate the version, or revoke the secret entirely."
-          title="Selected secret"
-        >
+        <PageSection title="Selected secret">
           {selectedSecretLoading ? (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -155,7 +149,7 @@ export function VaultView({
             </div>
           ) : selectedSecretDetail ? (
             <div className="space-y-5">
-              <DetailList
+              <DefinitionRows
                 items={[
                   { label: "Name", value: selectedSecretDetail.name },
                   { label: "Key", value: selectedSecretDetail.secretKey },
@@ -210,10 +204,7 @@ export function VaultView({
           )}
         </PageSection>
 
-        <PageSection
-          description="The current active value is only shown after an explicit reveal action."
-          title="Reveal output"
-        >
+        <PageSection title="Reveal output">
           {revealedSecret ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-ink-strong)] p-4 text-white">

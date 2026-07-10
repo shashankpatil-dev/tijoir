@@ -56,10 +56,7 @@ export function ShareLinkInventorySection({
   shareTotal: number;
 }) {
   return (
-    <PageSection
-      description="Issued contract-scoped access links for external recipients."
-      title="Share-link inventory"
-    >
+    <PageSection title="Share-link inventory">
       <div className="space-y-4">
         <TableToolbar
           actions={
