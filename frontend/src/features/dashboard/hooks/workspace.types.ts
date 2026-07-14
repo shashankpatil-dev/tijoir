@@ -14,6 +14,7 @@ export type ShowToast = (options: {
 }) => void;
 
 export type SharePreview = {
+  id: string;
   token: string;
   appUrl: string;
 };

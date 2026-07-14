@@ -293,6 +293,7 @@ export function useShareLinksWorkspace({
       const preview =
         created.shareToken && typeof window !== "undefined"
           ? {
+              id: created.id,
               token: created.shareToken,
               appUrl: buildStaticAppUrl("/access", { token: created.shareToken }),
             }

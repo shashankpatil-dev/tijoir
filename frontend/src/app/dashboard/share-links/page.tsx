@@ -38,6 +38,7 @@ export default function DashboardShareLinksPage() {
       <ShareLinksView
         contractPermissions={CONTRACT_PERMISSIONS}
         filteredShareLinksLength={share.filteredShareLinksLength}
+        lastCreatedShare={share.lastCreatedShare}
         loadingWorkspace={share.loadingShareLinks}
         onCloseShareLink={() => share.setSelectedShareLinkId("")}
         onCopySelectedAppUrl={(value) => void shell.copyText(value, "Recipient URL")}
@@ -50,7 +51,6 @@ export default function DashboardShareLinksPage() {
         }}
         paginatedShareLinks={share.paginatedShareLinks}
         selectedShareLink={share.selectedShareLink}
-        selectedShareLinkAppUrl={share.selectedShareLinkAppUrl}
         selectedShareLinkId={share.selectedShareLinkId}
         setSelectedShareLinkId={share.setSelectedShareLinkId}
         setSharePage={share.setSharePage}

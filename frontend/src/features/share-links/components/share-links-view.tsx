@@ -6,6 +6,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { DataTableColumn } from "@/components/ui/data-table";
+import type { SharePreview } from "@/features/dashboard/hooks/workspace.types";
 import { ShareLinkInventorySection } from "@/features/share-links/components/share-link-inventory-section";
 import { SelectedShareLinkSection } from "@/features/share-links/components/selected-share-link-section";
 import type {
@@ -16,6 +17,7 @@ import type {
 export function ShareLinksView({
   contractPermissions,
   filteredShareLinksLength,
+  lastCreatedShare,
   loadingWorkspace,
   onCloseShareLink,
   onCopySelectedAppUrl,
@@ -24,7 +26,6 @@ export function ShareLinksView({
   onRevokeSelectedShareLink,
   paginatedShareLinks,
   selectedShareLink,
-  selectedShareLinkAppUrl,
   selectedShareLinkId,
   setSelectedShareLinkId,
   setSharePage,
@@ -43,6 +44,7 @@ export function ShareLinksView({
 }: {
   contractPermissions: ContractPermission[];
   filteredShareLinksLength: number;
+  lastCreatedShare: SharePreview | null;
   loadingWorkspace: boolean;
   onCloseShareLink: () => void;
   onCopySelectedAppUrl: (value: string) => void;
@@ -51,7 +53,6 @@ export function ShareLinksView({
   onRevokeSelectedShareLink: () => void;
   paginatedShareLinks: ShareLinkResponse[];
   selectedShareLink: ShareLinkResponse | null;
-  selectedShareLinkAppUrl: string | null;
   selectedShareLinkId: string;
   setSelectedShareLinkId: (value: string) => void;
   setSharePage: (page: number) => void;
@@ -121,11 +122,18 @@ export function ShareLinksView({
           <div className="p-4">
             {selectedShareLink ? (
               <SelectedShareLinkSection
+                justCreated={
+                  lastCreatedShare && lastCreatedShare.id === selectedShareLink.id
+                    ? {
+                        appUrl: lastCreatedShare.appUrl,
+                        token: lastCreatedShare.token,
+                      }
+                    : null
+                }
                 onCopySelectedAppUrl={onCopySelectedAppUrl}
                 onCopySelectedToken={onCopySelectedToken}
                 onRevokeSelectedShareLink={onRevokeSelectedShareLink}
                 selectedShareLink={selectedShareLink}
-                selectedShareLinkAppUrl={selectedShareLinkAppUrl}
               />
             ) : null}
           </div>

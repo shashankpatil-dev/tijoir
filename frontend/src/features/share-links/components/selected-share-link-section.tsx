@@ -22,17 +22,17 @@ function expiryProgress(createdAt: string, expiresAt?: string | null) {
 }
 
 export function SelectedShareLinkSection({
+  justCreated,
   onCopySelectedAppUrl,
   onCopySelectedToken,
   onRevokeSelectedShareLink,
   selectedShareLink,
-  selectedShareLinkAppUrl,
 }: {
+  justCreated: { token: string; appUrl: string } | null;
   onCopySelectedAppUrl: (value: string) => void;
   onCopySelectedToken: (value: string) => void;
   onRevokeSelectedShareLink: () => void;
   selectedShareLink: ShareLinkResponse;
-  selectedShareLinkAppUrl: string | null;
 }) {
   const isActive = selectedShareLink.status === "ACTIVE";
   const isOneTime = selectedShareLink.permission === "VIEW_ONCE";
@@ -49,42 +49,58 @@ export function SelectedShareLinkSection({
 
   return (
     <div className="space-y-5">
-      {selectedShareLinkAppUrl && isActive ? (
-        <div className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-(--color-surface) p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
-            Recipient link
-          </p>
+      {justCreated ? (
+        <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div>
+            <p className="text-sm font-semibold text-emerald-900">
+              Link ready — copy it now
+            </p>
+            <p className="text-xs leading-5 text-emerald-800">
+              The full link and token are shown only once, right after creation.
+              You will not be able to see them again — copy now or recreate the
+              link later.
+            </p>
+          </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="rounded-xl border border-[var(--color-border)] bg-white p-2">
-              <QRCodeSVG size={96} value={selectedShareLinkAppUrl} />
+            <div className="rounded-xl border border-emerald-200 bg-white p-2">
+              <QRCodeSVG size={96} value={justCreated.appUrl} />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <p className="break-all font-mono text-xs text-[var(--color-ink-strong)]">
-                {selectedShareLinkAppUrl}
+                {justCreated.appUrl}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  onClick={() => onCopySelectedAppUrl(selectedShareLinkAppUrl)}
+                  onClick={() => onCopySelectedAppUrl(justCreated.appUrl)}
                   size="sm"
                   type="button"
                 >
                   Copy link
                 </Button>
-                {selectedShareLink.shareToken ? (
-                  <Button
-                    onClick={() => onCopySelectedToken(selectedShareLink.shareToken || "")}
-                    size="sm"
-                    type="button"
-                    variant="secondary"
-                  >
-                    Copy token
-                  </Button>
-                ) : null}
+                <Button
+                  onClick={() => onCopySelectedToken(justCreated.token)}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Copy token
+                </Button>
               </div>
             </div>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-(--color-surface) p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+            Recipient link
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            The shareable link is shown only once, when the link is created, and
+            cannot be retrieved afterward. To hand it out again, revoke this link
+            and create a new one.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-(--color-surface) p-4">
         <div className="flex items-center justify-between gap-3">
@@ -105,7 +121,9 @@ export function SelectedShareLinkSection({
             </span>
           ) : (
             <span className="text-[var(--color-muted)]">
-              {consumed ? `First opened ${formatInstant(selectedShareLink.consumedAt)}` : "Not opened yet"}
+              {consumed
+                ? `First opened ${formatInstant(selectedShareLink.consumedAt)}`
+                : "Not opened yet"}
             </span>
           )}
         </div>
