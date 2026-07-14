@@ -10,6 +10,8 @@ import com.tijoir.secret.dto.RotateSecretRequest;
 import com.tijoir.secret.dto.SecretDetailResponse;
 import com.tijoir.secret.dto.SecretSummaryResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,11 +70,14 @@ public class SecretController {
     }
 
     @PostMapping("/{secretId}/reveal")
-    public RevealSecretResponse reveal(
+    public ResponseEntity<RevealSecretResponse> reveal(
             @AuthenticationPrincipal AuthenticatedUser user,
             @PathVariable UUID secretId
     ) {
-        return secretService.reveal(user, secretId);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore().mustRevalidate())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(secretService.reveal(user, secretId));
     }
 
     @PostMapping("/{secretId}/revoke")

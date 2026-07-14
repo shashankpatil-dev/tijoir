@@ -20,7 +20,15 @@ public class LocalSecretCrypto {
 
     private final byte[] keyBytes;
 
+    private static final String KNOWN_INSECURE_DEFAULT = "local-dev-secret-encryption-key-change-me";
+
     public LocalSecretCrypto(@Value("${tijoir.security.local-secret-encryption-key}") String keyMaterial) {
+        if (keyMaterial == null || keyMaterial.isBlank() || keyMaterial.length() < 16
+                || KNOWN_INSECURE_DEFAULT.equals(keyMaterial)) {
+            throw new IllegalStateException(
+                    "tijoir.security.local-secret-encryption-key must be set to a non-default value "
+                            + "of at least 16 characters. Provide LOCAL_SECRET_ENCRYPTION_KEY via environment.");
+        }
         this.keyBytes = sha256(keyMaterial);
     }
 

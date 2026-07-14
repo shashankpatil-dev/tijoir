@@ -7,3 +7,14 @@ logging:
   level:
     com.tijoir: DEBUG
 
+# Local-only dev values so local dev works without external secrets.
+# Production MUST supply its own via environment (base profile ships no usable defaults).
+tijoir:
+  security:
+    jwt-secret: local-dev-jwt-secret-change-me-0123456789abcdef
+    local-secret-encryption-key: local-dev-encryption-key-change-me
+    refresh-cookie-secure: false
+    refresh-cookie-same-site: Lax
+  notifications:
+    expose-dev-tokens: true
+

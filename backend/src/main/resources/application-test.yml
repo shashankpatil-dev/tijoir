@@ -13,6 +13,9 @@ spring:
     enabled: false
 
 tijoir:
+  security:
+    jwt-secret: test-jwt-secret-change-me-0123456789abcdef
+    local-secret-encryption-key: test-encryption-key-change-me
   notifications:
     enabled: true
     expose-dev-tokens: true

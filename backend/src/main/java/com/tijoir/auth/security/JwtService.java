@@ -36,7 +36,12 @@ public class JwtService {
             @Value("${tijoir.security.jwt-expiration-minutes}") long expirationMinutes
     ) {
         this.objectMapper = objectMapper;
-        this.secretBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        this.secretBytes = jwtSecret == null ? new byte[0] : jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (this.secretBytes.length < 32) {
+            throw new IllegalStateException(
+                    "tijoir.security.jwt-secret must be set to at least 32 bytes (256 bits). "
+                            + "Provide a strong JWT_SECRET via environment; no usable default is shipped.");
+        }
         this.expiration = Duration.ofMinutes(expirationMinutes);
     }
 
