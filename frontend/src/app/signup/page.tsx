@@ -2,20 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { GuestRoute } from "@/components/auth/auth-guards";
 import {
   apiRequest,
   type RegisterResponse,
   savePendingVerification,
 } from "@/lib/auth-client";
-import {
-  AuthShell,
-  PrimaryButton,
-  StatusPanel,
-} from "@/components/site-chrome";
+import { AuthShell, PrimaryButton, StatusPanel } from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
-import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 
 export default function SignupPage() {
@@ -26,13 +21,11 @@ export default function SignupPage() {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("Create your organization owner account.");
   const [busy, setBusy] = useState(false);
 
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setMessage("Creating organization");
 
     try {
       const result = await apiRequest<RegisterResponse>("/api/auth/register", {
@@ -52,23 +45,17 @@ export default function SignupPage() {
         expiresAt: result.emailVerificationExpiresAt,
       });
 
-      setMessage("Registration complete. Check email to verify the owner account.");
       showToast({
-        title: "Signup complete",
+        title: "Organization created",
         description: result.emailVerificationToken
-          ? "Organization owner created. Continue to verification."
-          : "Organization owner created. Check the inbox for the verification link.",
+          ? "Now verify your email to finish setup."
+          : "Check your inbox for the verification link.",
         tone: "success",
       });
       router.push("/verify");
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Unexpected error";
-      setMessage(text);
-      showToast({
-        title: "Signup failed",
-        description: text,
-        tone: "error",
-      });
+      const text = error instanceof Error ? error.message : "Something went wrong";
+      showToast({ title: "Couldn't sign up", description: text, tone: "error" });
     } finally {
       setBusy(false);
     }
@@ -80,73 +67,67 @@ export default function SignupPage() {
         aside={
           <div className="space-y-4">
             <StatusPanel
-              title="Why this flow exists"
-              body="The first user becomes ORG_OWNER. That role anchors vault ownership, future invites, RBAC, and contract-scoped sharing."
+              title="You become the owner"
+              body="The first account owns the organization — its vault, team, roles, and vendor access."
             />
             <StatusPanel
-              title="Production constraint"
-              body="A 409 response here means the organization email or owner email already exists. Use a fresh pair or move to verification for an existing unverified owner."
+              title="One step to go"
+              body="After signup, verify your email and you're ready to add secrets."
             />
           </div>
         }
-        description="Create the organization and first owner account, then complete verification before the workspace can be used."
-        eyebrow="Organization onboarding"
-        title="Set up the first secure workspace"
+        description="Create your organization and its first owner account."
+        eyebrow="Get started"
+        title="Set up your workspace"
       >
-        <BusyOverlay
-          body="Provisioning the organization owner and preparing email verification."
-          title="Creating organization"
-          visible={busy}
-        />
         <form className="space-y-4" onSubmit={register}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
-              Signup
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-(--color-ink-strong)">
-              Create the initial owner account
+            <h2 className="text-2xl font-semibold text-(--color-ink-strong)">
+              Create your organization
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              This creates the organization identity and its first owner.
+              This sets up the organization and you as its owner.
             </p>
           </div>
 
           <TextField
-            hint="This is the primary organization name shown in the dashboard."
+            hint="Shown across your workspace."
             label="Organization name"
             onChange={setOrganizationName}
             value={organizationName}
           />
           <TextField
-            hint="Must be unique across organizations."
+            hint="A shared inbox for the organization works well."
             label="Organization email"
             onChange={setOrganizationEmail}
             type="email"
             value={organizationEmail}
           />
-          <TextField label="Owner name" onChange={setUserName} value={userName} />
+          <TextField label="Your name" onChange={setUserName} value={userName} />
           <TextField
-            hint="Must be unique across users."
-            label="Owner email"
+            hint="You'll sign in and verify with this address."
+            label="Your email"
             onChange={setUserEmail}
             type="email"
             value={userEmail}
           />
           <PasswordField
-            hint="Use at least 10 characters with a strong mix. The backend enforces minimum length."
+            hint="At least 10 characters. Mix it up."
             label="Password"
             onChange={setPassword}
             value={password}
           />
 
-          <PrimaryButton busy={busy}>Create organization</PrimaryButton>
+          <PrimaryButton busy={busy}>
+            {busy ? "Creating…" : "Create organization"}
+          </PrimaryButton>
         </form>
 
         <div className="mt-6">
           <p className="text-sm text-muted">
-            Already registered?{" "}
+            Already have an account?{" "}
             <Link className="font-medium text-(--color-brand-strong)" href="/login">
-              Go to login
+              Log in
             </Link>
           </p>
         </div>

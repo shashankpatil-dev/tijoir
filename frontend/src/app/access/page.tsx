@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import {
   apiRequest,
   readLastPublicToken,
@@ -9,7 +9,6 @@ import {
   type PublicShareLinkMetadataResponse,
 } from "@/lib/auth-client";
 import { AuthShell, StatusPanel } from "@/components/site-chrome";
-import { BusyOverlay } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/toast-provider";
 import { RecipientView } from "@/features/recipient-access/components/recipient-view";
 
@@ -27,13 +26,11 @@ export default function AccessPage() {
     if (typeof window === "undefined") {
       return;
     }
-
     const search = new URLSearchParams(window.location.search);
     const initialToken = search.get("token") || readLastPublicToken();
     if (!initialToken) {
       return;
     }
-
     setToken(initialToken);
     void loadMetadata(initialToken);
   }, []);
@@ -46,36 +43,29 @@ export default function AccessPage() {
   async function loadMetadata(rawToken: string) {
     if (!rawToken.trim()) {
       showToast({
-        title: "Token required",
-        description: "Paste a recipient token before checking access.",
+        title: "Link needed",
+        description: "Paste the link or token you were given.",
         tone: "warning",
       });
       return;
     }
 
     setBusy("metadata");
-
     try {
       const result = await apiRequest<PublicShareLinkMetadataResponse>(
         `/api/public/share-links/${rawToken.trim()}`,
       );
-
       saveLastPublicToken(rawToken.trim());
       setMetadata(result);
       setConsumedValue(null);
       showToast({
-        title: "Access loaded",
-        description: `Access details for ${result.secretName} are available.`,
+        title: "Access found",
+        description: `Details for ${result.secretName} are ready.`,
         tone: "success",
       });
     } catch (error) {
-      const text =
-        error instanceof Error ? error.message : "Could not check access";
-      showToast({
-        title: "Access check failed",
-        description: text,
-        tone: "error",
-      });
+      const text = error instanceof Error ? error.message : "Couldn't open this link";
+      showToast({ title: "Couldn't open link", description: text, tone: "error" });
     } finally {
       setBusy(null);
     }
@@ -84,36 +74,29 @@ export default function AccessPage() {
   async function consume() {
     if (!token.trim()) {
       showToast({
-        title: "Token required",
-        description: "Paste a recipient token before revealing the secret.",
+        title: "Link needed",
+        description: "Paste the link or token before revealing.",
         tone: "warning",
       });
       return;
     }
 
     setBusy("consume");
-
     try {
       const result = await apiRequest<ConsumeShareLinkResponse>(
         `/api/public/share-links/${token.trim()}/consume`,
         { method: "POST" },
       );
-
       saveLastPublicToken(token.trim());
       setConsumedValue(result);
       showToast({
-        title: "Secret revealed",
-        description: `${result.secretKey} was revealed successfully.`,
+        title: "Revealed",
+        description: `${result.secretKey} is shown below.`,
         tone: "success",
       });
     } catch (error) {
-      const text =
-        error instanceof Error ? error.message : "Could not reveal the secret";
-      showToast({
-        title: "Reveal failed",
-        description: text,
-        tone: "error",
-      });
+      const text = error instanceof Error ? error.message : "Couldn't reveal the secret";
+      showToast({ title: "Reveal failed", description: text, tone: "error" });
     } finally {
       setBusy(null);
     }
@@ -122,15 +105,11 @@ export default function AccessPage() {
   async function copyText(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value);
-      showToast({
-        title: "Copied",
-        description: `${label} copied to the clipboard.`,
-        tone: "success",
-      });
+      showToast({ title: "Copied", description: `${label} copied.`, tone: "success" });
     } catch {
       showToast({
         title: "Copy failed",
-        description: `${label} could not be copied.`,
+        description: `Couldn't copy ${label.toLowerCase()}.`,
         tone: "error",
       });
     }
@@ -141,24 +120,24 @@ export default function AccessPage() {
       aside={
         <div className="space-y-4">
           <StatusPanel
-            body="This page is meant for the person receiving shared access. It does not require an organization login."
-            title="Recipient access"
+            title="You've been sent a secret"
+            body="No account needed — open the link, and reveal it when you're ready."
           />
           <StatusPanel
-            body="View-once links are consumed after reveal. Rotation-notify links show access details without exposing the secret value."
-            title="How access works"
+            title="Handle with care"
+            body="One-time links can be opened only once. Copy the value somewhere safe before you close this page."
           />
         </div>
       }
-      description="Open a recipient token, inspect access details, and reveal the secret only if the shared contract still allows it."
-      eyebrow="Recipient access"
-      title="Open shared access"
+      description="Open the link you were given and reveal the secret securely."
+      eyebrow="Shared with you"
+      title="Open your shared secret"
     >
-      <BusyOverlay
-        body="Processing the recipient access step."
-        title={busy === "consume" ? "Opening shared access" : "Checking access"}
-        visible={busy !== null}
-      />
+      {busy ? (
+        <p className="mb-4 text-sm text-(--color-brand-strong)">
+          {busy === "consume" ? "Revealing…" : "Checking the link…"}
+        </p>
+      ) : null}
       <RecipientView
         copyText={copyText}
         onConsume={consume}

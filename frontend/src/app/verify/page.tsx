@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { GuestRoute } from "@/components/auth/auth-guards";
-import { PrimaryButton } from "@/components/site-chrome";
 import {
   clearPendingVerification,
   readPendingVerification,
@@ -14,11 +13,8 @@ import {
   resendVerificationRequest,
   verifyEmailRequest,
 } from "@/features/auth/api/auth.api";
-import {
-  AuthShell,
-  StatusPanel,
-} from "@/components/site-chrome";
-import { BusyOverlay, InlineMessage } from "@/components/ui/feedback";
+import { AuthShell, PrimaryButton, StatusPanel } from "@/components/site-chrome";
+import { InlineMessage } from "@/components/ui/feedback";
 import { TextAreaField, TextField } from "@/components/ui/form-fields";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -27,7 +23,6 @@ export default function VerifyPage() {
   const { showToast } = useToast();
   const [token, setToken] = useState("");
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("Complete email verification to unlock login.");
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [tokenFromLink, setTokenFromLink] = useState(false);
@@ -48,7 +43,6 @@ export default function VerifyPage() {
     if (!pending) {
       return;
     }
-
     if (!urlToken && pending.token) {
       setToken(pending.token);
     }
@@ -62,32 +56,27 @@ export default function VerifyPage() {
   async function verify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!hasToken) {
-      setMessage("Open the verification link from email or paste the verification token.");
+      showToast({
+        title: "Token needed",
+        description: "Open the link from your email, or paste the token here.",
+        tone: "warning",
+      });
       return;
     }
 
     setBusy(true);
-    setMessage("Verifying token");
-
     try {
       await verifyEmailRequest(token);
-
       clearPendingVerification();
-      setMessage("Verification complete. Continue to login.");
       showToast({
         title: "Email verified",
-        description: "The owner account can now log in.",
+        description: "You can log in now.",
         tone: "success",
       });
       router.push("/login");
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Unexpected error";
-      setMessage(text);
-      showToast({
-        title: "Verification failed",
-        description: text,
-        tone: "error",
-      });
+      const text = error instanceof Error ? error.message : "Something went wrong";
+      showToast({ title: "Verification failed", description: text, tone: "error" });
     } finally {
       setBusy(false);
     }
@@ -95,47 +84,36 @@ export default function VerifyPage() {
 
   async function resendVerification() {
     if (!email.trim()) {
-      setMessage("Owner email is required to resend the verification token.");
+      showToast({
+        title: "Email needed",
+        description: "Enter your email to get a fresh verification link.",
+        tone: "warning",
+      });
       return;
     }
 
     setResendBusy(true);
-    setMessage("Requesting a fresh verification token");
-
     try {
       const result = await resendVerificationRequest(email);
-
       savePendingVerification({
         token: result.emailVerificationToken,
         email,
         expiresAt: result.emailVerificationExpiresAt,
       });
-
       if (result.emailVerificationToken) {
         setToken(result.emailVerificationToken);
         setTokenFromLink(false);
       }
-
-      setMessage(
-        result.emailVerificationToken
-          ? "Fresh verification token issued. Submit it below."
-          : "A fresh verification link was sent. Check the inbox and open the link.",
-      );
       showToast({
         title: "Verification sent",
         description: result.emailVerificationToken
-          ? "Use the new token to complete verification."
-          : "Open the fresh verification link from email.",
+          ? "A fresh token is ready below."
+          : "Open the new link from your inbox.",
         tone: "success",
       });
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Could not resend token";
-      setMessage(text);
-      showToast({
-        title: "Resend failed",
-        description: text,
-        tone: "error",
-      });
+      const text = error instanceof Error ? error.message : "Couldn't resend";
+      showToast({ title: "Resend failed", description: text, tone: "error" });
     } finally {
       setResendBusy(false);
     }
@@ -147,54 +125,41 @@ export default function VerifyPage() {
         aside={
           <div className="space-y-4">
             <StatusPanel
-              title="Verification delivery"
-              body={tokenFromLink
-                ? "This verification page was opened from an email link."
-                : hasToken
-                  ? "A development token is staged in this browser for local or test verification."
-                  : "Open the verification link from email. In development you can also paste the token here."}
+              title="Almost there"
+              body="Verifying your email unlocks login and the workspace."
             />
             <StatusPanel
-              title="Owner email"
-              body={email ? `Current verification target: ${email}` : "No staged verification email found yet."}
+              title="Where's the link?"
+              body="Check your inbox. In development the token appears here automatically."
             />
           </div>
         }
-        description="Submit the verification token to activate the owner account, then continue into login and the organization dashboard."
+        description="Confirm your email to activate the account."
         eyebrow="Email verification"
-        title="Verify the first owner account"
+        title="Verify your email"
       >
-        <BusyOverlay
-          body="Submitting the token and checking whether the owner account can be activated."
-          title="Verifying email"
-          visible={busy}
-        />
         <form className="space-y-4" onSubmit={verify}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
-              Verify
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-(--color-ink-strong)">
-              Confirm the registration token
+            <h2 className="text-2xl font-semibold text-(--color-ink-strong)">
+              Confirm your email
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Verification must succeed before login and workspace actions become available.
+              Verification unlocks login and everything in the workspace.
             </p>
           </div>
 
           <InlineMessage
             body={
               hasToken
-                ? "Use the verification action below to activate the owner account."
-                : "No staged token is available here. Request a fresh verification email and open the link from the inbox."
+                ? "Your token is ready — verify below."
+                : "Open the link from your email, or paste your token to continue."
             }
-            title={hasToken ? "Verification token ready" : "Email link required"}
+            title={hasToken ? "Ready to verify" : "Waiting for your token"}
             tone={hasToken ? "success" : "warning"}
           />
 
           <TextField
-            hint="Used for resend requests and to confirm where the verification email should go."
-            label="Owner email"
+            label="Email"
             onChange={setEmail}
             required
             type="email"
@@ -202,24 +167,24 @@ export default function VerifyPage() {
           />
 
           <TextAreaField
-            hint="This is optional in production when you open the email link directly. It remains useful for local and test flows."
+            hint="You usually don't need this — opening the email link fills it in. Handy for local testing."
             label="Verification token"
             onChange={setToken}
             required={false}
-            rows={8}
+            rows={hasToken ? 6 : 3}
             value={token}
           />
 
           <PrimaryButton busy={busy} disabled={!hasToken}>
-            Verify email
+            {busy ? "Verifying…" : "Verify email"}
           </PrimaryButton>
           <button
-            className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium text-(--color-ink) transition hover:border-(--color-brand) disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm font-medium text-(--color-ink) transition hover:border-(--color-brand) disabled:cursor-not-allowed disabled:opacity-60"
             disabled={busy || resendBusy}
             onClick={resendVerification}
             type="button"
           >
-            {resendBusy ? "Requesting..." : "Send fresh verification email"}
+            {resendBusy ? "Sending…" : "Send a fresh verification email"}
           </button>
         </form>
 
