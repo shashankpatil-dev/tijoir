@@ -149,13 +149,9 @@ resource "aws_lambda_function" "backend" {
       APP_SECRETS_PLACEHOLDER_ARN                    = aws_secretsmanager_secret.app_secret_prefix.arn
       AWS_KMS_KEY_ID                                 = aws_kms_key.app.arn
       JWT_SECRET                                     = random_password.jwt_secret.result
-      # Exact frontend origin — CORS with credentials cannot use a wildcard.
       CORS_ALLOWED_ORIGINS                           = "https://${aws_cloudfront_distribution.frontend.domain_name}"
-      # Frontend (CloudFront) and API (Lambda URL) are different sites, so the refresh
-      # cookie must be SameSite=None; Secure to be sent cross-site over HTTPS.
       REFRESH_COOKIE_SECURE                          = "true"
       REFRESH_COOKIE_SAME_SITE                       = "None"
-      # Behind CloudFront / Lambda URL: trust the forwarded client IP for rate limiting.
       TRUST_FORWARDED_HEADERS                        = "true"
       TIJOIR_NOTIFICATIONS_ENABLED                   = tostring(var.notifications_enabled)
       TIJOIR_NOTIFICATIONS_EXPOSE_DEV_TOKENS         = tostring(var.notification_expose_dev_tokens)
