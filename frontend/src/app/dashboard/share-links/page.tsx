@@ -39,6 +39,7 @@ export default function DashboardShareLinksPage() {
         contractPermissions={CONTRACT_PERMISSIONS}
         filteredShareLinksLength={share.filteredShareLinksLength}
         loadingWorkspace={share.loadingShareLinks}
+        onCloseShareLink={() => share.setSelectedShareLinkId("")}
         onCopySelectedAppUrl={(value) => void shell.copyText(value, "Recipient URL")}
         onCopySelectedToken={(value) => void shell.copyText(value, "Share token")}
         onCreateShareLink={() => share.setCreateShareOpen(true)}

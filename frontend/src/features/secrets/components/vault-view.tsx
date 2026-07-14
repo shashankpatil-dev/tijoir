@@ -1,6 +1,5 @@
 import {
   DefinitionRows,
-  EmptyState,
   PageSection,
 } from "@/components/dashboard/dashboard-shell";
 import { Badge, statusTone } from "@/components/ui/badge";
@@ -9,6 +8,12 @@ import {
   DataTable,
   type DataTableColumn,
 } from "@/components/ui/data-table";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   FilterSelect,
   PaginationControls,
@@ -26,6 +31,7 @@ import type {
 export function VaultView({
   filteredSecretsLength,
   loadingWorkspace,
+  onCloseSecret,
   onCopyRevealedSecret,
   onCreateSecret,
   onRevealSecret,
@@ -54,6 +60,7 @@ export function VaultView({
 }: {
   filteredSecretsLength: number;
   loadingWorkspace: boolean;
+  onCloseSecret: () => void;
   onCopyRevealedSecret: (value: string, label: string) => Promise<void>;
   onCreateSecret: () => void;
   onRevealSecret: (secretId: string) => void;
@@ -81,7 +88,7 @@ export function VaultView({
   vaultTypeFilter: string;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+    <>
       <PageSection title="Vault inventory">
         <div className="space-y-4">
           <TableToolbar
@@ -116,7 +123,6 @@ export function VaultView({
           </TableToolbar>
 
           <DataTable
-            containerClassName="max-h-120"
             columns={secretColumns}
             data={paginatedSecrets}
             emptyDescription="Create the first vault entry to begin the secret lifecycle."
@@ -152,104 +158,103 @@ export function VaultView({
         </div>
       </PageSection>
 
-      <div className="space-y-5">
-        <PageSection title="Selected secret">
-          {selectedSecretLoading ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    className="h-20 animate-pulse rounded-2xl bg-(--color-surface-strong)"
-                    key={index}
-                  />
-                ))}
-              </div>
-              <div className="h-24 animate-pulse rounded-2xl bg-(--color-surface-strong)" />
-            </div>
-          ) : selectedSecretDetail ? (
-            <div className="space-y-5">
-              <DefinitionRows
-                items={[
-                  { label: "Name", value: selectedSecretDetail.name },
-                  { label: "Key", value: selectedSecretDetail.secretKey },
-                  { label: "Type", value: selectedSecretDetail.type },
-                  {
-                    label: "Status",
-                    value: (
-                      <Badge tone={statusTone(selectedSecretDetail.status)}>
-                        {selectedSecretDetail.status}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    label: "Active version",
-                    value: `v${selectedSecretDetail.currentVersionNumber}`,
-                  },
-                  {
-                    label: "Created by",
-                    value: `${selectedSecretDetail.createdByName} · ${selectedSecretDetail.createdByEmail}`,
-                  },
-                ]}
-              />
+      <Sheet
+        open={Boolean(selectedSecretId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            onCloseSecret();
+          }
+        }}
+      >
+        <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-lg">
+          <SheetHeader className="border-b border-[var(--color-dashboard-border)]">
+            <SheetTitle>{selectedSecretDetail?.name ?? "Secret detail"}</SheetTitle>
+            {selectedSecretDetail ? (
+              <p className="text-sm text-[var(--color-muted)]">
+                {selectedSecretDetail.secretKey}
+              </p>
+            ) : null}
+          </SheetHeader>
 
-              {selectedSecretDetail.description ? (
-                <SurfaceNote
-                  label="Description"
-                  value={selectedSecretDetail.description}
+          <div className="flex flex-col gap-5 p-4">
+            {selectedSecretLoading ? (
+              <div className="space-y-4">
+                <div className="h-40 animate-pulse rounded-2xl bg-(--color-surface-strong)" />
+                <div className="h-24 animate-pulse rounded-2xl bg-(--color-surface-strong)" />
+              </div>
+            ) : selectedSecretDetail ? (
+              <>
+                <DefinitionRows
+                  items={[
+                    { label: "Type", value: selectedSecretDetail.type },
+                    {
+                      label: "Status",
+                      value: (
+                        <Badge tone={statusTone(selectedSecretDetail.status)}>
+                          {selectedSecretDetail.status}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      label: "Active version",
+                      value: `v${selectedSecretDetail.currentVersionNumber}`,
+                    },
+                    {
+                      label: "Created by",
+                      value: `${selectedSecretDetail.createdByName} · ${selectedSecretDetail.createdByEmail}`,
+                    },
+                  ]}
                 />
-              ) : null}
 
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={() => onRevealSecret(selectedSecretDetail.id)}
-                  type="button"
-                  variant="primary"
-                >
-                  Reveal value
-                </Button>
-                <Button onClick={onRotateSecret} type="button" variant="secondary">
-                  Rotate
-                </Button>
-                <Button onClick={onRevokeSecret} type="button" variant="outline">
-                  Revoke
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <EmptyState
-              description="Pick a vault row to load the current detail and actions."
-              title="No secret selected"
-            />
-          )}
-        </PageSection>
+                {selectedSecretDetail.description ? (
+                  <SurfaceNote
+                    label="Description"
+                    value={selectedSecretDetail.description}
+                  />
+                ) : null}
 
-        <PageSection title="Reveal output">
-          {revealedSecret ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-border bg-(--color-ink-strong) p-4 text-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-100/80">
-                  Secret value
-                </p>
-                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all text-sm leading-6">
-                  {revealedSecret.value}
-                </pre>
-              </div>
-              <Button
-                onClick={() => void onCopyRevealedSecret(revealedSecret.value, "Secret value")}
-                type="button"
-                variant="secondary"
-              >
-                Copy secret value
-              </Button>
-            </div>
-          ) : (
-            <EmptyState
-              description="Reveal the selected secret only when the current workflow actually requires the raw value."
-              title="No revealed value"
-            />
-          )}
-        </PageSection>
-      </div>
-    </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => onRevealSecret(selectedSecretDetail.id)}
+                    type="button"
+                    variant="primary"
+                  >
+                    Reveal value
+                  </Button>
+                  <Button onClick={onRotateSecret} type="button" variant="secondary">
+                    Rotate
+                  </Button>
+                  <Button onClick={onRevokeSecret} type="button" variant="outline">
+                    Revoke
+                  </Button>
+                </div>
+
+                {revealedSecret ? (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-border bg-(--color-ink-strong) p-4 text-white">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-100/80">
+                        Secret value
+                      </p>
+                      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all text-sm leading-6">
+                        {revealedSecret.value}
+                      </pre>
+                    </div>
+                    <Button
+                      onClick={() =>
+                        void onCopyRevealedSecret(revealedSecret.value, "Secret value")
+                      }
+                      type="button"
+                      variant="secondary"
+                    >
+                      Copy secret value
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

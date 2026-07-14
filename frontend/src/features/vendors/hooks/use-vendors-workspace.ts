@@ -111,15 +111,10 @@ export function useVendorsWorkspace({
     pageCount(paginatedVendors.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (!paginatedVendors.length) {
-      setSelectedVendorId("");
-      return;
-    }
-
+    // Keep the selection valid without auto-opening the detail drawer: clear it
+    // only when the selected vendor is no longer on the current page.
     setSelectedVendorId((current) =>
-      current && paginatedVendors.some((vendor) => vendor.id === current)
-        ? current
-        : paginatedVendors[0]?.id || "",
+      current && paginatedVendors.some((vendor) => vendor.id === current) ? current : "",
     );
   }, [paginatedVendors]);
 

@@ -44,6 +44,7 @@ export default function DashboardVendorsPage() {
         contractsLoading={vendors.contractsLoading}
         contractsTotal={vendors.contractsTotal}
         loadingWorkspace={vendors.loadingVendors}
+        onCloseVendor={() => vendors.setSelectedVendorId("")}
         onCreateContract={vendors.openCreateContract}
         onCreateVendor={() => vendors.setCreateVendorOpen(true)}
         onOffboardVendor={() => {

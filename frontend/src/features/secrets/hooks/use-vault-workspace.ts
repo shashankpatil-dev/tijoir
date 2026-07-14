@@ -95,14 +95,15 @@ export function useVaultWorkspace({
     pageCount(paginatedSecrets.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (!paginatedSecrets.length) {
+    // Clear the selection (and close the detail drawer) if the selected secret
+    // is no longer present in the current page. Never auto-select a row — the
+    // drawer must stay closed until the user explicitly opens one.
+    if (
+      selectedSecretId &&
+      !paginatedSecrets.some((secret) => secret.id === selectedSecretId)
+    ) {
       setSelectedSecretId("");
       setRevealedSecret(null);
-      return;
-    }
-
-    if (!selectedSecretId || !paginatedSecrets.some((secret) => secret.id === selectedSecretId)) {
-      setSelectedSecretId(paginatedSecrets[0].id);
     }
   }, [paginatedSecrets, selectedSecretId]);
 

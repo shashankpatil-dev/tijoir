@@ -3,9 +3,17 @@ import {
   EmptyState,
   PageSection,
 } from "@/components/dashboard/dashboard-shell";
+import { Badge, statusTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { InlineMessage } from "@/components/ui/feedback";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FilterSelect,
   PaginationControls,
@@ -26,6 +34,7 @@ export function VendorsView({
   contractsLoading,
   contractsTotal,
   loadingWorkspace,
+  onCloseVendor,
   onCreateContract,
   onCreateVendor,
   onOffboardVendor,
@@ -53,6 +62,7 @@ export function VendorsView({
   contractsLoading: boolean;
   contractsTotal: number;
   loadingWorkspace: boolean;
+  onCloseVendor: () => void;
   onCreateContract: () => void;
   onCreateVendor: () => void;
   onOffboardVendor: () => void;
@@ -72,174 +82,180 @@ export function VendorsView({
   vendorsAvailable: boolean;
   vendorsTotal: number;
 }) {
+  if (!vendorsAvailable) {
+    return (
+      <InlineMessage
+        body="This role cannot manage vendor relationships in the current workspace."
+        title="Vendor access unavailable"
+        tone="warning"
+      />
+    );
+  }
+
   return (
-    <div className="space-y-5">
-      {!vendorsAvailable ? (
-        <InlineMessage
-          body="This role cannot manage vendor relationships in the current workspace."
-          title="Vendor access unavailable"
-          tone="warning"
-        />
-      ) : (
-        <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
-          <div className="space-y-5">
-            <PageSection title="Vendors">
-              <div className="space-y-4">
+    <>
+      <PageSection title="Vendors">
+        <div className="space-y-4">
+          <TableToolbar
+            actions={
+              <Button onClick={onCreateVendor} type="button">
+                Add vendor
+              </Button>
+            }
+          >
+            <SearchInput
+              onChange={setVendorSearch}
+              placeholder="Search by vendor name or contact"
+              value={vendorSearch}
+            />
+            <FilterSelect
+              onChange={setVendorStatusFilter}
+              options={[
+                { label: "All statuses", value: "ALL" },
+                { label: "Active", value: "ACTIVE" },
+                { label: "Offboarded", value: "OFFBOARDED" },
+              ]}
+              value={vendorStatusFilter}
+            />
+          </TableToolbar>
+
+          <DataTable
+            columns={vendorColumns}
+            data={vendors}
+            emptyDescription="Add the first vendor to bind contracts and external share flows to a real entity."
+            emptyTitle="No vendors match the current filters"
+            loading={loadingWorkspace && !vendors.length}
+            onRowClick={(vendor) => setSelectedVendorId(vendor.id)}
+            rowKey={(vendor) => vendor.id}
+            selectedRowKey={selectedVendor?.id ?? null}
+          />
+
+          <PaginationControls
+            currentPage={vendorPage}
+            itemLabel="vendors"
+            onPageChange={setVendorPage}
+            pageCount={vendorPageCount}
+            totalItems={vendorsTotal}
+          />
+        </div>
+      </PageSection>
+
+      <Sheet
+        open={Boolean(selectedVendor)}
+        onOpenChange={(open) => {
+          if (!open) {
+            onCloseVendor();
+          }
+        }}
+      >
+        <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-xl">
+          <SheetHeader className="border-b border-[var(--color-dashboard-border)]">
+            <SheetTitle className="flex items-center gap-3">
+              {selectedVendor?.name ?? "Vendor"}
+              {selectedVendor ? (
+                <Badge tone={statusTone(selectedVendor.status)}>
+                  {selectedVendor.status}
+                </Badge>
+              ) : null}
+            </SheetTitle>
+          </SheetHeader>
+
+          {selectedVendor ? (
+            <Tabs className="gap-0" defaultValue="profile">
+              <TabsList className="mx-4 mt-4">
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="contracts">Contracts</TabsTrigger>
+              </TabsList>
+
+              <TabsContent className="space-y-5 p-4" value="profile">
+                <DefinitionRows
+                  items={[
+                    {
+                      label: "Contact",
+                      value: selectedVendor.contactName || "Not specified",
+                    },
+                    {
+                      label: "Contact email",
+                      value: selectedVendor.contactEmail || "Not specified",
+                    },
+                    { label: "Status", value: selectedVendor.status },
+                    { label: "Created by", value: selectedVendor.createdByName },
+                    {
+                      label: "Offboarded at",
+                      value: selectedVendor.offboardedAt || "Active",
+                    },
+                  ]}
+                />
+                {selectedVendor.notes ? (
+                  <div className="rounded-2xl border border-border bg-(--color-surface) p-4 text-sm leading-6 text-(--color-ink)">
+                    {selectedVendor.notes}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={selectedVendor.status !== "ACTIVE"}
+                    onClick={onCreateContract}
+                    type="button"
+                    variant="secondary"
+                  >
+                    New contract
+                  </Button>
+                  <Button
+                    disabled={selectedVendor.status !== "ACTIVE"}
+                    onClick={onOffboardVendor}
+                    type="button"
+                    variant="danger"
+                  >
+                    Offboard vendor
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent className="space-y-4 p-4" value="contracts">
                 <TableToolbar
                   actions={
-                    <Button onClick={onCreateVendor} type="button">
-                      Create vendor
-                    </Button>
-                  }
-                >
-                  <SearchInput
-                    onChange={setVendorSearch}
-                    placeholder="Search by vendor name or contact"
-                    value={vendorSearch}
-                  />
-                  <FilterSelect
-                    onChange={setVendorStatusFilter}
-                    options={[
-                      { label: "All statuses", value: "ALL" },
-                      { label: "Active", value: "ACTIVE" },
-                      { label: "Offboarded", value: "OFFBOARDED" },
-                    ]}
-                    value={vendorStatusFilter}
-                  />
-                </TableToolbar>
-
-                <DataTable
-                  containerClassName="max-h-120"
-                  columns={vendorColumns}
-                  data={vendors}
-                  emptyDescription="Create the first vendor to bind contracts and external share flows to a real entity."
-                  emptyTitle="No vendors match the current filters"
-                  loading={loadingWorkspace && vendorsAvailable && !vendors.length}
-                  onRowClick={(vendor) => setSelectedVendorId(vendor.id)}
-                  rowKey={(vendor) => vendor.id}
-                  selectedRowKey={selectedVendor?.id ?? null}
-                />
-
-                <PaginationControls
-                  currentPage={vendorPage}
-                  itemLabel="vendors"
-                  onPageChange={setVendorPage}
-                  pageCount={vendorPageCount}
-                  totalItems={vendorsTotal}
-                />
-              </div>
-            </PageSection>
-
-            <PageSection title="Vendor contracts">
-              {selectedVendor ? (
-                <div className="space-y-4">
-                  <TableToolbar
-                    actions={
-                      <Button
-                        disabled={selectedVendor.status !== "ACTIVE"}
-                        onClick={onCreateContract}
-                        type="button"
-                      >
-                        Create contract
-                      </Button>
-                    }
-                  >
-                    <FilterSelect
-                      onChange={setContractStatusFilter}
-                      options={[
-                        { label: "All statuses", value: "ALL" },
-                        { label: "Active", value: "ACTIVE" },
-                        { label: "Revoked", value: "REVOKED" },
-                        { label: "Expired", value: "EXPIRED" },
-                      ]}
-                      value={contractStatusFilter}
-                    />
-                  </TableToolbar>
-
-                  <DataTable
-                    containerClassName="max-h-96"
-                    columns={contractColumns}
-                    data={contracts}
-                    emptyDescription="This vendor does not have contract records for the current filters."
-                    emptyTitle="No contracts to show"
-                    loading={contractsLoading || (loadingWorkspace && !contracts.length)}
-                    rowKey={(contract) => contract.id}
-                  />
-
-                  <PaginationControls
-                    currentPage={contractPage}
-                    itemLabel="contracts"
-                    onPageChange={setContractPage}
-                    pageCount={contractPageCount}
-                    totalItems={contractsTotal}
-                  />
-                </div>
-              ) : (
-                <EmptyState
-                  description="Pick a vendor from the registry to manage its contracts."
-                  title="No vendor selected"
-                />
-              )}
-            </PageSection>
-          </div>
-
-          <div className="space-y-5">
-            <PageSection title="Vendor profile">
-              {selectedVendor ? (
-                <div className="space-y-4">
-                  <DefinitionRows
-                    items={[
-                      { label: "Vendor", value: selectedVendor.name },
-                      {
-                        label: "Contact",
-                        value: selectedVendor.contactName || "Not specified",
-                      },
-                      {
-                        label: "Contact email",
-                        value: selectedVendor.contactEmail || "Not specified",
-                      },
-                      { label: "Status", value: selectedVendor.status },
-                      { label: "Created by", value: selectedVendor.createdByName },
-                      {
-                        label: "Offboarded at",
-                        value: selectedVendor.offboardedAt || "Active",
-                      },
-                    ]}
-                  />
-                  {selectedVendor.notes ? (
-                    <div className="rounded-2xl border border-border bg-(--color-surface) p-4 text-sm leading-6 text-(--color-ink)">
-                      {selectedVendor.notes}
-                    </div>
-                  ) : null}
-                  <div className="flex flex-wrap gap-3">
                     <Button
                       disabled={selectedVendor.status !== "ACTIVE"}
                       onClick={onCreateContract}
                       type="button"
-                      variant="secondary"
                     >
-                      New contract
+                      Create contract
                     </Button>
-                    <Button
-                      disabled={selectedVendor.status !== "ACTIVE"}
-                      onClick={onOffboardVendor}
-                      type="button"
-                      variant="danger"
-                    >
-                      Offboard vendor
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState
-                  description="Select a vendor to inspect contact details, notes, and offboarding controls."
-                  title="No vendor profile selected"
+                  }
+                >
+                  <FilterSelect
+                    onChange={setContractStatusFilter}
+                    options={[
+                      { label: "All statuses", value: "ALL" },
+                      { label: "Active", value: "ACTIVE" },
+                      { label: "Revoked", value: "REVOKED" },
+                      { label: "Expired", value: "EXPIRED" },
+                    ]}
+                    value={contractStatusFilter}
+                  />
+                </TableToolbar>
+
+                <DataTable
+                  columns={contractColumns}
+                  data={contracts}
+                  emptyDescription="This vendor does not have contract records for the current filters."
+                  emptyTitle="No contracts to show"
+                  loading={contractsLoading || (loadingWorkspace && !contracts.length)}
+                  rowKey={(contract) => contract.id}
                 />
-              )}
-            </PageSection>
-          </div>
-        </div>
-      )}
-    </div>
+
+                <PaginationControls
+                  currentPage={contractPage}
+                  itemLabel="contracts"
+                  onPageChange={setContractPage}
+                  pageCount={contractPageCount}
+                  totalItems={contractsTotal}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

@@ -207,15 +207,12 @@ export function useShareLinksWorkspace({
     pageCount(paginatedShareLinks.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (!paginatedShareLinks.length) {
-      setSelectedShareLinkId("");
-      return;
-    }
-
+    // Keep the selection valid without auto-opening the detail drawer: clear it
+    // only when the selected link is no longer on the current page.
     setSelectedShareLinkId((current) =>
       current && paginatedShareLinks.some((shareLink) => shareLink.id === current)
         ? current
-        : paginatedShareLinks[0].id,
+        : "",
     );
   }, [paginatedShareLinks]);
 

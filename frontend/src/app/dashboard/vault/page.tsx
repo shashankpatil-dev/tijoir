@@ -41,6 +41,7 @@ export default function DashboardVaultPage() {
       <VaultView
         filteredSecretsLength={vault.filteredSecretsLength}
         loadingWorkspace={vault.loadingVault}
+        onCloseSecret={() => vault.setSelectedSecretId("")}
         onCopyRevealedSecret={shell.copyText}
         onCreateSecret={() => vault.setCreateSecretOpen(true)}
         onRevealSecret={(secretId) => void vault.handleRevealSecret(secretId)}
