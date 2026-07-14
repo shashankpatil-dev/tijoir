@@ -55,7 +55,7 @@ export function DashboardShell({
 
   return (
     <SidebarProvider
-      className="min-h-screen bg-[var(--color-dashboard-bg)] text-[var(--color-ink)]"
+      className="min-h-screen bg-(--color-dashboard-bg) text-(--color-ink)"
       defaultOpen
     >
       <Sidebar
@@ -115,8 +115,8 @@ export function DashboardShell({
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-screen min-w-0 w-auto flex-1 overflow-x-hidden bg-[var(--color-dashboard-bg)]">
-        <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
+      <SidebarInset className="min-h-screen min-w-0 w-auto flex-1 overflow-x-hidden bg-(--color-dashboard-bg)">
+        <header className="sticky top-0 z-30 border-b border-(--color-dashboard-border) bg-white/92 backdrop-blur">
           <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <SidebarTrigger aria-label="Open menu" className="md:hidden" />
@@ -148,7 +148,7 @@ function DashboardSidebarNavButton({
   return (
     <SidebarMenuItem className="px-2">
       {active ? (
-        <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[var(--color-sidebar-primary)]" />
+        <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-sidebar-primary" />
       ) : null}
       <SidebarMenuButton
         className={cn(
@@ -162,7 +162,7 @@ function DashboardSidebarNavButton({
         <Icon
           className={cn(
             "size-4",
-            active ? "text-[var(--color-sidebar-primary)]" : "text-sidebar-foreground/65",
+            active ? "text-sidebar-primary" : "text-sidebar-foreground/65",
           )}
         />
         <span>{item.label}</span>
@@ -188,11 +188,11 @@ export function DashboardSectionHeader({
   return (
     <div className="flex flex-col gap-2.5 lg:flex-row lg:items-end lg:justify-between">
       <div className="space-y-1.5">
-        <h1 className="text-[28px] font-semibold leading-tight text-[var(--color-ink-strong)]">
+        <h1 className="text-[28px] font-semibold leading-tight text-(--color-ink-strong)">
           {title}
         </h1>
         {description ? (
-          <p className="max-w-3xl text-sm leading-6 text-[var(--color-muted)]">
+          <p className="max-w-3xl text-sm leading-6 text-muted">
             {description}
           </p>
         ) : null}
@@ -211,7 +211,7 @@ export function SurfaceCard({
 }) {
   return (
     <section
-      className={`rounded-2xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)] sm:p-5 ${className}`}
+      className={`rounded-2xl border border-(--color-dashboard-border) bg-white p-4 shadow-(--shadow-card) sm:p-5 ${className}`}
     >
       {children}
     </section>
@@ -231,11 +231,11 @@ export function PageSection({
     <SurfaceCard>
       <div className="space-y-3.5">
         <div>
-          <h2 className="text-[18px] font-semibold leading-7 text-[var(--color-ink-strong)]">
+          <h2 className="text-[18px] font-semibold leading-7 text-(--color-ink-strong)">
             {title}
           </h2>
           {description ? (
-            <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               {description}
             </p>
           ) : null}
@@ -258,9 +258,9 @@ export function StatCard({
   return (
     <SurfaceCard className="p-4">
       <div className="space-y-1.5">
-        <p className="text-[13px] font-medium text-[var(--color-muted)]">{label}</p>
-        <p className="text-[28px] font-semibold leading-tight text-[var(--color-ink-strong)]">{value}</p>
-        <p className="text-sm leading-5 text-[var(--color-muted)]">{note}</p>
+        <p className="text-[13px] font-medium text-muted">{label}</p>
+        <p className="text-[28px] font-semibold leading-tight text-(--color-ink-strong)">{value}</p>
+        <p className="text-sm leading-5 text-muted">{note}</p>
       </div>
     </SurfaceCard>
   );
@@ -286,9 +286,9 @@ export function EmptyState({
   title: string;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)] px-5 py-8 text-center">
-      <p className="text-base font-semibold text-[var(--color-ink-strong)]">{title}</p>
-      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[var(--color-muted)]">
+    <div className="rounded-xl border border-dashed border-(--color-border-strong) bg-(--color-surface) px-5 py-8 text-center">
+      <p className="text-base font-semibold text-(--color-ink-strong)">{title}</p>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
         {description}
       </p>
     </div>
@@ -304,13 +304,13 @@ export function DetailList({
     <dl className="grid gap-4 sm:grid-cols-2">
       {items.map((item) => (
         <div
-          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          className="rounded-xl border border-border bg-(--color-surface) p-4"
           key={item.label}
         >
-          <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+          <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
             {item.label}
           </dt>
-          <dd className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">
+          <dd className="mt-2 text-sm leading-6 text-(--color-ink-strong)">
             {item.value}
           </dd>
         </div>
@@ -325,16 +325,16 @@ export function DefinitionRows({
   items: Array<{ label: string; value: ReactNode }>;
 }) {
   return (
-    <dl className="divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+    <dl className="divide-y divide-border rounded-xl border border-border bg-(--color-surface)">
       {items.map((item) => (
         <div
           className="grid gap-2 px-4 py-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start"
           key={item.label}
         >
-          <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+          <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
             {item.label}
           </dt>
-          <dd className="text-sm leading-6 text-[var(--color-ink-strong)]">{item.value}</dd>
+          <dd className="text-sm leading-6 text-(--color-ink-strong)">{item.value}</dd>
         </div>
       ))}
     </dl>
@@ -350,7 +350,7 @@ export function DetailListSkeleton({
     <div className="grid gap-4 sm:grid-cols-2">
       {Array.from({ length: items }).map((_, index) => (
         <div
-          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          className="rounded-xl border border-border bg-(--color-surface) p-4"
           key={index}
         >
           <SkeletonBlock className="h-3 w-24" />
@@ -370,7 +370,7 @@ export function SurfaceNoteListSkeleton({
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, index) => (
         <div
-          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          className="rounded-xl border border-border bg-(--color-surface) p-4"
           key={index}
         >
           <SkeletonBlock className="h-3 w-24" />

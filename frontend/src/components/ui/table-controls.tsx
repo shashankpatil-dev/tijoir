@@ -22,7 +22,7 @@ export function TableToolbar({
   return (
     <div className="space-y-2">
       {title ? (
-        <p className="text-sm font-medium text-[var(--color-ink-strong)]">{title}</p>
+        <p className="text-sm font-medium text-(--color-ink-strong)">{title}</p>
       ) : null}
       <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-1 flex-col gap-2.5 md:flex-row md:flex-wrap md:items-center">
@@ -45,9 +45,9 @@ export function SearchInput({
 }) {
   return (
     <div className="relative w-full md:max-w-sm">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-muted)]" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
       <Input
-        className="h-11 rounded-xl border-[var(--color-border)] bg-white pl-9 pr-10"
+        className="h-11 rounded-xl border-border bg-white pl-9 pr-10"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         value={value}
@@ -55,7 +55,7 @@ export function SearchInput({
       {value ? (
         <button
           aria-label="Clear search"
-          className="absolute right-3 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink-strong)]"
+          className="absolute right-3 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted transition hover:bg-(--color-surface) hover:text-(--color-ink-strong)"
           onClick={() => onChange("")}
           type="button"
         >
@@ -77,7 +77,7 @@ export function FilterSelect({
 }) {
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="h-11 w-full rounded-xl border-[var(--color-border)] bg-white md:w-auto md:min-w-[180px]">
+      <SelectTrigger className="h-11 w-full rounded-xl border-border bg-white md:w-auto md:min-w-[180px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -115,7 +115,7 @@ export function PaginationControls({
 
   if (pageCount <= 1) {
     return (
-      <p className="text-sm text-[var(--color-muted)]">
+      <p className="text-sm text-muted">
         {totalItems} {itemLabel}
       </p>
     );
@@ -124,12 +124,12 @@ export function PaginationControls({
   return (
     <div className="flex flex-col gap-2 pt-1 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="text-sm text-muted">
           {startItem}-{endItem} of {totalItems} {itemLabel}
         </p>
         {onPageSizeChange ? (
           <Select onValueChange={(value) => onPageSizeChange(Number(value))} value={String(pageSize)}>
-            <SelectTrigger className="h-9 w-[110px] rounded-xl border-[var(--color-border)] bg-white">
+            <SelectTrigger className="h-9 w-[110px] rounded-xl border-border bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

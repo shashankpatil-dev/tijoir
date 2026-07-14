@@ -108,7 +108,7 @@ export function OverviewView({
           <div className="space-y-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
-                className="h-12 animate-pulse rounded-xl bg-[var(--color-surface-strong)]"
+                className="h-12 animate-pulse rounded-xl bg-(--color-surface-strong)"
                 key={index}
               />
             ))}

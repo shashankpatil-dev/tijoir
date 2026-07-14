@@ -65,8 +65,8 @@ export function MenuHint({
 }) {
   return (
     <div className="space-y-1 px-1.5 py-1">
-      <p className="text-sm font-medium leading-5 text-[var(--color-ink-strong)]">{label}</p>
-      <p className="text-xs leading-5 text-[var(--color-muted)]">{text}</p>
+      <p className="text-sm font-medium leading-5 text-(--color-ink-strong)">{label}</p>
+      <p className="text-xs leading-5 text-muted">{text}</p>
     </div>
   );
 }

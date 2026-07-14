@@ -65,16 +65,16 @@ function DashboardEmailVerificationBanner({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-4 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-2xl border border-border bg-white px-4 py-4 shadow-(--shadow-card) sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-brand)]">
+        <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-(--color-surface) text-(--color-brand)">
           <Mail className="size-4" />
         </span>
         <div>
-          <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+          <p className="text-sm font-semibold text-(--color-ink-strong)">
             Verify your email to keep the workspace fully active
           </p>
-          <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">
+          <p className="mt-1 text-sm leading-6 text-muted">
             We still allow access, but verification should be completed for this account.
           </p>
         </div>

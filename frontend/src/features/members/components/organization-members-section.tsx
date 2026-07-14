@@ -75,7 +75,7 @@ export function OrganizationMembersSection({
         </TableToolbar>
 
         <DataTable
-          containerClassName="max-h-[30rem]"
+          containerClassName="max-h-120"
           columns={memberColumns}
           data={paginatedMembers}
           emptyDescription="Invite the next workspace user to move beyond the single-owner setup."

@@ -109,7 +109,7 @@ export function VendorsView({
                 </TableToolbar>
 
                 <DataTable
-                  containerClassName="max-h-[30rem]"
+                  containerClassName="max-h-120"
                   columns={vendorColumns}
                   data={vendors}
                   emptyDescription="Create the first vendor to bind contracts and external share flows to a real entity."
@@ -157,7 +157,7 @@ export function VendorsView({
                   </TableToolbar>
 
                   <DataTable
-                    containerClassName="max-h-[24rem]"
+                    containerClassName="max-h-96"
                     columns={contractColumns}
                     data={contracts}
                     emptyDescription="This vendor does not have contract records for the current filters."
@@ -207,7 +207,7 @@ export function VendorsView({
                     ]}
                   />
                   {selectedVendor.notes ? (
-                    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm leading-6 text-[var(--color-ink)]">
+                    <div className="rounded-2xl border border-border bg-(--color-surface) p-4 text-sm leading-6 text-(--color-ink)">
                       {selectedVendor.notes}
                     </div>
                   ) : null}

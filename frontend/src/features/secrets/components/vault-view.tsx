@@ -116,7 +116,7 @@ export function VaultView({
           </TableToolbar>
 
           <DataTable
-            containerClassName="max-h-[30rem]"
+            containerClassName="max-h-120"
             columns={secretColumns}
             data={paginatedSecrets}
             emptyDescription="Create the first vault entry to begin the secret lifecycle."
@@ -159,12 +159,12 @@ export function VaultView({
               <div className="grid gap-4 sm:grid-cols-2">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div
-                    className="h-20 animate-pulse rounded-2xl bg-[var(--color-surface-strong)]"
+                    className="h-20 animate-pulse rounded-2xl bg-(--color-surface-strong)"
                     key={index}
                   />
                 ))}
               </div>
-              <div className="h-24 animate-pulse rounded-2xl bg-[var(--color-surface-strong)]" />
+              <div className="h-24 animate-pulse rounded-2xl bg-(--color-surface-strong)" />
             </div>
           ) : selectedSecretDetail ? (
             <div className="space-y-5">
@@ -226,7 +226,7 @@ export function VaultView({
         <PageSection title="Reveal output">
           {revealedSecret ? (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-ink-strong)] p-4 text-white">
+              <div className="rounded-2xl border border-border bg-(--color-ink-strong) p-4 text-white">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-100/80">
                   Secret value
                 </p>

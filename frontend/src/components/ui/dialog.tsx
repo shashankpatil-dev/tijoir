@@ -23,15 +23,15 @@ export function Dialog({
   return (
     <DialogPrimitive.Root onOpenChange={(value) => (!value ? onClose() : undefined)} open={open}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-[rgba(13,34,64,0.4)] backdrop-blur-sm" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[71] flex w-[min(100%-2rem,48rem)] max-h-[calc(100vh-4rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-[var(--shadow-card)] outline-none">
-          <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4 sm:px-6">
+        <DialogPrimitive.Overlay className="fixed inset-0 z-70 bg-[rgba(13,34,64,0.4)] backdrop-blur-sm" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-71 flex w-[min(100%-2rem,48rem)] max-h-[calc(100vh-4rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-(--shadow-card) outline-none">
+          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
             <div className="space-y-1">
-              <DialogPrimitive.Title className="text-[18px] font-semibold leading-7 text-[var(--color-ink-strong)]">
+              <DialogPrimitive.Title className="text-[18px] font-semibold leading-7 text-(--color-ink-strong)">
                 {title}
               </DialogPrimitive.Title>
               {description ? (
-                <DialogPrimitive.Description className="text-sm leading-6 text-[var(--color-muted)]">
+                <DialogPrimitive.Description className="text-sm leading-6 text-muted">
                   {description}
                 </DialogPrimitive.Description>
               ) : null}
@@ -72,12 +72,12 @@ export function ConfirmDialog({
       open={open}
     >
       <AlertDialogPrimitive.Portal>
-        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-[rgba(13,34,64,0.4)] backdrop-blur-sm" />
-        <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[71] w-[min(100%-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] outline-none">
-          <AlertDialogPrimitive.Title className="text-[18px] font-semibold leading-7 text-[var(--color-ink-strong)]">
+        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-70 bg-[rgba(13,34,64,0.4)] backdrop-blur-sm" />
+        <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-71 w-[min(100%-2rem,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-white p-6 shadow-(--shadow-card) outline-none">
+          <AlertDialogPrimitive.Title className="text-[18px] font-semibold leading-7 text-(--color-ink-strong)">
             {title}
           </AlertDialogPrimitive.Title>
-          <AlertDialogPrimitive.Description className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+          <AlertDialogPrimitive.Description className="mt-2 text-sm leading-6 text-muted">
             {description}
           </AlertDialogPrimitive.Description>
           <div className="mt-6 flex justify-end gap-3">

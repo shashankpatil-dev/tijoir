@@ -132,7 +132,7 @@ export function RecipientView({
                   },
                 ]}
               />
-              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-ink-strong)] p-4 text-white">
+              <div className="rounded-2xl border border-border bg-(--color-ink-strong) p-4 text-white">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-100/80">
                   Revealed value
                 </p>
@@ -188,12 +188,12 @@ function SurfaceStat({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+    <div className="rounded-2xl border border-border bg-(--color-surface) p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
         {label}
       </p>
-      <p className="mt-2 text-sm font-semibold text-[var(--color-ink-strong)]">{value}</p>
-      <p className="mt-1 text-sm leading-5 text-[var(--color-muted)]">{note}</p>
+      <p className="mt-2 text-sm font-semibold text-(--color-ink-strong)">{value}</p>
+      <p className="mt-1 text-sm leading-5 text-muted">{note}</p>
     </div>
   );
 }

@@ -74,7 +74,7 @@ export function NotificationsView({
                 key={index}
                 title="Loading"
               >
-                <div className="h-16 animate-pulse rounded-xl bg-[var(--color-surface)]" />
+                <div className="h-16 animate-pulse rounded-xl bg-(--color-surface)" />
               </SectionCard>
             ))}
           </div>
@@ -84,7 +84,7 @@ export function NotificationsView({
               const unread = !notification.readAt;
               return (
                 <section
-                  className="rounded-xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)]"
+                  className="rounded-xl border border-(--color-dashboard-border) bg-white p-4 shadow-(--shadow-card)"
                   key={notification.id}
                 >
                   <div className="flex flex-wrap items-center gap-2">
@@ -98,28 +98,28 @@ export function NotificationsView({
                   </div>
 
                   <div className="mt-4 space-y-2">
-                    <h2 className="text-base font-semibold text-[var(--color-ink-strong)]">
+                    <h2 className="text-base font-semibold text-(--color-ink-strong)">
                       {notification.title}
                     </h2>
-                    <p className="text-sm leading-6 text-[var(--color-muted)]">
+                    <p className="text-sm leading-6 text-muted">
                       {notification.message}
                     </p>
                   </div>
 
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl bg-[var(--color-surface)] p-3">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+                    <div className="rounded-xl bg-(--color-surface) p-3">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
                         Recipient
                       </dt>
-                      <dd className="mt-1 text-sm text-[var(--color-ink-strong)]">
+                      <dd className="mt-1 text-sm text-(--color-ink-strong)">
                         {notification.recipientEmail}
                       </dd>
                     </div>
-                    <div className="rounded-xl bg-[var(--color-surface)] p-3">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+                    <div className="rounded-xl bg-(--color-surface) p-3">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
                         Created
                       </dt>
-                      <dd className="mt-1 text-sm text-[var(--color-ink-strong)]">
+                      <dd className="mt-1 text-sm text-(--color-ink-strong)">
                         {formatInstant(notification.createdAt)}
                       </dd>
                     </div>
@@ -159,7 +159,7 @@ export function NotificationsView({
       </PageSection>
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="text-sm text-muted">
           Page {page} of {Math.max(pageCount, 1)}
         </p>
         <div className="flex gap-3">

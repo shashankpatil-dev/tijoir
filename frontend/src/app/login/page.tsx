@@ -89,13 +89,13 @@ export default function LoginPage() {
         />
         <form className="space-y-4" onSubmit={login}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
               Login
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="mt-2 text-2xl font-semibold text-(--color-ink-strong)">
               Continue into the dashboard
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               Use the verified account for this organization. After sign-in, the dashboard restores the intended route automatically.
             </p>
           </div>
@@ -117,11 +117,11 @@ export default function LoginPage() {
           <PrimaryButton busy={busy}>Sign in</PrimaryButton>
         </form>
 
-        <div className="mt-6 flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">
-          <Link className="font-medium text-[var(--color-brand-strong)]" href="/signup">
+        <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted">
+          <Link className="font-medium text-(--color-brand-strong)" href="/signup">
             Create account
           </Link>
-          <Link className="font-medium text-[var(--color-brand-strong)]" href="/verify">
+          <Link className="font-medium text-(--color-brand-strong)" href="/verify">
             Verify token
           </Link>
         </div>
