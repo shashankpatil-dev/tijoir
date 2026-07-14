@@ -115,7 +115,7 @@ export function DashboardShell({
         <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="min-h-screen flex-1 overflow-x-hidden bg-[var(--color-dashboard-bg)]">
+      <SidebarInset className="min-h-screen min-w-0 w-auto flex-1 overflow-x-hidden bg-[var(--color-dashboard-bg)]">
         <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
           <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
             <div className="flex min-w-0 items-center gap-3">
@@ -128,7 +128,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="w-full px-4 py-4 sm:px-6 xl:px-8 xl:py-5">{children}</main>
+        <main className="min-w-0 max-w-full px-4 py-4 sm:px-6 xl:px-8 xl:py-5">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
