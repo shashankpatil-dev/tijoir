@@ -1,11 +1,33 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { type LucideIcon } from "lucide-react";
+import { type ReactNode } from "react";
 import { SkeletonBlock } from "@/components/ui/skeleton";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 export type DashboardNavItem = {
   id: string;
   label: string;
+  href: string;
+  icon: LucideIcon;
+  group: "primary" | "team";
   badge?: string;
 };
 
@@ -14,128 +36,142 @@ export function DashboardShell({
   children,
   items,
   onSelect,
+  sidebarHeader,
   sidebarFooter,
+  topbarTitle,
   topbarActions,
-  userMeta,
 }: {
   activeItemId: string;
   children: ReactNode;
   items: DashboardNavItem[];
-  onSelect: (id: string) => void;
+  onSelect: (item: DashboardNavItem) => void;
+  sidebarHeader?: ReactNode;
   sidebarFooter?: ReactNode;
+  topbarTitle?: ReactNode;
   topbarActions?: ReactNode;
-  userMeta?: ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    function closeOnResize() {
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
-    }
-
-    window.addEventListener("resize", closeOnResize);
-    return () => window.removeEventListener("resize", closeOnResize);
-  }, []);
+  const primaryItems = items.filter((item) => item.group === "primary");
+  const teamItems = items.filter((item) => item.group === "team");
 
   return (
-    <div className="min-h-screen bg-[var(--color-dashboard-bg)] text-[var(--color-ink)]">
-      {sidebarOpen ? (
-        <button
-          aria-label="Close sidebar overlay"
-          className="fixed inset-0 z-40 bg-[rgba(13,34,64,0.3)] lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          type="button"
-        />
-      ) : null}
-      <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside
-          className={`fixed left-0 top-0 z-50 h-screen w-[280px] -translate-x-full overflow-y-auto border-r border-white/10 bg-[var(--color-sidebar)] px-4 py-4 text-white transition-transform duration-200 lg:sticky lg:z-auto lg:w-auto lg:translate-x-0 lg:px-5 lg:py-5 ${
-            sidebarOpen ? "translate-x-0" : ""
-          }`}
+    <SidebarProvider defaultOpen>
+      <div className="min-h-screen bg-[var(--color-dashboard-bg)] text-[var(--color-ink)]">
+        <Sidebar
+          className="border-r border-[color-mix(in_srgb,var(--color-sidebar-foreground)_10%,transparent)]"
+          collapsible="icon"
         >
-          <div className="space-y-5 lg:sticky lg:top-5">
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-sm font-semibold">
-                  Tj
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">Tijoir</p>
-                  <p className="text-xs text-blue-100/75">Secrets and external access</p>
-                </div>
-              </div>
-              <button
-                className="rounded-xl px-2 py-1 text-sm text-blue-100/75 hover:bg-white/10 lg:hidden"
-                onClick={() => setSidebarOpen(false)}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
+          <SidebarHeader className="gap-0 px-3 py-4">
+            {sidebarHeader}
+          </SidebarHeader>
 
-            <nav className="space-y-2">
-              {items.map((item) => {
-                const selected = item.id === activeItemId;
-                return (
-                  <button
-                    className={`w-full rounded-xl px-4 py-3 text-left transition ${
-                      selected
-                        ? "bg-white/12 text-white"
-                        : "text-blue-100/78 hover:bg-white/8"
-                    }`}
-                    key={item.id}
-                    onClick={() => {
-                      onSelect(item.id);
-                      setSidebarOpen(false);
-                    }}
-                    type="button"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold">{item.label}</p>
-                      {item.badge ? (
-                        <span className="rounded-full bg-white/12 px-2 py-0.5 text-[11px] font-semibold">
-                          {item.badge}
-                        </span>
-                      ) : null}
-                    </div>
-                  </button>
-                );
-              })}
-            </nav>
+          <SidebarContent className="px-2 py-2">
+            <SidebarGroup className="px-0 py-0">
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {primaryItems.map((item) => (
+                    <DashboardSidebarNavButton
+                      active={item.id === activeItemId}
+                      item={item}
+                      key={item.id}
+                      onSelect={onSelect}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-            {sidebarFooter ? (
-              <div className="rounded-xl bg-white/8 p-4 text-sm text-blue-100/85">
-                {sidebarFooter}
-              </div>
+            {teamItems.length ? (
+              <>
+                <SidebarSeparator className="my-3" />
+                <SidebarGroup className="px-0 py-0">
+                  <SidebarGroupLabel className="px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/55">
+                    Team
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu className="gap-1">
+                      {teamItems.map((item) => (
+                        <DashboardSidebarNavButton
+                          active={item.id === activeItemId}
+                          item={item}
+                          key={item.id}
+                          onSelect={onSelect}
+                        />
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
             ) : null}
-          </div>
-        </aside>
+          </SidebarContent>
 
-        <div className="min-w-0">
+          {sidebarFooter ? (
+            <SidebarFooter className="border-t border-[color-mix(in_srgb,var(--color-sidebar-foreground)_10%,transparent)] px-3 py-4">
+              {sidebarFooter}
+            </SidebarFooter>
+          ) : null}
+
+          <SidebarRail />
+        </Sidebar>
+
+        <SidebarInset className="min-h-screen bg-[var(--color-dashboard-bg)]">
           <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
-            <div className="flex flex-col gap-3 px-4 py-3.5 sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:px-8">
+            <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
               <div className="flex min-w-0 items-center gap-3">
-                <button
-                  className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)] lg:hidden"
-                  onClick={() => setSidebarOpen(true)}
-                  type="button"
-                >
-                  Menu
-                </button>
+                <SidebarTrigger aria-label="Open menu" className="md:hidden" />
+                <div className="min-w-0">{topbarTitle}</div>
               </div>
-              <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-                {userMeta}
+              <div className="flex items-center gap-2">
                 {topbarActions}
               </div>
             </div>
           </header>
 
           <main className="px-4 py-4 sm:px-6 xl:px-8 xl:py-5">{children}</main>
-        </div>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
+  );
+}
+
+function DashboardSidebarNavButton({
+  active,
+  item,
+  onSelect,
+}: {
+  active: boolean;
+  item: DashboardNavItem;
+  onSelect: (item: DashboardNavItem) => void;
+}) {
+  const Icon = item.icon;
+
+  return (
+    <SidebarMenuItem className="px-2">
+      {active ? (
+        <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[var(--color-sidebar-primary)]" />
+      ) : null}
+      <SidebarMenuButton
+        className={cn(
+          "h-11 rounded-xl px-3 text-sidebar-foreground/75 hover:bg-white/8 hover:text-white",
+          active && "bg-white/12 font-semibold text-white",
+        )}
+        isActive={active}
+        onClick={() => onSelect(item)}
+        tooltip={item.label}
+      >
+        <Icon
+          className={cn(
+            "size-4",
+            active ? "text-[var(--color-sidebar-primary)]" : "text-sidebar-foreground/65",
+          )}
+        />
+        <span>{item.label}</span>
+        {item.badge ? (
+          <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/90">
+            {item.badge}
+          </span>
+        ) : null}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
 
@@ -174,7 +210,7 @@ export function SurfaceCard({
 }) {
   return (
     <section
-      className={`rounded-xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)] sm:p-5 ${className}`}
+      className={`rounded-2xl border border-[var(--color-dashboard-border)] bg-white p-4 shadow-[var(--shadow-card)] sm:p-5 ${className}`}
     >
       {children}
     </section>

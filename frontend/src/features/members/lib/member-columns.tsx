@@ -26,6 +26,8 @@ export function buildMemberColumns({
     {
       key: "identity",
       label: "Member",
+      sortable: true,
+      sortValue: (member) => member.name || member.email,
       render: (member) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">{member.name}</p>
@@ -36,11 +38,15 @@ export function buildMemberColumns({
     {
       key: "role",
       label: "Role",
+      sortable: true,
+      sortValue: (member) => member.role,
       render: (member) => <Badge tone="info">{member.role}</Badge>,
     },
     {
       key: "verified",
       label: "Verified",
+      sortable: true,
+      sortValue: (member) => (member.emailVerified ? 1 : 0),
       render: (member) => (
         <Badge tone={member.emailVerified ? "success" : "warning"}>
           {member.emailVerified ? "Verified" : "Pending"}
@@ -50,6 +56,8 @@ export function buildMemberColumns({
     {
       key: "createdAt",
       label: "Joined",
+      sortable: true,
+      sortValue: (member) => new Date(member.createdAt).getTime(),
       render: (member) => formatInstant(member.createdAt),
     },
     {
@@ -93,6 +101,8 @@ export function buildInviteColumns({
     {
       key: "email",
       label: "Invitee",
+      sortable: true,
+      sortValue: (invite) => invite.email,
       render: (invite) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">{invite.email}</p>
@@ -105,16 +115,22 @@ export function buildInviteColumns({
     {
       key: "role",
       label: "Role",
+      sortable: true,
+      sortValue: (invite) => invite.role,
       render: (invite) => <Badge tone="info">{invite.role}</Badge>,
     },
     {
       key: "status",
       label: "Status",
+      sortable: true,
+      sortValue: (invite) => invite.status,
       render: (invite) => <Badge tone={statusTone(invite.status)}>{invite.status}</Badge>,
     },
     {
       key: "delivery",
       label: "Delivery",
+      sortable: true,
+      sortValue: (invite) => invite.emailDeliveryStatus || "",
       render: (invite) => (
         <Badge tone={invite.emailDeliveryStatus === "FAILED" ? "warning" : "info"}>
           {invite.emailDeliveryStatus || "UNKNOWN"}
@@ -124,6 +140,8 @@ export function buildInviteColumns({
     {
       key: "expiresAt",
       label: "Expiry",
+      sortable: true,
+      sortValue: (invite) => (invite.expiresAt ? new Date(invite.expiresAt).getTime() : 0),
       render: (invite) => formatInstant(invite.expiresAt),
     },
     {

@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, X } from "lucide-react";
 
 export function TableToolbar({
   actions,
@@ -35,12 +44,25 @@ export function SearchInput({
   value: string;
 }) {
   return (
-    <input
-      className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)] md:max-w-sm"
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      value={value}
-    />
+    <div className="relative w-full md:max-w-sm">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--color-muted)]" />
+      <Input
+        className="h-11 rounded-xl border-[var(--color-border)] bg-white pl-9 pr-10"
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        value={value}
+      />
+      {value ? (
+        <button
+          aria-label="Clear search"
+          className="absolute right-3 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-ink-strong)]"
+          onClick={() => onChange("")}
+          type="button"
+        >
+          <X className="size-3.5" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -54,17 +76,18 @@ export function FilterSelect({
   value: string;
 }) {
   return (
-    <select
-      className="min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-3.5 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)] md:w-auto"
-      onChange={(event) => onChange(event.target.value)}
-      value={value}
-    >
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="h-11 w-full rounded-xl border-[var(--color-border)] bg-white md:w-auto md:min-w-[180px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
       {options.map((option) => (
-        <option key={option.value} value={option.value}>
+        <SelectItem key={option.value} value={option.value}>
           {option.label}
-        </option>
+        </SelectItem>
       ))}
-    </select>
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -72,15 +95,24 @@ export function PaginationControls({
   currentPage,
   itemLabel,
   onPageChange,
+  onPageSizeChange,
   pageCount,
+  pageSize = 6,
+  pageSizeOptions = [6, 12, 24],
   totalItems,
 }: {
   currentPage: number;
   itemLabel: string;
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
   pageCount: number;
+  pageSize?: number;
+  pageSizeOptions?: number[];
   totalItems: number;
 }) {
+  const startItem = totalItems ? (currentPage - 1) * pageSize + 1 : 0;
+  const endItem = Math.min(totalItems, currentPage * pageSize);
+
   if (pageCount <= 1) {
     return (
       <p className="text-sm text-[var(--color-muted)]">
@@ -91,9 +123,25 @@ export function PaginationControls({
 
   return (
     <div className="flex flex-col gap-2 pt-1 md:flex-row md:items-center md:justify-between">
-      <p className="text-sm text-[var(--color-muted)]">
-        Page {currentPage} of {pageCount} · {totalItems} {itemLabel}
-      </p>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+        <p className="text-sm text-[var(--color-muted)]">
+          {startItem}-{endItem} of {totalItems} {itemLabel}
+        </p>
+        {onPageSizeChange ? (
+          <Select onValueChange={(value) => onPageSizeChange(Number(value))} value={String(pageSize)}>
+            <SelectTrigger className="h-9 w-[110px] rounded-xl border-[var(--color-border)] bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizeOptions.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size} / page
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button
           disabled={currentPage <= 1}

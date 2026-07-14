@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateSecretDialog } from "@/features/secrets/components/create-secret-dialog";
@@ -13,6 +15,9 @@ import {
 
 export default function DashboardVaultPage() {
   const shell = useDashboardWorkspaceContext();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const vault = useVaultWorkspace({
     handleSessionError: shell.handleSessionError,
     router: shell.router,
@@ -21,6 +26,15 @@ export default function DashboardVaultPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    vault.setCreateSecretOpen(true);
+    router.replace(pathname);
+  }, [pathname, router, searchParams, vault.setCreateSecretOpen]);
 
   return (
     <>
@@ -31,7 +45,12 @@ export default function DashboardVaultPage() {
         onCreateSecret={() => vault.setCreateSecretOpen(true)}
         onRevealSecret={(secretId) => void vault.handleRevealSecret(secretId)}
         onRevokeSecret={() => vault.setSecretRevokeTarget(vault.activeSecret)}
+        onRevokeSecretRow={(secret) => vault.setSecretRevokeTarget(secret)}
         onRotateSecret={() => vault.setRotateDialogOpen(true)}
+        onRotateSecretRow={(secret) => {
+          vault.setSelectedSecretId(secret.id);
+          vault.setRotateDialogOpen(true);
+        }}
         onSelectSecret={(secret) => vault.setSelectedSecretId(secret.id)}
         paginatedSecrets={vault.paginatedSecrets}
         revealedSecret={vault.revealedSecret}

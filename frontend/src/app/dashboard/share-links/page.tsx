@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateShareLinkDialog } from "@/features/share-links/components/create-share-link-dialog";
@@ -9,6 +11,9 @@ import { CONTRACT_PERMISSIONS } from "@/features/share-links/types/share-links.t
 
 export default function DashboardShareLinksPage() {
   const shell = useDashboardWorkspaceContext();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const share = useShareLinksWorkspace({
     copyText: shell.copyText,
     handleSessionError: shell.handleSessionError,
@@ -18,6 +23,15 @@ export default function DashboardShareLinksPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    share.setCreateShareOpen(true);
+    router.replace(pathname);
+  }, [pathname, router, searchParams, share.setCreateShareOpen]);
 
   return (
     <>

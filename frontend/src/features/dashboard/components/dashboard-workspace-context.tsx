@@ -1,12 +1,21 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import type { DashboardNavItem } from "@/components/dashboard/dashboard-shell";
 import { ApiRequestError } from "@/lib/api/errors";
 import { logoutRequest } from "@/features/auth/api/auth.api";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
 import { clearSession } from "@/features/auth/lib/auth-storage";
 import { titleForView, viewFromPath } from "@/features/dashboard/lib/dashboard-routing";
 import type { DashboardHookArgs, RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
+import {
+  Building2,
+  KeyRound,
+  LayoutDashboard,
+  ScrollText,
+  Share2,
+  Users,
+} from "lucide-react";
 
 function hasOrganizationManagerRole(role?: string) {
   return role === "ORG_OWNER" || role === "ADMIN";
@@ -28,7 +37,7 @@ export type DashboardWorkspaceValue = {
   handleSessionError: (error: unknown, fallback: string) => void;
   isOrganizationManager: boolean;
   logout: () => Promise<void>;
-  navigationItems: Array<{ id: string; label: string }>;
+  navigationItems: DashboardNavItem[];
   router: RouterLike;
   session: AuthResponse | null;
   setActionBusy: (value: string | null) => void;
@@ -82,15 +91,61 @@ export function DashboardWorkspaceProvider({
   );
 
   const navigationItems = useMemo(() => {
-    const items: Array<{ id: string; label: string }> = [
-      { id: "overview", label: "Overview" },
-      { id: "vault", label: "Vault" },
-      { id: "vendors", label: "Vendors" },
-      { id: "share", label: "Share Links" },
+    const items: DashboardNavItem[] = [
+      {
+        id: "overview",
+        label: "Overview",
+        href: "/dashboard/overview",
+        icon: LayoutDashboard,
+        group: "primary",
+      },
+      {
+        id: "vault",
+        label: "Vault",
+        href: "/dashboard/vault",
+        icon: KeyRound,
+        group: "primary",
+      },
+      {
+        id: "share",
+        label: "Share Links",
+        href: "/dashboard/share-links",
+        icon: Share2,
+        group: "primary",
+      },
+      {
+        id: "vendors",
+        label: "Vendors",
+        href: "/dashboard/vendors",
+        icon: Building2,
+        group: "primary",
+      },
+      ...(isOrganizationManager
+        ? [
+            {
+              id: "organization",
+              label: "Members",
+              href: "/dashboard/organization",
+              icon: Users,
+              group: "team" as const,
+            },
+          ]
+        : []),
+      ...(canReviewAudit
+        ? [
+            {
+              id: "audit",
+              label: "Audit Log",
+              href: "/dashboard/audit",
+              icon: ScrollText,
+              group: "team" as const,
+            },
+          ]
+        : []),
     ];
 
     return items;
-  }, []);
+  }, [canReviewAudit, isOrganizationManager]);
 
   const handleSessionError = useCallback(
     (error: unknown, fallback: string) => {

@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateVendorContractDialog } from "@/features/vendors/components/create-vendor-contract-dialog";
@@ -10,6 +12,9 @@ import { CONTRACT_PERMISSIONS } from "@/features/share-links/types/share-links.t
 
 export default function DashboardVendorsPage() {
   const shell = useDashboardWorkspaceContext();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const vendors = useVendorsWorkspace({
     handleSessionError: shell.handleSessionError,
     router: shell.router,
@@ -18,6 +23,15 @@ export default function DashboardVendorsPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    vendors.setCreateVendorOpen(true);
+    router.replace(pathname);
+  }, [pathname, router, searchParams, vendors.setCreateVendorOpen]);
 
   return (
     <>

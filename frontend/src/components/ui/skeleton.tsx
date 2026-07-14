@@ -1,13 +1,18 @@
+import { cn } from "@/lib/utils";
+
+export function Skeleton({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;
+}
+
 export function SkeletonBlock({
   className = "",
 }: {
   className?: string;
 }) {
-  return (
-    <div
-      className={`animate-pulse rounded-xl bg-[var(--color-surface-strong)] ${className}`}
-    />
-  );
+  return <Skeleton className={cn("rounded-xl bg-[var(--color-surface-strong)]", className)} />;
 }
 
 export function SkeletonTable({

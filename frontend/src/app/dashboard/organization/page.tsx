@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { ChangeMemberRoleDialog } from "@/features/members/components/change-member-role-dialog";
@@ -9,6 +11,9 @@ import { useMembersWorkspace } from "@/features/members/hooks/use-members-worksp
 
 export default function DashboardOrganizationPage() {
   const shell = useDashboardWorkspaceContext();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const members = useMembersWorkspace({
     handleSessionError: shell.handleSessionError,
     router: shell.router,
@@ -19,6 +24,15 @@ export default function DashboardOrganizationPage() {
     setMessage: shell.setMessage,
     showToast: shell.showToast,
   });
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") {
+      return;
+    }
+
+    members.setCreateInviteOpen(true);
+    router.replace(pathname);
+  }, [members.setCreateInviteOpen, pathname, router, searchParams]);
 
   return (
     <>

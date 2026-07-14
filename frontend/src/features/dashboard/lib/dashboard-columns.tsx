@@ -14,6 +14,8 @@ export function buildSecretColumns(): DataTableColumn<SecretSummary>[] {
     {
       key: "name",
       label: "Secret",
+      sortable: true,
+      sortValue: (secret) => secret.name,
       render: (secret) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">
@@ -23,20 +25,26 @@ export function buildSecretColumns(): DataTableColumn<SecretSummary>[] {
         </div>
       ),
     },
-    { key: "type", label: "Type", render: (secret) => secret.type },
+    { key: "type", label: "Type", sortable: true, sortValue: (secret) => secret.type, render: (secret) => secret.type },
     {
       key: "status",
       label: "Status",
+      sortable: true,
+      sortValue: (secret) => secret.status,
       render: (secret) => <Badge tone={statusTone(secret.status)}>{secret.status}</Badge>,
     },
     {
       key: "version",
       label: "Version",
+      sortable: true,
+      sortValue: (secret) => secret.currentVersionNumber,
       render: (secret) => `v${secret.currentVersionNumber}`,
     },
     {
       key: "createdAt",
       label: "Created",
+      sortable: true,
+      sortValue: (secret) => new Date(secret.createdAt).getTime(),
       render: (secret) => formatInstant(secret.createdAt),
     },
   ];
@@ -47,6 +55,8 @@ export function buildVendorColumns(): DataTableColumn<VendorResponse>[] {
     {
       key: "name",
       label: "Vendor",
+      sortable: true,
+      sortValue: (vendor) => vendor.name,
       render: (vendor) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">{vendor.name}</p>
@@ -59,16 +69,22 @@ export function buildVendorColumns(): DataTableColumn<VendorResponse>[] {
     {
       key: "status",
       label: "Status",
+      sortable: true,
+      sortValue: (vendor) => vendor.status,
       render: (vendor) => <Badge tone={statusTone(vendor.status)}>{vendor.status}</Badge>,
     },
     {
       key: "createdBy",
       label: "Created by",
+      sortable: true,
+      sortValue: (vendor) => vendor.createdByName,
       render: (vendor) => vendor.createdByName,
     },
     {
       key: "createdAt",
       label: "Created",
+      sortable: true,
+      sortValue: (vendor) => new Date(vendor.createdAt).getTime(),
       render: (vendor) => formatInstant(vendor.createdAt),
     },
   ];
@@ -83,6 +99,8 @@ export function buildVendorContractColumns({
     {
       key: "secret",
       label: "Secret",
+      sortable: true,
+      sortValue: (contract) => contract.secretName,
       render: (contract) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">
@@ -95,6 +113,8 @@ export function buildVendorContractColumns({
     {
       key: "permission",
       label: "Permission",
+      sortable: true,
+      sortValue: (contract) => contract.permission,
       render: (contract) => (
         <Badge tone={statusTone(contract.permission)}>{contract.permission}</Badge>
       ),
@@ -102,6 +122,8 @@ export function buildVendorContractColumns({
     {
       key: "status",
       label: "Status",
+      sortable: true,
+      sortValue: (contract) => contract.status,
       render: (contract) => (
         <Badge tone={statusTone(contract.status)}>{contract.status}</Badge>
       ),
@@ -109,6 +131,8 @@ export function buildVendorContractColumns({
     {
       key: "expiresAt",
       label: "Expiry",
+      sortable: true,
+      sortValue: (contract) => (contract.expiresAt ? new Date(contract.expiresAt).getTime() : 0),
       render: (contract) => formatInstant(contract.expiresAt),
     },
     {
@@ -139,6 +163,8 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
     {
       key: "action",
       label: "Action",
+      sortable: true,
+      sortValue: (event) => event.action,
       render: (event) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">{event.action}</p>
@@ -149,6 +175,8 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
     {
       key: "actor",
       label: "Actor",
+      sortable: true,
+      sortValue: (event) => event.actorName || event.actorEmail || "",
       render: (event) => (
         <div className="space-y-1">
           <p>{event.actorName || "System / public flow"}</p>
@@ -161,6 +189,8 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
     {
       key: "resourceId",
       label: "Resource",
+      sortable: true,
+      sortValue: (event) => event.resourceId,
       render: (event) => (
         <span className="font-mono text-xs text-[var(--color-muted)]">{event.resourceId}</span>
       ),
@@ -185,6 +215,8 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
     {
       key: "createdAt",
       label: "At",
+      sortable: true,
+      sortValue: (event) => new Date(event.createdAt).getTime(),
       render: (event) => formatInstant(event.createdAt),
     },
   ];

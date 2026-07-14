@@ -30,7 +30,9 @@ export function VaultView({
   onCreateSecret,
   onRevealSecret,
   onRevokeSecret,
+  onRevokeSecretRow,
   onRotateSecret,
+  onRotateSecretRow,
   onSelectSecret,
   paginatedSecrets,
   revealedSecret,
@@ -56,7 +58,9 @@ export function VaultView({
   onCreateSecret: () => void;
   onRevealSecret: (secretId: string) => void;
   onRevokeSecret: () => void;
+  onRevokeSecretRow: (secret: SecretSummary) => void;
   onRotateSecret: () => void;
+  onRotateSecretRow: (secret: SecretSummary) => void;
   onSelectSecret: (secret: SecretSummary) => void;
   paginatedSecrets: SecretSummary[];
   revealedSecret: RevealSecretResponse | null;
@@ -119,6 +123,21 @@ export function VaultView({
             emptyTitle="No secrets match the current filters"
             loading={loadingWorkspace && !secrets.length}
             onRowClick={onSelectSecret}
+            rowActions={(secret) => [
+              {
+                label: "Reveal",
+                onClick: () => onRevealSecret(secret.id),
+              },
+              {
+                label: "Rotate",
+                onClick: () => onRotateSecretRow(secret),
+              },
+              {
+                destructive: true,
+                label: "Revoke",
+                onClick: () => onRevokeSecretRow(secret),
+              },
+            ]}
             rowKey={(secret) => secret.id}
             selectedRowKey={selectedSecretId}
           />

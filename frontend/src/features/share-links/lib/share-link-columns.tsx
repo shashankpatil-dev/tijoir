@@ -15,6 +15,8 @@ export function buildShareColumns({
     {
       key: "secret",
       label: "Secret",
+      sortable: true,
+      sortValue: (shareLink) => shareLink.secretName,
       render: (shareLink) => (
         <div className="space-y-1">
           <p className="font-semibold text-[var(--color-ink-strong)]">
@@ -27,6 +29,8 @@ export function buildShareColumns({
     {
       key: "recipient",
       label: "Recipient / Vendor",
+      sortable: true,
+      sortValue: (shareLink) => `${shareLink.recipientLabel || ""} ${shareLink.vendorName || ""}`,
       render: (shareLink) => (
         <div className="space-y-1">
           <p>{shareLink.recipientLabel || "Not specified"}</p>
@@ -39,6 +43,8 @@ export function buildShareColumns({
     {
       key: "permission",
       label: "Permission",
+      sortable: true,
+      sortValue: (shareLink) => shareLink.permission,
       render: (shareLink) => (
         <Badge tone={statusTone(shareLink.permission)}>{shareLink.permission}</Badge>
       ),
@@ -46,11 +52,15 @@ export function buildShareColumns({
     {
       key: "status",
       label: "Status",
+      sortable: true,
+      sortValue: (shareLink) => shareLink.status,
       render: (shareLink) => <Badge tone={statusTone(shareLink.status)}>{shareLink.status}</Badge>,
     },
     {
       key: "expiresAt",
       label: "Expiry",
+      sortable: true,
+      sortValue: (shareLink) => (shareLink.expiresAt ? new Date(shareLink.expiresAt).getTime() : 0),
       render: (shareLink) => formatInstant(shareLink.expiresAt),
     },
     {
