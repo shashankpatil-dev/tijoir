@@ -8,7 +8,7 @@ import {
   type ConsumeShareLinkResponse,
   type PublicShareLinkMetadataResponse,
 } from "@/lib/auth-client";
-import { AuthShell, StatusPanel } from "@/components/site-chrome";
+import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { useToast } from "@/components/ui/toast-provider";
 import { RecipientView } from "@/features/recipient-access/components/recipient-view";
 
@@ -116,37 +116,21 @@ export default function AccessPage() {
   }
 
   return (
-    <AuthShell
-      aside={
-        <div className="space-y-4">
-          <StatusPanel
-            title="You've been sent a secret"
-            body="No account needed — open the link, and reveal it when you're ready."
-          />
-          <StatusPanel
-            title="Handle with care"
-            body="One-time links can be opened only once. Copy the value somewhere safe before you close this page."
-          />
-        </div>
-      }
-      description="Open the link you were given and reveal the secret securely."
-      eyebrow="Shared with you"
-      title="Open your shared secret"
-    >
-      {busy ? (
-        <p className="mb-4 text-sm text-(--color-brand-strong)">
-          {busy === "consume" ? "Revealing…" : "Checking the link…"}
-        </p>
-      ) : null}
-      <RecipientView
-        copyText={copyText}
-        onConsume={consume}
-        onLoadMetadata={handleLoadMetadata}
-        publicConsumedValue={consumedValue}
-        publicMetadata={metadata}
-        publicToken={token}
-        setPublicToken={setToken}
-      />
-    </AuthShell>
+    <div className="flex min-h-screen flex-col bg-[linear-gradient(180deg,#f8fbff_0%,var(--color-surface)_50%,#edf4ff_100%)] text-(--color-ink)">
+      <SiteHeader />
+      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+        <RecipientView
+          busy={busy}
+          copyText={copyText}
+          onConsume={consume}
+          onLoadMetadata={handleLoadMetadata}
+          publicConsumedValue={consumedValue}
+          publicMetadata={metadata}
+          publicToken={token}
+          setPublicToken={setToken}
+        />
+      </main>
+      <SiteFooter />
+    </div>
   );
 }
