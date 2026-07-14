@@ -29,6 +29,9 @@ tijoir:
     refresh-cookie-secure: ${REFRESH_COOKIE_SECURE:true}
     refresh-cookie-same-site: ${REFRESH_COOKIE_SAME_SITE:Strict}
     local-secret-encryption-key: ${LOCAL_SECRET_ENCRYPTION_KEY:}
+    # Only enable behind a trusted reverse proxy / load balancer that appends the real
+    # client IP to X-Forwarded-For. When false, forwarded headers are ignored (getRemoteAddr).
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
   aws:
     region: ${AWS_REGION:ap-south-1}
     database-secret-arn: ${DATABASE_SECRET_ARN:}

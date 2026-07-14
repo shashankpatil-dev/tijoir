@@ -9,6 +9,7 @@ import com.tijoir.secret.dto.RevealSecretResponse;
 import com.tijoir.secret.dto.RotateSecretRequest;
 import com.tijoir.secret.dto.SecretDetailResponse;
 import com.tijoir.secret.dto.SecretSummaryResponse;
+import com.tijoir.secret.dto.SecretVersionResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -67,6 +69,14 @@ public class SecretController {
             @PathVariable UUID secretId
     ) {
         return secretService.get(user, secretId);
+    }
+
+    @GetMapping("/{secretId}/versions")
+    public List<SecretVersionResponse> versions(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID secretId
+    ) {
+        return secretService.listVersions(user, secretId);
     }
 
     @PostMapping("/{secretId}/reveal")

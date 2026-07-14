@@ -20,6 +20,7 @@ import com.tijoir.secret.dto.RevealSecretResponse;
 import com.tijoir.secret.dto.RotateSecretRequest;
 import com.tijoir.secret.dto.SecretDetailResponse;
 import com.tijoir.secret.dto.SecretSummaryResponse;
+import com.tijoir.secret.dto.SecretVersionResponse;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -136,6 +138,20 @@ public class SecretService {
         VaultSecret secret = vaultSecretRepository.findByIdAndOrganizationId(secretId, principal.organizationId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Secret not found"));
         return detail(secret);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SecretVersionResponse> listVersions(AuthenticatedUser principal, UUID secretId) {
+        VaultSecret secret = findSecret(principal.organizationId(), secretId);
+        int current = secret.getCurrentVersionNumber();
+        return secretVersionRepository.findBySecretIdOrderByVersionNumberDesc(secret.getId()).stream()
+                .map(version -> new SecretVersionResponse(
+                        version.getVersionNumber(),
+                        version.getVersionNumber() == current,
+                        version.getCreatedBy().getName(),
+                        version.getCreatedBy().getEmail(),
+                        version.getCreatedAt()))
+                .toList();
     }
 
     @Transactional(readOnly = true)

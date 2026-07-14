@@ -85,4 +85,12 @@ public class SecretVersion {
     public int getVersionNumber() {
         return versionNumber;
     }
+
+    public UserAccount getCreatedBy() {
+        return createdBy;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }

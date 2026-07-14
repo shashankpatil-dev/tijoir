@@ -16,6 +16,8 @@ tijoir:
   security:
     jwt-secret: test-jwt-secret-change-me-0123456789abcdef
     local-secret-encryption-key: test-encryption-key-change-me
+    # Tests simulate a behind-proxy deployment via X-Forwarded-For to exercise per-IP limits.
+    trust-forwarded-headers: true
   notifications:
     enabled: true
     expose-dev-tokens: true

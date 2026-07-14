@@ -12,6 +12,7 @@ import com.tijoir.secret.VaultSecretRepository;
 import com.tijoir.secret.dto.SecretSummaryResponse;
 import com.tijoir.sharelink.ShareLinkRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -41,6 +42,7 @@ public class DashboardSummaryService {
         this.organizationAuthorizationService = organizationAuthorizationService;
     }
 
+    @Transactional(readOnly = true)
     public DashboardSummaryResponse getSummary(AuthenticatedUser principal) {
         UserAccount actor = organizationAuthorizationService.requireActor(principal);
         return loadSummary(actor);
