@@ -104,7 +104,7 @@ export function AuditView({
           </TableToolbar>
 
           <DataTable
-            containerClassName="max-h-[34rem]"
+            containerClassName="max-h-136"
             columns={auditColumns}
             data={auditEvents}
             emptyDescription="No audit records match the current filters."
@@ -125,21 +125,21 @@ export function AuditView({
 
       <div className="space-y-5">
         <PageSection title="Audit summary">
-          <div className="space-y-3 text-sm text-[var(--color-ink-strong)]">
+          <div className="space-y-3 text-sm text-(--color-ink-strong)">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[var(--color-muted)]">Matched events</span>
+              <span className="text-muted">Matched events</span>
               <span>{String(auditReport?.totalEvents ?? auditTotal)}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[var(--color-muted)]">Last 24 hours</span>
+              <span className="text-muted">Last 24 hours</span>
               <span>{String(auditReport?.eventsInLast24Hours ?? 0)}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[var(--color-muted)]">Action filter</span>
+              <span className="text-muted">Action filter</span>
               <span>{auditActionFilter === "ALL" ? "All actions" : auditActionFilter}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[var(--color-muted)]">Resource filter</span>
+              <span className="text-muted">Resource filter</span>
               <span>
                 {auditResourceTypeFilter === "ALL"
                   ? "All resources"

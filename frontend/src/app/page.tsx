@@ -34,7 +34,7 @@ const productSignals = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_38%,#edf4ff_100%)] text-[var(--color-ink)]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#ffffff_0%,#f5f9ff_38%,#edf4ff_100%)] text-(--color-ink)">
       <SiteHeader />
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
@@ -43,11 +43,11 @@ export default function HomePage() {
             <Badge tone="brand">Secure vendor credential exchange</Badge>
 
             <div className="space-y-4">
-              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-[var(--color-ink-strong)] sm:text-5xl lg:text-[3.4rem]">
+              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-(--color-ink-strong) sm:text-5xl lg:text-[3.4rem]">
                 Tijoir gives organizations a cleaner way to share secrets without
                 giving up control.
               </h1>
-              <p className="max-w-3xl text-lg leading-8 text-[var(--color-muted)]">
+              <p className="max-w-3xl text-lg leading-8 text-muted">
                 Built as an operations-facing SaaS workspace, Tijoir replaces
                 unsafe credential handoffs with organization login, vault storage,
                 contract-scoped public share links, and explicit lifecycle actions.
@@ -56,13 +56,13 @@ export default function HomePage() {
 
             <div className="flex flex-wrap gap-3">
               <Link
-                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-brand)] bg-[var(--color-brand)] px-5 py-3.5 text-sm font-medium text-white transition hover:border-[var(--color-brand-strong)] hover:bg-[var(--color-brand-strong)]"
+                className="inline-flex items-center justify-center rounded-xl border border-(--color-brand) bg-(--color-brand) px-5 py-3.5 text-sm font-medium text-white transition hover:border-(--color-brand-strong) hover:bg-(--color-brand-strong)"
                 href="/signup"
               >
                 Create workspace
               </Link>
               <Link
-                className="inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-white px-5 py-3.5 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)]"
+                className="inline-flex items-center justify-center rounded-xl border border-border bg-white px-5 py-3.5 text-sm font-medium text-(--color-ink) transition hover:border-(--color-brand) hover:bg-(--color-surface)"
                 href="/login"
               >
                 Login
@@ -72,13 +72,13 @@ export default function HomePage() {
             <div className="grid gap-3 sm:grid-cols-3">
               {productSignals.map((item) => (
                 <div
-                  className="rounded-2xl border border-[var(--color-border)] bg-white/88 p-4 shadow-[var(--shadow-card)]"
+                  className="rounded-2xl border border-border bg-white/88 p-4 shadow-(--shadow-card)"
                   key={item.label}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
                     {item.label}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">
+                  <p className="mt-2 text-sm leading-6 text-(--color-ink-strong)">
                     {item.value}
                   </p>
                 </div>
@@ -86,12 +86,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)]">
-            <div className="rounded-3xl border border-[var(--color-dashboard-border)] bg-[linear-gradient(135deg,var(--color-brand-panel),#ffffff)] p-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+          <div className="rounded-[28px] border border-border bg-white p-6 shadow-(--shadow-card)">
+            <div className="rounded-3xl border border-(--color-dashboard-border) bg-[linear-gradient(135deg,var(--color-brand-panel),#ffffff)] p-5">
+              <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
                 Product flow
               </p>
-              <h2 className="mt-3 text-2xl font-semibold text-[var(--color-ink-strong)]">
+              <h2 className="mt-3 text-2xl font-semibold text-(--color-ink-strong)">
                 Designed like an operational SaaS workspace
               </h2>
               <div className="mt-5 space-y-3">
@@ -100,10 +100,10 @@ export default function HomePage() {
                     className="flex gap-3 rounded-2xl border border-white/70 bg-white/80 p-4"
                     key={step}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand)] text-sm font-semibold text-white">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--color-brand) text-sm font-semibold text-white">
                       {index + 1}
                     </div>
-                    <p className="text-sm leading-6 text-[var(--color-ink)]">{step}</p>
+                    <p className="text-sm leading-6 text-(--color-ink)">{step}</p>
                   </div>
                 ))}
               </div>
@@ -112,26 +112,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-[var(--color-border)] bg-white/80">
+      <section className="border-y border-border bg-white/80">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-6 space-y-2">
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
               What the product does
             </p>
-            <h2 className="text-3xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="text-3xl font-semibold text-(--color-ink-strong)">
               Built for the real handoff workflow teams struggle with
             </h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
             {capabilityCards.map((item) => (
               <article
-                className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-card)]"
+                className="rounded-3xl border border-border bg-(--color-surface) p-6 shadow-(--shadow-card)"
                 key={item.title}
               >
-                <h3 className="text-lg font-semibold text-[var(--color-ink-strong)]">
+                <h3 className="text-lg font-semibold text-(--color-ink-strong)">
                   {item.title}
                 </h3>
-                <p className="mt-3 text-sm leading-7 text-[var(--color-muted)]">
+                <p className="mt-3 text-sm leading-7 text-muted">
                   {item.description}
                 </p>
               </article>
@@ -141,15 +141,15 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid gap-5 rounded-[28px] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)] lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-5 rounded-[28px] border border-border bg-white p-6 shadow-(--shadow-card) lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
               Built for this workflow
             </p>
-            <h2 className="text-3xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="text-3xl font-semibold text-(--color-ink-strong)">
               This is not a generic password manager pitch
             </h2>
-            <p className="text-sm leading-7 text-[var(--color-muted)]">
+            <p className="text-sm leading-7 text-muted">
               Tijoir is shaped around vendor onboarding, external operators, and
               revocable access contracts. The core experience starts with a clean
               organization dashboard, not a landing-page-only story.
@@ -169,11 +169,11 @@ export default function HomePage() {
 
 function SignalCard({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+    <div className="rounded-2xl border border-border bg-(--color-surface) p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">
         {title}
       </p>
-      <p className="mt-2 text-sm leading-6 text-[var(--color-ink-strong)]">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-(--color-ink-strong)">{value}</p>
     </div>
   );
 }

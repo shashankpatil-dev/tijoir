@@ -4,25 +4,25 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap font-medium leading-5 transition-all outline-none select-none disabled:pointer-events-none disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-[var(--color-brand-ring)] [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap font-medium leading-5 transition-all outline-none select-none disabled:pointer-events-none disabled:opacity-60 focus-visible:ring-4 focus-visible:ring-(--color-brand-ring) [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         primary:
-          "border border-[var(--color-brand)] bg-[var(--color-brand)] text-white hover:border-[var(--color-brand-strong)] hover:bg-[var(--color-brand-strong)]",
+          "border border-(--color-brand) bg-(--color-brand) text-white hover:border-(--color-brand-strong) hover:bg-(--color-brand-strong)",
         default:
-          "border border-[var(--color-brand)] bg-[var(--color-brand)] text-white hover:border-[var(--color-brand-strong)] hover:bg-[var(--color-brand-strong)]",
+          "border border-(--color-brand) bg-(--color-brand) text-white hover:border-(--color-brand-strong) hover:bg-(--color-brand-strong)",
         secondary:
-          "border border-[var(--color-border)] bg-white text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:bg-[var(--color-surface)]",
+          "border border-border bg-white text-(--color-ink) hover:border-(--color-brand) hover:bg-(--color-surface)",
         ghost:
-          "border border-transparent bg-transparent text-[var(--color-ink)] hover:bg-[var(--color-surface)]",
+          "border border-transparent bg-transparent text-(--color-ink) hover:bg-(--color-surface)",
         danger:
           "border border-rose-200 bg-rose-600 text-white hover:border-rose-700 hover:bg-rose-700",
         destructive:
           "border border-rose-200 bg-rose-600 text-white hover:border-rose-700 hover:bg-rose-700",
         outline:
-          "border border-[var(--color-border-strong)] bg-transparent text-[var(--color-ink)] hover:border-[var(--color-brand)] hover:bg-white",
-        link: "text-[var(--color-brand)] underline-offset-4 hover:underline",
+          "border border-(--color-border-strong) bg-transparent text-(--color-ink) hover:border-(--color-brand) hover:bg-white",
+        link: "text-(--color-brand) underline-offset-4 hover:underline",
       },
       size: {
         xs: "min-h-9 rounded-lg px-2.5 py-1.5 text-xs [&_svg:not([class*='size-'])]:size-3",

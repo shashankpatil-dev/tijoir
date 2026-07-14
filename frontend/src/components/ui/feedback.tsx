@@ -16,7 +16,7 @@ export function InlineMessage({
         ? "border-rose-200 bg-rose-50 text-rose-900"
         : tone === "warning"
           ? "border-amber-200 bg-amber-50 text-amber-900"
-          : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink)]";
+          : "border-border bg-(--color-surface) text-(--color-ink)";
 
   return (
     <div className={`rounded-2xl border p-4 ${toneClass}`}>
@@ -34,13 +34,13 @@ export function LoadingScreen({
   body: string;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface)] px-4">
-      <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-white p-8 text-center shadow-[var(--shadow-card)]">
+    <div className="flex min-h-screen items-center justify-center bg-(--color-surface) px-4">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-white p-8 text-center shadow-(--shadow-card)">
         <Spinner />
-        <h1 className="mt-5 text-2xl font-semibold text-[var(--color-ink-strong)]">
+        <h1 className="mt-5 text-2xl font-semibold text-(--color-ink-strong)">
           {title}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">{body}</p>
+        <p className="mt-3 text-sm leading-6 text-muted">{body}</p>
       </div>
     </div>
   );
@@ -61,14 +61,14 @@ export function BusyOverlay({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(13,34,64,0.35)] px-4 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-card)]">
+      <div className="w-full max-w-sm rounded-3xl border border-border bg-white p-6 shadow-(--shadow-card)">
         <div className="flex items-center gap-3">
           <Spinner />
           <div>
-            <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+            <p className="text-sm font-semibold text-(--color-ink-strong)">
               {title}
             </p>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">{body}</p>
+            <p className="mt-1 text-sm text-muted">{body}</p>
           </div>
         </div>
       </div>
@@ -86,13 +86,13 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-[var(--color-dashboard-border)] bg-white p-6 shadow-[var(--shadow-card)]">
+    <section className="rounded-3xl border border-(--color-dashboard-border) bg-white p-6 shadow-(--shadow-card)">
       <div>
-        <h2 className="text-lg font-semibold text-[var(--color-ink-strong)]">
+        <h2 className="text-lg font-semibold text-(--color-ink-strong)">
           {title}
         </h2>
         {description ? (
-          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+          <p className="mt-2 text-sm leading-6 text-muted">
             {description}
           </p>
         ) : null}
@@ -104,8 +104,8 @@ export function SectionCard({
 
 function Spinner() {
   return (
-    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-brand)] border-t-transparent" />
+    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-(--color-surface)">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-(--color-brand) border-t-transparent" />
     </span>
   );
 }

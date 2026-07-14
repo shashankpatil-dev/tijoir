@@ -109,12 +109,12 @@ export function DashboardWorkspaceTopbarTitle({
   return (
     <Breadcrumb>
       <BreadcrumbList className="flex-nowrap text-xs">
-        <BreadcrumbItem className="shrink-0 text-[var(--color-muted)]">
+        <BreadcrumbItem className="shrink-0 text-muted">
           Dashboard
         </BreadcrumbItem>
-        <BreadcrumbSeparator className="text-[var(--color-muted)]" />
+        <BreadcrumbSeparator className="text-muted" />
         <BreadcrumbItem className="min-w-0">
-          <BreadcrumbPage className="truncate text-sm font-semibold text-[var(--color-ink-strong)]">
+          <BreadcrumbPage className="truncate text-sm font-semibold text-(--color-ink-strong)">
             {workspace.title}
           </BreadcrumbPage>
         </BreadcrumbItem>
@@ -309,24 +309,24 @@ function DashboardNotificationsBell({
         >
           <Bell className="size-4" />
           {unreadCount ? (
-            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--color-brand)]" />
+            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-(--color-brand)" />
           ) : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[360px] rounded-2xl p-0" sideOffset={10}>
-        <div className="border-b border-[var(--color-border)] px-4 py-3">
+        <div className="border-b border-border px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--color-ink-strong)]">
+              <p className="text-sm font-semibold text-(--color-ink-strong)">
                 Notifications
               </p>
-              <p className="text-xs text-[var(--color-muted)]">
+              <p className="text-xs text-muted">
                 Verification, invite, and access events.
               </p>
             </div>
             {unreadCount ? (
               <button
-                className="text-xs font-semibold text-[var(--color-brand)] transition hover:opacity-80"
+                className="text-xs font-semibold text-(--color-brand) transition hover:opacity-80"
                 disabled={markReadMutation.isPending}
                 onClick={() => void markReadMutation.mutateAsync(unreadNotifications.map((item) => item.id))}
                 type="button"
@@ -339,7 +339,7 @@ function DashboardNotificationsBell({
 
         <div className="max-h-[360px] overflow-y-auto px-2 py-2">
           {notificationsQuery.isLoading && !notificationSummary.length ? (
-            <div className="px-3 py-8 text-sm text-[var(--color-muted)]">
+            <div className="px-3 py-8 text-sm text-muted">
               Loading notifications...
             </div>
           ) : notificationSummary.length ? (
@@ -353,7 +353,7 @@ function DashboardNotificationsBell({
 
                 return (
                   <button
-                    className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[var(--color-surface)]"
+                    className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-(--color-surface)"
                     key={notification.id}
                     onClick={() => {
                       if (!notification.readAt) {
@@ -363,39 +363,39 @@ function DashboardNotificationsBell({
                     }}
                     type="button"
                   >
-                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-brand)]">
+                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--color-surface) text-(--color-brand)">
                       <Icon className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start justify-between gap-3">
-                        <span className="text-sm font-semibold text-[var(--color-ink-strong)]">
+                        <span className="text-sm font-semibold text-(--color-ink-strong)">
                           {notification.title}
                         </span>
-                        <span className="shrink-0 text-xs text-[var(--color-muted)]">
+                        <span className="shrink-0 text-xs text-muted">
                           {notification.relativeTime}
                         </span>
                       </span>
-                      <span className="mt-1 block text-sm leading-6 text-[var(--color-muted)]">
+                      <span className="mt-1 block text-sm leading-6 text-muted">
                         {notification.message}
                       </span>
                     </span>
                     {!notification.readAt ? (
-                      <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-brand)]" />
+                      <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-(--color-brand)" />
                     ) : null}
                   </button>
                 );
               })}
             </div>
           ) : (
-            <div className="px-3 py-8 text-sm text-[var(--color-muted)]">
+            <div className="px-3 py-8 text-sm text-muted">
               No notifications yet.
             </div>
           )}
         </div>
 
-        <div className="border-t border-[var(--color-border)] px-4 py-3">
+        <div className="border-t border-border px-4 py-3">
           <button
-            className="text-sm font-semibold text-[var(--color-brand)] transition hover:opacity-80"
+            className="text-sm font-semibold text-(--color-brand) transition hover:opacity-80"
             onClick={() => workspace.router.push("/dashboard/notifications")}
             type="button"
           >

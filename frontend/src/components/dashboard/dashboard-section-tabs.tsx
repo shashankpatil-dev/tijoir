@@ -22,8 +22,8 @@ export function DashboardSectionTabs<T extends string>({
           <button
             className={`shrink-0 rounded-xl px-4 py-2 text-sm font-medium transition ${
               selected
-                ? "bg-[var(--color-brand)] text-white"
-                : "border border-[var(--color-border)] bg-white text-[var(--color-ink)] hover:border-[var(--color-brand)]"
+                ? "bg-(--color-brand) text-white"
+                : "border border-border bg-white text-(--color-ink) hover:border-(--color-brand)"
             }`}
             key={item.key}
             onClick={() => onChange(item.key)}

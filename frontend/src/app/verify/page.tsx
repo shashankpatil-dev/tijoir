@@ -171,13 +171,13 @@ export default function VerifyPage() {
         />
         <form className="space-y-4" onSubmit={verify}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
               Verify
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="mt-2 text-2xl font-semibold text-(--color-ink-strong)">
               Confirm the registration token
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               Verification must succeed before login and workspace actions become available.
             </p>
           </div>
@@ -214,7 +214,7 @@ export default function VerifyPage() {
             Verify email
           </PrimaryButton>
           <button
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:border-[var(--color-brand)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm font-medium text-(--color-ink) transition hover:border-(--color-brand) disabled:cursor-not-allowed disabled:opacity-60"
             disabled={busy || resendBusy}
             onClick={resendVerification}
             type="button"
@@ -223,11 +223,11 @@ export default function VerifyPage() {
           </button>
         </form>
 
-        <div className="mt-6 flex flex-wrap gap-4 text-sm text-[var(--color-muted)]">
-          <Link className="font-medium text-[var(--color-brand-strong)]" href="/signup">
+        <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted">
+          <Link className="font-medium text-(--color-brand-strong)" href="/signup">
             Back to signup
           </Link>
-          <Link className="font-medium text-[var(--color-brand-strong)]" href="/login">
+          <Link className="font-medium text-(--color-brand-strong)" href="/login">
             Continue to login
           </Link>
         </div>

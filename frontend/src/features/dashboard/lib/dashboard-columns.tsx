@@ -18,10 +18,10 @@ export function buildSecretColumns(): DataTableColumn<SecretSummary>[] {
       sortValue: (secret) => secret.name,
       render: (secret) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">
+          <p className="font-semibold text-(--color-ink-strong)">
             {secret.name}
           </p>
-          <p className="text-xs text-[var(--color-muted)]">{secret.secretKey}</p>
+          <p className="text-xs text-muted">{secret.secretKey}</p>
         </div>
       ),
     },
@@ -59,8 +59,8 @@ export function buildVendorColumns(): DataTableColumn<VendorResponse>[] {
       sortValue: (vendor) => vendor.name,
       render: (vendor) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">{vendor.name}</p>
-          <p className="text-xs text-[var(--color-muted)]">
+          <p className="font-semibold text-(--color-ink-strong)">{vendor.name}</p>
+          <p className="text-xs text-muted">
             {vendor.contactEmail || vendor.contactName || "No contact assigned"}
           </p>
         </div>
@@ -103,10 +103,10 @@ export function buildVendorContractColumns({
       sortValue: (contract) => contract.secretName,
       render: (contract) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">
+          <p className="font-semibold text-(--color-ink-strong)">
             {contract.secretName}
           </p>
-          <p className="text-xs text-[var(--color-muted)]">{contract.secretKey}</p>
+          <p className="text-xs text-muted">{contract.secretKey}</p>
         </div>
       ),
     },
@@ -167,8 +167,8 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
       sortValue: (event) => event.action,
       render: (event) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">{event.action}</p>
-          <p className="text-xs text-[var(--color-muted)]">{event.resourceType}</p>
+          <p className="font-semibold text-(--color-ink-strong)">{event.action}</p>
+          <p className="text-xs text-muted">{event.resourceType}</p>
         </div>
       ),
     },
@@ -180,7 +180,7 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
       render: (event) => (
         <div className="space-y-1">
           <p>{event.actorName || "System / public flow"}</p>
-          <p className="text-xs text-[var(--color-muted)]">
+          <p className="text-xs text-muted">
             {event.actorEmail || "Anonymous or internal automation"}
           </p>
         </div>
@@ -192,7 +192,7 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
       sortable: true,
       sortValue: (event) => event.resourceId,
       render: (event) => (
-        <span className="font-mono text-xs text-[var(--color-muted)]">{event.resourceId}</span>
+        <span className="font-mono text-xs text-muted">{event.resourceId}</span>
       ),
     },
     {
@@ -206,7 +206,7 @@ export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
           return event.details;
         }
         return (
-          <pre className="max-w-[26rem] whitespace-pre-wrap break-words text-xs text-[var(--color-muted)]">
+          <pre className="max-w-104 whitespace-pre-wrap wrap-break-word text-xs text-muted">
             {JSON.stringify(event.details, null, 2)}
           </pre>
         );

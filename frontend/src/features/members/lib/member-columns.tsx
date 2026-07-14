@@ -30,8 +30,8 @@ export function buildMemberColumns({
       sortValue: (member) => member.name || member.email,
       render: (member) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">{member.name}</p>
-          <p className="text-xs text-[var(--color-muted)]">{member.email}</p>
+          <p className="font-semibold text-(--color-ink-strong)">{member.name}</p>
+          <p className="text-xs text-muted">{member.email}</p>
         </div>
       ),
     },
@@ -105,8 +105,8 @@ export function buildInviteColumns({
       sortValue: (invite) => invite.email,
       render: (invite) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">{invite.email}</p>
-          <p className="text-xs text-[var(--color-muted)]">
+          <p className="font-semibold text-(--color-ink-strong)">{invite.email}</p>
+          <p className="text-xs text-muted">
             Invited by {invite.invitedByName}
           </p>
         </div>

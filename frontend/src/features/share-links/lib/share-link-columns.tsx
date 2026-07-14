@@ -19,10 +19,10 @@ export function buildShareColumns({
       sortValue: (shareLink) => shareLink.secretName,
       render: (shareLink) => (
         <div className="space-y-1">
-          <p className="font-semibold text-[var(--color-ink-strong)]">
+          <p className="font-semibold text-(--color-ink-strong)">
             {shareLink.secretName}
           </p>
-          <p className="text-xs text-[var(--color-muted)]">{shareLink.secretKey}</p>
+          <p className="text-xs text-muted">{shareLink.secretKey}</p>
         </div>
       ),
     },
@@ -34,7 +34,7 @@ export function buildShareColumns({
       render: (shareLink) => (
         <div className="space-y-1">
           <p>{shareLink.recipientLabel || "Not specified"}</p>
-          <p className="text-xs text-[var(--color-muted)]">
+          <p className="text-xs text-muted">
             {shareLink.vendorName || "No vendor linkage"}
           </p>
         </div>

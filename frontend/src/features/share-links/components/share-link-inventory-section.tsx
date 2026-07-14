@@ -95,7 +95,7 @@ export function ShareLinkInventorySection({
         </TableToolbar>
 
         <DataTable
-          containerClassName="max-h-[30rem]"
+          containerClassName="max-h-120"
           columns={shareColumns}
           data={paginatedShareLinks}
           emptyDescription="Create a share link for a vault secret to start the recipient flow."

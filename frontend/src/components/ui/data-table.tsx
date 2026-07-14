@@ -147,7 +147,7 @@ export function DataTable<T>({
       ...(!rowActions && onRowClick
         ? [
             {
-              cell: () => <ChevronRight className="size-4 text-[var(--color-muted)]" />,
+              cell: () => <ChevronRight className="size-4 text-muted" />,
               enableSorting: false,
               header: "",
               id: "__row_indicator__",
@@ -179,16 +179,16 @@ export function DataTable<T>({
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white ${containerClassName}`.trim()}
+      className={`overflow-hidden rounded-2xl border border-border bg-white ${containerClassName}`.trim()}
     >
       <div className="overflow-x-auto">
         <Table>
-          <TableHeader className="bg-[var(--color-surface)]">
+          <TableHeader className="bg-(--color-surface)">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow className="border-[var(--color-border)] hover:bg-transparent" key={headerGroup.id}>
+              <TableRow className="border-border hover:bg-transparent" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
-                    className="bg-[var(--color-surface)] px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] sm:px-4"
+                    className="bg-(--color-surface) px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted sm:px-4"
                     key={header.id}
                   >
                     {header.isPlaceholder
@@ -206,7 +206,7 @@ export function DataTable<T>({
 
               return (
                 <TableRow
-                  className={`border-[var(--color-border)] ${onRowClick ? "cursor-pointer hover:bg-[var(--color-surface)]" : ""} ${selected ? "bg-[var(--color-brand-soft)]/55" : "bg-white"}`}
+                  className={`border-border ${onRowClick ? "cursor-pointer hover:bg-(--color-surface)" : ""} ${selected ? "bg-(--color-brand-soft)/55" : "bg-white"}`}
                   key={key}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 >
@@ -214,7 +214,7 @@ export function DataTable<T>({
                     const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                     return (
                       <TableCell
-                        className={`px-3 py-3.5 align-top text-[13px] leading-5 text-[var(--color-ink)] sm:px-4 ${meta?.className || ""}`}
+                        className={`px-3 py-3.5 align-top text-[13px] leading-5 text-(--color-ink) sm:px-4 ${meta?.className || ""}`}
                         key={cell.id}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

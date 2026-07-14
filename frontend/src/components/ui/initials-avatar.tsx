@@ -42,8 +42,8 @@ export function InitialsAvatar({
         : "h-9 w-9 text-xs";
 
   return (
-    <Avatar className={cn(sizeClass, "border border-[var(--color-border)]", className)}>
-      <AvatarFallback className="bg-[var(--color-surface)] font-semibold text-[var(--color-ink-strong)]">
+    <Avatar className={cn(sizeClass, "border border-border", className)}>
+      <AvatarFallback className="bg-(--color-surface) font-semibold text-(--color-ink-strong)">
         {getInitials(label)}
       </AvatarFallback>
     </Avatar>

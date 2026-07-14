@@ -83,13 +83,13 @@ export default function InvitePage() {
         />
         <form className="space-y-4" onSubmit={acceptInvite}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
               Accept invite
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="mt-2 text-2xl font-semibold text-(--color-ink-strong)">
               Create the invited user account
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               The invite token already carries the organization and role. You only need to set your visible name and password here.
             </p>
           </div>

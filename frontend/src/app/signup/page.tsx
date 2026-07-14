@@ -100,13 +100,13 @@ export default function SignupPage() {
         />
         <form className="space-y-4" onSubmit={register}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[var(--color-brand-strong)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
               Signup
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink-strong)]">
+            <h2 className="mt-2 text-2xl font-semibold text-(--color-ink-strong)">
               Create the initial owner account
             </h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               This creates the organization identity and its first owner.
             </p>
           </div>
@@ -143,9 +143,9 @@ export default function SignupPage() {
         </form>
 
         <div className="mt-6">
-          <p className="text-sm text-[var(--color-muted)]">
+          <p className="text-sm text-muted">
             Already registered?{" "}
-            <Link className="font-medium text-[var(--color-brand-strong)]" href="/login">
+            <Link className="font-medium text-(--color-brand-strong)" href="/login">
               Go to login
             </Link>
           </p>

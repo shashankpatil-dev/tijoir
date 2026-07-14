@@ -12,7 +12,7 @@ export function SkeletonBlock({
 }: {
   className?: string;
 }) {
-  return <Skeleton className={cn("rounded-xl bg-[var(--color-surface-strong)]", className)} />;
+  return <Skeleton className={cn("rounded-xl bg-(--color-surface-strong)", className)} />;
 }
 
 export function SkeletonTable({
@@ -23,9 +23,9 @@ export function SkeletonTable({
   rows?: number;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white">
+    <div className="overflow-hidden rounded-2xl border border-border bg-white">
       <div
-        className="grid gap-3 border-b border-[var(--color-border)] px-3 py-2.5 sm:px-4"
+        className="grid gap-3 border-b border-border px-3 py-2.5 sm:px-4"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
       >
         {Array.from({ length: columns }).map((_, index) => (
@@ -35,7 +35,7 @@ export function SkeletonTable({
       <div className="space-y-0">
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div
-            className="grid gap-3 border-b border-[var(--color-border)] px-3 py-3 last:border-b-0 sm:px-4"
+            className="grid gap-3 border-b border-border px-3 py-3 last:border-b-0 sm:px-4"
             key={rowIndex}
             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
           >

@@ -24,9 +24,9 @@ export function TextField({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
+      <span className="text-sm font-medium text-(--color-ink)">{label}</span>
       <input
-        className="mt-2 min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        className="mt-2 min-h-11 w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-(--color-brand) focus:ring-4 focus:ring-(--color-brand-ring)"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
@@ -34,7 +34,7 @@ export function TextField({
         value={value}
       />
       {hint ? (
-        <span className="mt-2 block text-xs leading-5 text-[var(--color-muted)]">
+        <span className="mt-2 block text-xs leading-5 text-muted">
           {hint}
         </span>
       ) : null}
@@ -56,8 +56,8 @@ export function PasswordField({
 
   return (
     <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
-      <div className="mt-2 flex min-h-11 overflow-hidden rounded-xl border border-[var(--color-border)] bg-white focus-within:border-[var(--color-brand)] focus-within:ring-4 focus-within:ring-[var(--color-brand-ring)]">
+      <span className="text-sm font-medium text-(--color-ink)">{label}</span>
+      <div className="mt-2 flex min-h-11 overflow-hidden rounded-xl border border-border bg-white focus-within:border-(--color-brand) focus-within:ring-4 focus-within:ring-(--color-brand-ring)">
         <input
           className="w-full border-0 bg-transparent px-4 py-2.5 text-sm leading-5 outline-none"
           disabled={disabled}
@@ -67,7 +67,7 @@ export function PasswordField({
           value={value}
         />
         <button
-          className="border-l border-[var(--color-border)] px-4 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-surface)]"
+          className="border-l border-border px-4 text-sm font-medium text-(--color-ink) transition hover:bg-(--color-surface)"
           onClick={() => setRevealed((current) => !current)}
           type="button"
         >
@@ -75,7 +75,7 @@ export function PasswordField({
         </button>
       </div>
       {hint ? (
-        <span className="mt-2 block text-xs leading-5 text-[var(--color-muted)]">
+        <span className="mt-2 block text-xs leading-5 text-muted">
           {hint}
         </span>
       ) : null}
@@ -97,9 +97,9 @@ export function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
+      <span className="text-sm font-medium text-(--color-ink)">{label}</span>
       <textarea
-        className="mt-2 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        className="mt-2 w-full rounded-xl border border-border bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:border-(--color-brand) focus:ring-4 focus:ring-(--color-brand-ring)"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         required={required}
@@ -107,7 +107,7 @@ export function TextAreaField({
         value={value}
       />
       {hint ? (
-        <span className="mt-2 block text-xs leading-5 text-[var(--color-muted)]">
+        <span className="mt-2 block text-xs leading-5 text-muted">
           {hint}
         </span>
       ) : null}
@@ -128,9 +128,9 @@ export function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-[var(--color-ink)]">{label}</span>
+      <span className="text-sm font-medium text-(--color-ink)">{label}</span>
       <select
-        className="mt-2 min-h-11 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-ring)]"
+        className="mt-2 min-h-11 w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm leading-5 outline-none transition focus:border-(--color-brand) focus:ring-4 focus:ring-(--color-brand-ring)"
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         value={value}
@@ -148,7 +148,7 @@ export function SelectField({
         })}
       </select>
       {hint ? (
-        <span className="mt-2 block text-xs leading-5 text-[var(--color-muted)]">
+        <span className="mt-2 block text-xs leading-5 text-muted">
           {hint}
         </span>
       ) : null}

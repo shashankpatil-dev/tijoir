@@ -65,7 +65,7 @@ export function OrganizationInvitesSection({
         </TableToolbar>
 
         <DataTable
-          containerClassName="max-h-[30rem]"
+          containerClassName="max-h-120"
           columns={inviteColumns}
           data={paginatedInvites}
           emptyDescription="No invite records match the current filters."
