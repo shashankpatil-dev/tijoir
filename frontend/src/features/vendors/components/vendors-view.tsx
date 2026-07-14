@@ -1,5 +1,5 @@
 import {
-  DetailList,
+  DefinitionRows,
   EmptyState,
   PageSection,
 } from "@/components/dashboard/dashboard-shell";
@@ -81,7 +81,7 @@ export function VendorsView({
           tone="warning"
         />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
           <div className="space-y-5">
             <PageSection title="Vendors">
               <div className="space-y-4">
@@ -187,7 +187,7 @@ export function VendorsView({
             <PageSection title="Vendor profile">
               {selectedVendor ? (
                 <div className="space-y-4">
-                  <DetailList
+                  <DefinitionRows
                     items={[
                       { label: "Vendor", value: selectedVendor.name },
                       {

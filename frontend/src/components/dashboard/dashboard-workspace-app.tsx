@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { DashboardSectionHeader, DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import {
   DashboardWorkspaceSidebarOrganization,
   DashboardWorkspaceSidebarUser,
@@ -29,8 +29,6 @@ export function DashboardWorkspaceApp({ children }: { children: ReactNode }) {
     >
       <section className="space-y-5">
         <DashboardEmailVerificationBanner workspace={workspace} />
-        <DashboardSectionHeader title={workspace.title} />
-
         {children}
       </section>
     </DashboardShell>

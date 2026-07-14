@@ -54,81 +54,82 @@ export function DashboardShell({
   const teamItems = items.filter((item) => item.group === "team");
 
   return (
-    <SidebarProvider defaultOpen>
-      <div className="min-h-screen bg-[var(--color-dashboard-bg)] text-[var(--color-ink)]">
-        <Sidebar
-          className="border-r border-[color-mix(in_srgb,var(--color-sidebar-foreground)_10%,transparent)]"
-          collapsible="icon"
-        >
-          <SidebarHeader className="gap-0 px-3 py-4">
-            {sidebarHeader}
-          </SidebarHeader>
+    <SidebarProvider
+      className="min-h-screen bg-[var(--color-dashboard-bg)] text-[var(--color-ink)]"
+      defaultOpen
+    >
+      <Sidebar
+        className="border-r border-[color-mix(in_srgb,var(--color-sidebar-foreground)_10%,transparent)]"
+        collapsible="icon"
+      >
+        <SidebarHeader className="gap-0 px-3 py-4">
+          {sidebarHeader}
+        </SidebarHeader>
 
-          <SidebarContent className="px-2 py-2">
-            <SidebarGroup className="px-0 py-0">
-              <SidebarGroupContent>
-                <SidebarMenu className="gap-1">
-                  {primaryItems.map((item) => (
-                    <DashboardSidebarNavButton
-                      active={item.id === activeItemId}
-                      item={item}
-                      key={item.id}
-                      onSelect={onSelect}
-                    />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+        <SidebarContent className="px-2 py-2">
+          <SidebarGroup className="px-0 py-0">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {primaryItems.map((item) => (
+                  <DashboardSidebarNavButton
+                    active={item.id === activeItemId}
+                    item={item}
+                    key={item.id}
+                    onSelect={onSelect}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-            {teamItems.length ? (
-              <>
-                <SidebarSeparator className="my-3" />
-                <SidebarGroup className="px-0 py-0">
-                  <SidebarGroupLabel className="px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/55">
-                    Team
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu className="gap-1">
-                      {teamItems.map((item) => (
-                        <DashboardSidebarNavButton
-                          active={item.id === activeItemId}
-                          item={item}
-                          key={item.id}
-                          onSelect={onSelect}
-                        />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            ) : null}
-          </SidebarContent>
-
-          {sidebarFooter ? (
-            <SidebarFooter className="border-t border-[color-mix(in_srgb,var(--color-sidebar-foreground)_10%,transparent)] px-3 py-4">
-              {sidebarFooter}
-            </SidebarFooter>
+          {teamItems.length ? (
+            <>
+              <SidebarSeparator className="my-3" />
+              <SidebarGroup className="px-0 py-0">
+                <SidebarGroupLabel className="px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/55">
+                  Team
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="gap-1">
+                    {teamItems.map((item) => (
+                      <DashboardSidebarNavButton
+                        active={item.id === activeItemId}
+                        item={item}
+                        key={item.id}
+                        onSelect={onSelect}
+                      />
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </>
           ) : null}
+        </SidebarContent>
 
-          <SidebarRail />
-        </Sidebar>
+        {sidebarFooter ? (
+          <SidebarFooter className="border-t border-[color-mix(in_srgb,var(--color-sidebar-foreground)_10%,transparent)] px-3 py-4">
+            {sidebarFooter}
+          </SidebarFooter>
+        ) : null}
 
-        <SidebarInset className="min-h-screen bg-[var(--color-dashboard-bg)]">
-          <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
-            <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
-              <div className="flex min-w-0 items-center gap-3">
-                <SidebarTrigger aria-label="Open menu" className="md:hidden" />
-                <div className="min-w-0">{topbarTitle}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                {topbarActions}
-              </div>
+        <SidebarRail />
+      </Sidebar>
+
+      <SidebarInset className="min-h-screen flex-1 overflow-x-hidden bg-[var(--color-dashboard-bg)]">
+        <header className="sticky top-0 z-30 border-b border-[var(--color-dashboard-border)] bg-white/92 backdrop-blur">
+          <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <SidebarTrigger aria-label="Open menu" className="md:hidden" />
+              <div className="min-w-0">{topbarTitle}</div>
             </div>
-          </header>
+            <div className="flex items-center gap-2">
+              {topbarActions}
+            </div>
+          </div>
+        </header>
 
-          <main className="px-4 py-4 sm:px-6 xl:px-8 xl:py-5">{children}</main>
-        </SidebarInset>
-      </div>
+        <main className="w-full px-4 py-4 sm:px-6 xl:px-8 xl:py-5">{children}</main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }
