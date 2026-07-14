@@ -1,6 +1,13 @@
 spring:
   application:
     name: tijoir-backend
+  # Two environments only: dev (default) and prod.
+  # Unset -> dev: uses the dev secrets in application-dev.yml so local runs work out of the box.
+  # PROD MUST set SPRING_PROFILES_ACTIVE=prod (activates the AWS Secrets Manager payload store)
+  # and supply real JWT_SECRET / LOCAL_SECRET_ENCRYPTION_KEY via environment, or it will not boot.
+  # (test is a separate profile used only by the test suite.)
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/tijoir}
     username: ${DATABASE_USERNAME:tijoir}

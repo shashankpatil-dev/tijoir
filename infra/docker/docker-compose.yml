@@ -10,39 +10,32 @@ services:
       - "5432:5432"
     volumes:
       - tijoir-postgres-data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    container_name: tijoir-redis
-    ports:
-      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tijoir -d tijoir"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
       context: ../../backend
     container_name: tijoir-backend
-    profiles:
-      - app
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/tijoir
       DATABASE_USERNAME: tijoir
       DATABASE_PASSWORD: tijoir
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      SPRING_PROFILES_ACTIVE: local
+      SPRING_PROFILES_ACTIVE: dev
       AWS_REGION: ${AWS_REGION:-ap-south-1}
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
       context: ../../frontend
     container_name: tijoir-frontend
-    profiles:
-      - app
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
     ports:
