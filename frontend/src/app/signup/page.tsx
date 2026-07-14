@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { Building2, KeyRound, ShieldCheck, Timer } from "lucide-react";
 import { GuestRoute } from "@/components/auth/auth-guards";
 import {
   apiRequest,
   type RegisterResponse,
   savePendingVerification,
 } from "@/lib/auth-client";
-import { AuthShell, PrimaryButton, StatusPanel } from "@/components/site-chrome";
+import {
+  AuthFormHeader,
+  AuthShell,
+  AuthTrustList,
+  PrimaryButton,
+} from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -65,58 +71,55 @@ export default function SignupPage() {
     <GuestRoute>
       <AuthShell
         aside={
-          <div className="space-y-4">
-            <StatusPanel
-              title="You become the owner"
-              body="The first account owns the organization — its vault, team, roles, and vendor access."
-            />
-            <StatusPanel
-              title="One step to go"
-              body="After signup, verify your email and you're ready to add secrets."
-            />
-          </div>
+          <AuthTrustList
+            items={[
+              { icon: Building2, text: "The first account owns the org — its vault, team, and vendor access." },
+              { icon: KeyRound, text: "Store and generate every kind of secret in one encrypted vault." },
+              { icon: ShieldCheck, text: "Encrypted at rest, audited on every reveal, revocable anytime." },
+              { icon: Timer, text: "Up and running in minutes — no credit card." },
+            ]}
+          />
         }
         description="Create your organization and its first owner account."
-        eyebrow="Get started"
-        title="Set up your workspace"
+        eyebrow="Get started free"
+        title="Set up your secure workspace"
       >
-        <form className="space-y-4" onSubmit={register}>
-          <div>
-            <h2 className="text-2xl font-semibold text-(--color-ink-strong)">
-              Create your organization
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              This sets up the organization and you as its owner.
-            </p>
-          </div>
+        <form className="space-y-5" onSubmit={register}>
+          <AuthFormHeader
+            description="This sets up the organization and you as its owner."
+            icon={Building2}
+            title="Create your organization"
+          />
 
-          <TextField
-            hint="Shown across your workspace."
-            label="Organization name"
-            onChange={setOrganizationName}
-            value={organizationName}
-          />
-          <TextField
-            hint="A shared inbox for the organization works well."
-            label="Organization email"
-            onChange={setOrganizationEmail}
-            type="email"
-            value={organizationEmail}
-          />
-          <TextField label="Your name" onChange={setUserName} value={userName} />
-          <TextField
-            hint="You'll sign in and verify with this address."
-            label="Your email"
-            onChange={setUserEmail}
-            type="email"
-            value={userEmail}
-          />
-          <PasswordField
-            hint="At least 10 characters. Mix it up."
-            label="Password"
-            onChange={setPassword}
-            value={password}
-          />
+          <div className="space-y-4">
+            <TextField
+              hint="Shown across your workspace."
+              label="Organization name"
+              onChange={setOrganizationName}
+              value={organizationName}
+            />
+            <TextField
+              hint="A shared inbox for the organization works well."
+              label="Organization email"
+              onChange={setOrganizationEmail}
+              type="email"
+              value={organizationEmail}
+            />
+            <TextField label="Your name" onChange={setUserName} value={userName} />
+            <TextField
+              hint="You'll sign in and verify with this address."
+              label="Your email"
+              onChange={setUserEmail}
+              type="email"
+              value={userEmail}
+            />
+            <PasswordField
+              hint="At least 10 characters. Mix it up."
+              label="Password"
+              onChange={setPassword}
+              value={password}
+            />
+          </div>
 
           <PrimaryButton busy={busy}>
             {busy ? "Creating…" : "Create organization"}

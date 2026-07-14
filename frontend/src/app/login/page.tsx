@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
+import { KeyRound, Lock, RefreshCw, ShieldCheck } from "lucide-react";
 import { GuestRoute } from "@/components/auth/auth-guards";
 import {
   consumeRedirectPath,
@@ -10,7 +11,12 @@ import {
   saveSession,
 } from "@/lib/auth-client";
 import { loginRequest } from "@/features/auth/api/auth.api";
-import { AuthShell, PrimaryButton, StatusPanel } from "@/components/site-chrome";
+import {
+  AuthFormHeader,
+  AuthShell,
+  AuthTrustList,
+  PrimaryButton,
+} from "@/components/site-chrome";
 import { PasswordField, TextField } from "@/components/ui/form-fields";
 import { useToast } from "@/components/ui/toast-provider";
 
@@ -54,43 +60,34 @@ export default function LoginPage() {
     <GuestRoute>
       <AuthShell
         aside={
-          <div className="space-y-4">
-            <StatusPanel
-              title="Your session stays with you"
-              body="Stay signed in across reloads — we quietly refresh your session in the background."
-            />
-            <StatusPanel
-              title="New here?"
-              body="Create an organization, verify your email, and you're in."
-            />
-          </div>
+          <AuthTrustList
+            items={[
+              { icon: ShieldCheck, text: "Your secrets stay encrypted and access is fully audited." },
+              { icon: RefreshCw, text: "Stay signed in — we refresh your session in the background." },
+              { icon: KeyRound, text: "One workspace for your team's vault and shared links." },
+            ]}
+          />
         }
-        description="Sign in to your organization workspace."
-        eyebrow="Workspace access"
-        title="Welcome back to Tijoir"
+        description="Sign in to your organization's secure workspace."
+        eyebrow="Welcome back"
+        title="Pick up right where you left off"
       >
-        <form className="space-y-4" onSubmit={login}>
-          <div>
-            <h2 className="text-2xl font-semibold text-(--color-ink-strong)">
-              Sign in
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Use your verified email for this organization.
-            </p>
-          </div>
+        <form className="space-y-5" onSubmit={login}>
+          <AuthFormHeader
+            description="Use your verified email for this organization."
+            icon={Lock}
+            title="Sign in"
+          />
 
-          <TextField
-            label="Email"
-            onChange={setEmail}
-            type="email"
-            value={email}
-          />
-          <PasswordField
-            hint="Hidden by default — use Show only when you need it."
-            label="Password"
-            onChange={setPassword}
-            value={password}
-          />
+          <div className="space-y-4">
+            <TextField label="Email" onChange={setEmail} type="email" value={email} />
+            <PasswordField
+              hint="Hidden by default — use Show only when you need it."
+              label="Password"
+              onChange={setPassword}
+              value={password}
+            />
+          </div>
 
           <PrimaryButton busy={busy}>
             {busy ? "Signing in…" : "Sign in"}

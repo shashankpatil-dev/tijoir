@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 export function SiteLogo({ subtitle = true }: { subtitle?: boolean }) {
   return (
@@ -111,19 +111,72 @@ export function AuthShell({
   aside: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,var(--color-surface)_48%,#edf4ff_100%)] text-(--color-ink)">
+    <main className="flex min-h-screen flex-col bg-[linear-gradient(180deg,#f8fbff_0%,var(--color-surface)_48%,#edf4ff_100%)] text-(--color-ink)">
       <SiteHeader />
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-12">
-        <div className="space-y-5">
-          <PageIntro badge={eyebrow} description={description} title={title} />
-          <div className="space-y-4">{aside}</div>
+      <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_1fr] lg:px-8">
+        {/* Branded aside */}
+        <div className="hidden rounded-3xl border border-border bg-[linear-gradient(150deg,var(--color-brand-panel),#ffffff)] p-8 shadow-(--shadow-card) lg:block">
+          <span className="inline-flex rounded-full border border-(--color-brand-soft) bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
+            {eyebrow}
+          </span>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-(--color-ink-strong)">
+            {title}
+          </h1>
+          <p className="mt-3 text-base leading-7 text-muted">{description}</p>
+          <div className="mt-7">{aside}</div>
         </div>
 
-        <section className="rounded-2xl border border-border bg-white p-6 shadow-(--shadow-card) sm:p-8">
+        {/* Form card */}
+        <section className="w-full rounded-2xl border border-border bg-white p-6 shadow-(--shadow-card) sm:p-8">
           {children}
         </section>
       </section>
+      <SiteFooter />
     </main>
+  );
+}
+
+export function AuthTrustList({
+  items,
+}: {
+  items: Array<{ icon: ComponentType<{ className?: string }>; text: string }>;
+}) {
+  return (
+    <ul className="space-y-3">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <li className="flex items-start gap-3" key={item.text}>
+            <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-(--color-brand-strong) shadow-(--shadow-card)">
+              <Icon className="size-4" />
+            </span>
+            <p className="text-sm leading-6 text-(--color-ink)">{item.text}</p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+export function AuthFormHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-(--color-brand-soft) text-(--color-brand-strong)">
+        <Icon className="size-5" />
+      </span>
+      <div>
+        <h2 className="text-2xl font-semibold text-(--color-ink-strong)">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
+      </div>
+    </div>
   );
 }
 
