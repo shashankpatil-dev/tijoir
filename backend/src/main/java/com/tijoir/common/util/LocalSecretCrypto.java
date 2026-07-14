@@ -1,6 +1,7 @@
 package com.tijoir.common.util;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -12,7 +13,10 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
+// Only active outside prod — pairs with LocalSecretPayloadStore (@Profile("!prod")).
+// Prod uses AwsSecretsManagerSecretPayloadStore, so no local encryption key is needed there.
 @Component
+@Profile("!prod")
 public class LocalSecretCrypto {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int GCM_IV_LENGTH = 12;
