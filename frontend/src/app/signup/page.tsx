@@ -9,7 +9,13 @@ import {
   apiRequest,
   type RegisterResponse,
   savePendingVerification,
+  saveSession,
 } from "@/lib/auth-client";
+import {
+  googleExchangeRequest,
+  googleRegisterRequest,
+} from "@/features/auth/api/auth.api";
+import { GoogleButton } from "@/features/auth/components/google-button";
 import {
   AuthFormHeader,
   AuthShell,
@@ -28,6 +34,7 @@ export default function SignupPage() {
   const [userEmail, setUserEmail] = useState("");
   const [password, setPassword] = useState("");
   const [organizationName, setOrganizationName] = useState("");
+  const [googleIdToken, setGoogleIdToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const step1Ready =
@@ -46,10 +53,46 @@ export default function SignupPage() {
     setStep(2);
   }
 
+  async function handleGoogle(idToken: string) {
+    setBusy(true);
+    try {
+      const result = await googleExchangeRequest(idToken);
+      if (!result.needsOrganization && result.session) {
+        saveSession(result.session);
+        showToast({
+          title: "Welcome back",
+          description: "You already have an account — signing you in.",
+          tone: "success",
+        });
+        router.push("/dashboard/overview");
+        return;
+      }
+      // New Google user: keep the token and collect an organization name.
+      setGoogleIdToken(idToken);
+      setStep(2);
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "Google sign-in failed";
+      showToast({ title: "Couldn't continue with Google", description: text, tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     try {
+      if (googleIdToken) {
+        const session = await googleRegisterRequest(googleIdToken, organizationName);
+        saveSession(session);
+        showToast({
+          title: "Organization created",
+          description: "Welcome to Tijoir.",
+          tone: "success",
+        });
+        router.push("/dashboard/overview");
+        return;
+      }
       const result = await apiRequest<RegisterResponse>("/api/auth/register", {
         method: "POST",
         body: JSON.stringify({ organizationName, userName, userEmail, password }),
@@ -100,6 +143,10 @@ export default function SignupPage() {
         </div>
 
         {step === 1 ? (
+          <>
+          <div className="mb-5">
+            <GoogleButton onToken={handleGoogle} text="signup_with" />
+          </div>
           <form className="space-y-5" onSubmit={continueToOrg}>
             <AuthFormHeader
               description="This becomes the organization owner account."
@@ -124,6 +171,7 @@ export default function SignupPage() {
             </div>
             <PrimaryButton disabled={!step1Ready}>Continue</PrimaryButton>
           </form>
+          </>
         ) : (
           <form className="space-y-5" onSubmit={register}>
             <AuthFormHeader
@@ -139,7 +187,10 @@ export default function SignupPage() {
             />
             <div className="flex gap-3">
               <Button
-                onClick={() => setStep(1)}
+                onClick={() => {
+                  setStep(1);
+                  setGoogleIdToken(null);
+                }}
                 type="button"
                 variant="outline"
               >

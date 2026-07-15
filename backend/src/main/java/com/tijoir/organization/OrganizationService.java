@@ -5,6 +5,7 @@ import com.tijoir.audit.AuditAction;
 import com.tijoir.audit.AuditEvent;
 import com.tijoir.audit.AuditEventRepository;
 import com.tijoir.auth.AuthService;
+import com.tijoir.auth.dto.OrganizationSummary;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.paging.PageRequestFactory;
@@ -82,6 +83,20 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
+    @Transactional
+    public OrganizationSummary updateOrganizationName(AuthenticatedUser principal, String name) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireOrganizationManager(principal.role());
+        Organization organization = actor.getOrganization();
+        organization.rename(name.trim());
+        return new OrganizationSummary(
+                organization.getId(),
+                organization.getName(),
+                organization.getSlug(),
+                organization.getEmail()
+        );
+    }
+
     public PageResponse<MemberResponse> listMembers(
             AuthenticatedUser principal,
             Integer page,

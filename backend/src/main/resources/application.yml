@@ -39,6 +39,8 @@ tijoir:
     # Only enable behind a trusted reverse proxy / load balancer that appends the real
     # client IP to X-Forwarded-For. When false, forwarded headers are ignored (getRemoteAddr).
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    # Google Sign-In: OAuth Web client ID. Blank = Google sign-in disabled (email/password only).
+    google-client-id: ${GOOGLE_CLIENT_ID:}
   aws:
     region: ${AWS_REGION:ap-south-1}
     database-secret-arn: ${DATABASE_SECRET_ARN:}

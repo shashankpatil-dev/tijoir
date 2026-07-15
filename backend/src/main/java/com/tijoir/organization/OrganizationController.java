@@ -1,6 +1,7 @@
 package com.tijoir.organization;
 
 import com.tijoir.auth.dto.AuthResponse;
+import com.tijoir.auth.dto.OrganizationSummary;
 import com.tijoir.auth.AuthCookieService;
 import com.tijoir.auth.AuthService;
 import com.tijoir.auth.security.AuthenticatedUser;
@@ -12,6 +13,7 @@ import com.tijoir.organization.dto.MemberResponse;
 import com.tijoir.organization.dto.OrganizationPolicyResponse;
 import com.tijoir.organization.dto.UpdateMemberRoleRequest;
 import com.tijoir.organization.dto.UpdateOrganizationPolicyRequest;
+import com.tijoir.organization.dto.UpdateOrganizationRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -42,6 +44,14 @@ public class OrganizationController {
     ) {
         this.organizationService = organizationService;
         this.authCookieService = authCookieService;
+    }
+
+    @PutMapping
+    public OrganizationSummary updateOrganization(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody UpdateOrganizationRequest request
+    ) {
+        return organizationService.updateOrganizationName(user, request.name());
     }
 
     @GetMapping("/members")

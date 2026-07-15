@@ -40,6 +40,59 @@ export async function resendVerificationRequest(email: string) {
   });
 }
 
+export async function googleExchangeRequest(idToken: string) {
+  return apiRequest<{ needsOrganization: boolean; session: AuthResponse | null }>(
+    "/api/auth/google/exchange",
+    { method: "POST", body: JSON.stringify({ idToken }) },
+  );
+}
+
+export async function googleRegisterRequest(idToken: string, organizationName: string) {
+  return apiRequest<AuthResponse>("/api/auth/google/register", {
+    method: "POST",
+    body: JSON.stringify({ idToken, organizationName }),
+  });
+}
+
+export async function googleLinkRequest(accessToken: string, idToken: string) {
+  return apiRequest<{ message: string }>("/api/auth/google/link", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ idToken }),
+  });
+}
+
+export async function updateProfileRequest(accessToken: string, name: string) {
+  return apiRequest<AuthResponse>("/api/auth/me", {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function changePasswordRequest(
+  accessToken: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  return apiRequest<{ message: string }>("/api/auth/password/change", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export async function updateOrganizationRequest(accessToken: string, name: string) {
+  return apiRequest<{ id: string; name: string; slug: string; email: string }>(
+    "/api/organization",
+    {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ name }),
+    },
+  );
+}
+
 export async function forgotPasswordRequest(email: string) {
   return apiRequest<{ message: string }>("/api/auth/password/forgot", {
     method: "POST",

@@ -2,6 +2,7 @@ package com.tijoir.auth;
 
 import com.tijoir.auth.dto.AuthResponse;
 import com.tijoir.auth.dto.LoginRequest;
+import com.tijoir.auth.security.GoogleTokenVerifier;
 import com.tijoir.auth.security.JwtService;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -39,6 +41,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private static final long PASSWORD_RESET_EXP_MINUTES = 30;
     private final JwtService jwtService;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final NotificationService notificationService;
     private final NotificationProperties notificationProperties;
     private final long verificationExpirationMinutes;
@@ -52,6 +55,7 @@ public class AuthService {
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
+            GoogleTokenVerifier googleTokenVerifier,
             NotificationService notificationService,
             NotificationProperties notificationProperties,
             @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes,
@@ -64,6 +68,7 @@ public class AuthService {
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
         this.verificationExpirationMinutes = verificationExpirationMinutes;
@@ -204,6 +209,84 @@ public class AuthService {
     }
 
     @Transactional
+    public GoogleOutcome googleExchange(String idToken) {
+        GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+        String email = normalizeEmail(identity.email());
+
+        Optional<UserAccount> bySub = userAccountRepository.findByGoogleSubAndDeactivatedAtIsNull(identity.sub());
+        if (bySub.isPresent()) {
+            return new GoogleOutcome(false, issueSessionForUser(bySub.get()));
+        }
+
+        Optional<UserAccount> byEmail = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(email);
+        if (byEmail.isPresent()) {
+            UserAccount user = byEmail.get();
+            user.linkGoogle(identity.sub());
+            user.markEmailVerified();
+            return new GoogleOutcome(false, issueSessionForUser(user));
+        }
+
+        return new GoogleOutcome(true, null);
+    }
+
+    @Transactional
+    public IssuedSession googleRegister(String idToken, String organizationName) {
+        GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+        String email = normalizeEmail(identity.email());
+        if (userAccountRepository.existsByEmailIgnoreCaseAndDeactivatedAtIsNull(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "An account with this email already exists. Try signing in.");
+        }
+
+        Organization organization = organizationRepository.save(new Organization(
+                organizationName.trim(),
+                uniqueSlug(organizationName),
+                email
+        ));
+        UserAccount user = new UserAccount(organization, identity.name(), email, null, UserRole.ORG_OWNER);
+        user.linkGoogle(identity.sub());
+        user.markEmailVerified();
+        userAccountRepository.save(user);
+        return issueAuthResponse(user, true);
+    }
+
+    @Transactional
+    public void linkGoogle(UUID userId, String idToken) {
+        GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
+        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+        userAccountRepository.findByGoogleSubAndDeactivatedAtIsNull(identity.sub())
+                .filter(other -> !other.getId().equals(userId))
+                .ifPresent(other -> {
+                    throw new ApiException(HttpStatus.CONFLICT, "This Google account is already linked to another user");
+                });
+        user.linkGoogle(identity.sub());
+    }
+
+    @Transactional
+    public AuthResponse updateName(UUID userId, String name) {
+        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+        user.rename(name.trim());
+        return issueAuthResponse(user, false).authResponse();
+    }
+
+    @Transactional
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+        // Users with an existing password must confirm it. Google-only users (no password yet)
+        // can set one without a current password.
+        if (user.getPasswordHash() != null
+                && (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+        user.changePassword(passwordEncoder.encode(newPassword));
+        for (RefreshToken refreshToken : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(user.getId())) {
+            refreshToken.revoke();
+        }
+    }
+
+    @Transactional
     public void requestPasswordReset(String email) {
         // Generic behavior: do the work only if the user exists, but the caller always
         // responds identically so this endpoint cannot be used to enumerate accounts.
@@ -325,5 +408,8 @@ public class AuthService {
     }
 
     public record IssuedSession(AuthResponse authResponse, String rawRefreshToken) {
+    }
+
+    public record GoogleOutcome(boolean needsOrganization, IssuedSession session) {
     }
 }

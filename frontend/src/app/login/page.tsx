@@ -10,7 +10,8 @@ import {
   readRememberedEmail,
   saveSession,
 } from "@/lib/auth-client";
-import { loginRequest } from "@/features/auth/api/auth.api";
+import { googleExchangeRequest, loginRequest } from "@/features/auth/api/auth.api";
+import { GoogleButton } from "@/features/auth/components/google-button";
 import {
   AuthFormHeader,
   AuthShell,
@@ -56,6 +57,34 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogle(idToken: string) {
+    setBusy(true);
+    try {
+      const result = await googleExchangeRequest(idToken);
+      if (!result.needsOrganization && result.session) {
+        saveSession(result.session);
+        showToast({
+          title: "Welcome back",
+          description: "Taking you to your workspace.",
+          tone: "success",
+        });
+        router.push(consumeRedirectPath("/dashboard/overview"));
+        return;
+      }
+      showToast({
+        title: "No account yet",
+        description: "Create your organization to get started.",
+        tone: "info",
+      });
+      router.push("/signup");
+    } catch (error) {
+      const text = error instanceof Error ? error.message : "Google sign-in failed";
+      showToast({ title: "Couldn't sign in", description: text, tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <GuestRoute>
       <AuthShell
@@ -72,6 +101,10 @@ export default function LoginPage() {
         eyebrow="Welcome back"
         title="Pick up right where you left off"
       >
+        <div className="mb-5">
+          <GoogleButton onToken={handleGoogle} text="signin_with" />
+        </div>
+
         <form className="space-y-5" onSubmit={login}>
           <AuthFormHeader
             description="Use your verified email for this organization."

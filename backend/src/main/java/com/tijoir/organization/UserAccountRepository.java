@@ -14,6 +14,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>,
 
     Optional<UserAccount> findByEmailIgnoreCaseAndDeactivatedAtIsNull(String email);
 
+    Optional<UserAccount> findByGoogleSubAndDeactivatedAtIsNull(String googleSub);
+
     Optional<UserAccount> findByIdAndDeactivatedAtIsNull(UUID id);
 
     Optional<UserAccount> findByIdAndOrganizationIdAndDeactivatedAtIsNull(UUID id, UUID organizationId);

@@ -2,9 +2,15 @@ package com.tijoir.auth;
 
 import com.tijoir.auth.dto.AuthResponse;
 import com.tijoir.auth.dto.ForgotPasswordRequest;
+import com.tijoir.auth.dto.GoogleExchangeRequest;
+import com.tijoir.auth.dto.GoogleExchangeResponse;
+import com.tijoir.auth.dto.GoogleLinkRequest;
+import com.tijoir.auth.dto.GoogleRegisterRequest;
 import com.tijoir.auth.dto.LoginRequest;
+import com.tijoir.auth.dto.ChangePasswordRequest;
 import com.tijoir.auth.dto.MessageResponse;
 import com.tijoir.auth.dto.ResetPasswordRequest;
+import com.tijoir.auth.dto.UpdateProfileRequest;
 import com.tijoir.auth.dto.RefreshRequest;
 import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
@@ -22,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -99,6 +106,23 @@ public class AuthController {
         return authService.currentUser(user.userId());
     }
 
+    @PatchMapping("/me")
+    public AuthResponse updateProfile(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody UpdateProfileRequest request
+    ) {
+        return authService.updateName(user.userId(), request.name());
+    }
+
+    @PostMapping("/password/change")
+    public MessageResponse changePassword(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(user.userId(), request.currentPassword(), request.newPassword());
+        return new MessageResponse("Password updated.");
+    }
+
     @PostMapping("/password/forgot")
     public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.requestPasswordReset(request.email());
@@ -109,6 +133,36 @@ public class AuthController {
     public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request.token(), request.newPassword());
         return new MessageResponse("Password updated. You can now sign in.");
+    }
+
+    @PostMapping("/google/exchange")
+    public ResponseEntity<GoogleExchangeResponse> googleExchange(@Valid @RequestBody GoogleExchangeRequest request) {
+        AuthService.GoogleOutcome outcome = authService.googleExchange(request.idToken());
+        if (outcome.needsOrganization()) {
+            return ResponseEntity.ok(new GoogleExchangeResponse(true, null));
+        }
+        AuthService.IssuedSession session = outcome.session();
+        HttpHeaders headers = new HttpHeaders();
+        if (session.rawRefreshToken() != null && session.authResponse().refreshExpiresAt() != null) {
+            authCookieService.writeRefreshCookie(headers, session.rawRefreshToken(), session.authResponse().refreshExpiresAt());
+        }
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(new GoogleExchangeResponse(false, session.authResponse()));
+    }
+
+    @PostMapping("/google/register")
+    public ResponseEntity<AuthResponse> googleRegister(@Valid @RequestBody GoogleRegisterRequest request) {
+        return sessionResponse(authService.googleRegister(request.idToken(), request.organizationName()));
+    }
+
+    @PostMapping("/google/link")
+    public MessageResponse googleLink(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody GoogleLinkRequest request
+    ) {
+        authService.linkGoogle(user.userId(), request.idToken());
+        return new MessageResponse("Google account connected.");
     }
 
     @PostMapping("/verify-email")
