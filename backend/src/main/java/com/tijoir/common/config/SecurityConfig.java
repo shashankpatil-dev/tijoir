@@ -52,6 +52,10 @@ public class SecurityConfig {
                                 "/api/auth/logout",
                                 "/api/auth/verify-email",
                                 "/api/auth/resend-verification",
+                                "/api/auth/password/forgot",
+                                "/api/auth/password/reset",
+                                "/api/auth/google/exchange",
+                                "/api/auth/google/register",
                                 "/api/organization/invites/accept",
                                 "/api/public/share-links/**"
                         ).permitAll()

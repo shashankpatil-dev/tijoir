@@ -2,17 +2,30 @@ package com.tijoir.auth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tijoir.notification.NotificationRecord;
+import com.tijoir.notification.NotificationRecordRepository;
+import com.tijoir.notification.NotificationType;
+import com.tijoir.organization.UserAccount;
+import com.tijoir.organization.UserAccountRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,6 +39,12 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserAccountRepository userAccountRepository;
+
+    @Autowired
+    private NotificationRecordRepository notificationRecordRepository;
 
     @Test
     void registerVerifyLoginAndReadCurrentUser() throws Exception {
@@ -261,6 +280,149 @@ class AuthControllerIntegrationTest {
                                 """))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.message").value("Too many verification resend attempts for this email. Try again later."));
+    }
+
+    @Test
+    void passwordResetSetsNewPasswordAndBlocksOldOne() throws Exception {
+        registerAndVerify("Acme Reset", "org@acme-reset.test", "owner@acme-reset.test");
+
+        mockMvc.perform(post("/api/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"owner@acme-reset.test\"}"))
+                .andExpect(status().isOk());
+
+        String resetToken = latestPasswordResetToken("owner@acme-reset.test");
+
+        mockMvc.perform(post("/api/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + resetToken + "\",\"newPassword\":\"NewStrong@456\"}"))
+                .andExpect(status().isOk());
+
+        // Old password no longer works (unique IP so the failure counter stays isolated).
+        mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", "198.51.100.60")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-reset.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        // New password works.
+        mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", "198.51.100.61")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-reset.test",
+                                  "password": "NewStrong@456"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString());
+    }
+
+    @Test
+    void passwordResetRejectsUnknownEmailWithGenericResponse() throws Exception {
+        mockMvc.perform(post("/api/auth/password/forgot")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nobody@nowhere.test\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void changePasswordRequiresCorrectCurrentPassword() throws Exception {
+        registerAndVerify("Acme Change", "org@acme-change.test", "owner@acme-change.test");
+        SessionResponse session = login("owner@acme-change.test", "StrongPass@123");
+
+        mockMvc.perform(post("/api/auth/password/change")
+                        .header("Authorization", bearer(session.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"WrongPass@000\",\"newPassword\":\"NewStrong@456\"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/auth/password/change")
+                        .header("Authorization", bearer(session.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"StrongPass@123\",\"newPassword\":\"NewStrong@456\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/login")
+                        .header("X-Forwarded-For", "198.51.100.70")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "owner@acme-change.test",
+                                  "password": "NewStrong@456"
+                                }
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void ownerCanUpdateDisplayName() throws Exception {
+        registerAndVerify("Acme Profile", "org@acme-profile.test", "owner@acme-profile.test");
+        SessionResponse session = login("owner@acme-profile.test", "StrongPass@123");
+
+        mockMvc.perform(patch("/api/auth/me")
+                        .header("Authorization", bearer(session.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Renamed Owner\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.name").value("Renamed Owner"));
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", bearer(session.accessToken())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.name").value("Renamed Owner"));
+    }
+
+    @Test
+    void ownerCanRenameOrganization() throws Exception {
+        registerAndVerify("Acme Org Rename", "org@acme-orgrename.test", "owner@acme-orgrename.test");
+        SessionResponse session = login("owner@acme-orgrename.test", "StrongPass@123");
+
+        mockMvc.perform(put("/api/organization")
+                        .header("Authorization", bearer(session.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Acme Renamed Inc\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Acme Renamed Inc"));
+    }
+
+    @Test
+    void twoStepSignupDefaultsOrganizationEmailToOwnerEmail() throws Exception {
+        // Two-step signup omits organizationEmail; the backend defaults it to the owner email.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "Acme No Org Email",
+                                  "userName": "Acme Owner",
+                                  "userEmail": "owner@acme-noorgemail.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.emailVerificationToken").isString());
+    }
+
+    private String latestPasswordResetToken(String email) {
+        UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(email)
+                .orElseThrow(() -> new IllegalStateException("user not found"));
+        NotificationRecord record = notificationRecordRepository
+                .findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(0, 20))
+                .stream()
+                .filter(candidate -> candidate.getType() == NotificationType.PASSWORD_RESET)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("no password reset notification"));
+        Matcher matcher = Pattern.compile("token=([^&]+)").matcher(record.getActionUrl());
+        if (!matcher.find()) {
+            throw new IllegalStateException("no token in reset link");
+        }
+        return URLDecoder.decode(matcher.group(1), StandardCharsets.UTF_8);
     }
 
     private void registerAndVerify(
