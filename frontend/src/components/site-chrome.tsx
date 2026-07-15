@@ -111,19 +111,23 @@ export function AuthShell({
   aside: ReactNode;
 }) {
   return (
-    <main className="flex min-h-screen flex-col bg-[linear-gradient(180deg,#f8fbff_0%,var(--color-surface)_48%,#edf4ff_100%)] text-(--color-ink)">
-      <SiteHeader />
-      <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_1fr] lg:px-8">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,var(--color-surface)_48%,#edf4ff_100%)] text-(--color-ink)">
+      {/* Minimal chrome: just a logo home-link — no nav, no footer (focused auth page). */}
+      <div className="mx-auto flex max-w-5xl px-4 pt-6 sm:px-6 lg:px-8">
+        <SiteLogo subtitle={false} />
+      </div>
+
+      <section className="mx-auto grid w-full max-w-5xl items-start gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-14 lg:px-8">
         {/* Branded aside */}
-        <div className="hidden rounded-3xl border border-border bg-[linear-gradient(150deg,var(--color-brand-panel),#ffffff)] p-8 shadow-(--shadow-card) lg:block">
+        <div className="hidden lg:sticky lg:top-16 lg:block">
           <span className="inline-flex rounded-full border border-(--color-brand-soft) bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-(--color-brand-strong)">
             {eyebrow}
           </span>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-(--color-ink-strong)">
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight text-(--color-ink-strong) lg:text-4xl">
             {title}
           </h1>
           <p className="mt-3 text-base leading-7 text-muted">{description}</p>
-          <div className="mt-7">{aside}</div>
+          <div className="mt-8">{aside}</div>
         </div>
 
         {/* Form card */}
@@ -131,7 +135,6 @@ export function AuthShell({
           {children}
         </section>
       </section>
-      <SiteFooter />
     </main>
   );
 }
