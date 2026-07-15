@@ -23,3 +23,6 @@ notification_expose_dev_tokens = true
 notification_email_enabled    = false
 notification_email_provider   = "noop"
 notification_email_from_address = "no-reply@example.com"
+
+# Google Sign-In (public OAuth Web client ID). Blank disables Google.
+google_client_id = "306075557187-cmcq4g3p7rud2ettsuhs8ocl7h3qk9eo.apps.googleusercontent.com"

@@ -15,5 +15,6 @@ tijoir:
     local-secret-encryption-key: dev-encryption-key-change-me
     refresh-cookie-secure: false
     refresh-cookie-same-site: Lax
+    google-client-id: 306075557187-cmcq4g3p7rud2ettsuhs8ocl7h3qk9eo.apps.googleusercontent.com
   notifications:
     expose-dev-tokens: true

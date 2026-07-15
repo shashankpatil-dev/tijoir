@@ -153,6 +153,7 @@ resource "aws_lambda_function" "backend" {
       REFRESH_COOKIE_SECURE                          = "true"
       REFRESH_COOKIE_SAME_SITE                       = "None"
       TRUST_FORWARDED_HEADERS                        = "true"
+      GOOGLE_CLIENT_ID                               = var.google_client_id
       TIJOIR_NOTIFICATIONS_ENABLED                   = tostring(var.notifications_enabled)
       TIJOIR_NOTIFICATIONS_EXPOSE_DEV_TOKENS         = tostring(var.notification_expose_dev_tokens)
       TIJOIR_NOTIFICATION_EMAIL_ENABLED              = tostring(var.notification_email_enabled)

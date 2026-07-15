@@ -113,6 +113,7 @@ jobs:
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ steps.prod.outputs.backend_url }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: npm run build
 
       - name: Upload static site to S3

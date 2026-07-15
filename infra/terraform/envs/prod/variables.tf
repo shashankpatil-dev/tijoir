@@ -134,3 +134,9 @@ variable "notification_email_from_address" {
   type        = string
   default     = "no-reply@localhost"
 }
+
+variable "google_client_id" {
+  description = "Google OAuth Web client ID for Sign in with Google. Blank disables Google."
+  type        = string
+  default     = ""
+}
