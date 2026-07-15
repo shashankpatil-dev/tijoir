@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { ArrowLeft, Building2, KeyRound, ShieldCheck, Timer, User } from "lucide-react";
+import { ArrowLeft, Building2, Check, KeyRound, ShieldCheck, Timer, User } from "lucide-react";
 import { GuestRoute } from "@/components/auth/auth-guards";
 import {
   apiRequest,
@@ -135,73 +135,113 @@ export default function SignupPage() {
         eyebrow="Get started free"
         title="Set up your secure workspace"
       >
-        {/* Step indicator */}
-        <div className="mb-5 flex items-center gap-2 text-xs font-medium text-muted">
-          <span className={step === 1 ? "text-(--color-brand-strong)" : ""}>1. Your account</span>
-          <span className="h-px w-6 bg-border" />
-          <span className={step === 2 ? "text-(--color-brand-strong)" : ""}>2. Organization</span>
+        {/* Stepper */}
+        <div className="mb-6 flex items-center gap-3">
+          {[
+            { n: 1, label: "Your account" },
+            { n: 2, label: "Organization" },
+          ].map((entry, index) => (
+            <div className="flex flex-1 items-center gap-3" key={entry.n}>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold transition ${
+                    step >= entry.n
+                      ? "bg-(--color-brand) text-white"
+                      : "bg-(--color-surface) text-muted"
+                  }`}
+                >
+                  {step > entry.n ? <Check className="size-3.5" /> : entry.n}
+                </span>
+                <span
+                  className={`text-xs font-medium ${
+                    step === entry.n ? "text-(--color-ink-strong)" : "text-muted"
+                  }`}
+                >
+                  {entry.label}
+                </span>
+              </div>
+              {index === 0 ? (
+                <span className="h-0.5 flex-1 overflow-hidden rounded bg-border">
+                  <span
+                    className={`block h-full bg-(--color-brand) transition-all duration-300 ${
+                      step === 2 ? "w-full" : "w-0"
+                    }`}
+                  />
+                </span>
+              ) : null}
+            </div>
+          ))}
         </div>
 
         {step === 1 ? (
-          <>
-          <div className="mb-5">
-            <GoogleButton onToken={handleGoogle} text="signup_with" />
+          <div className="animate-in fade-in slide-in-from-right-6 duration-300" key="step1">
+            <div className="mb-5">
+              <GoogleButton onToken={handleGoogle} text="signup_with" />
+            </div>
+            <form className="space-y-5" onSubmit={continueToOrg}>
+              <AuthFormHeader
+                description="This becomes the organization owner account."
+                icon={User}
+                title="Create your account"
+              />
+              <div className="space-y-4">
+                <TextField label="Your name" onChange={setUserName} value={userName} />
+                <TextField
+                  hint="You'll sign in and verify with this address."
+                  label="Your email"
+                  onChange={setUserEmail}
+                  type="email"
+                  value={userEmail}
+                />
+                <PasswordField
+                  hint="At least 10 characters. Mix it up."
+                  label="Password"
+                  onChange={setPassword}
+                  value={password}
+                />
+              </div>
+              <PrimaryButton disabled={!step1Ready}>Continue</PrimaryButton>
+            </form>
           </div>
-          <form className="space-y-5" onSubmit={continueToOrg}>
-            <AuthFormHeader
-              description="This becomes the organization owner account."
-              icon={User}
-              title="Create your account"
-            />
-            <div className="space-y-4">
-              <TextField label="Your name" onChange={setUserName} value={userName} />
-              <TextField
-                hint="You'll sign in and verify with this address."
-                label="Your email"
-                onChange={setUserEmail}
-                type="email"
-                value={userEmail}
-              />
-              <PasswordField
-                hint="At least 10 characters. Mix it up."
-                label="Password"
-                onChange={setPassword}
-                value={password}
-              />
-            </div>
-            <PrimaryButton disabled={!step1Ready}>Continue</PrimaryButton>
-          </form>
-          </>
         ) : (
-          <form className="space-y-5" onSubmit={register}>
-            <AuthFormHeader
-              description="One last step — name the organization you're creating."
-              icon={Building2}
-              title="Name your organization"
-            />
-            <TextField
-              hint="Shown across your workspace. You can change it later."
-              label="Organization name"
-              onChange={setOrganizationName}
-              value={organizationName}
-            />
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setStep(1);
-                  setGoogleIdToken(null);
-                }}
-                type="button"
-                variant="outline"
-              >
-                <ArrowLeft className="size-4" />
-                Back
-              </Button>
-              <PrimaryButton busy={busy} disabled={organizationName.trim().length === 0}>
-                {busy ? "Creating…" : "Create organization"}
-              </PrimaryButton>
-            </div>
-          </form>
+          <div className="animate-in fade-in slide-in-from-right-6 duration-300" key="step2">
+            <form className="space-y-5" onSubmit={register}>
+              <AuthFormHeader
+                description="One last step — name the organization you're creating."
+                icon={Building2}
+                title="Name your organization"
+              />
+              <p className="rounded-xl border border-[var(--color-border)] bg-(--color-surface) px-3.5 py-2.5 text-sm text-muted">
+                {googleIdToken
+                  ? "Finishing setup with your Google account."
+                  : userEmail
+                    ? <>Owner account: <span className="font-medium text-(--color-ink-strong)">{userEmail}</span></>
+                    : "Owner account ready."}
+              </p>
+              <TextField
+                hint="Shown across your workspace. You can change it later."
+                label="Organization name"
+                onChange={setOrganizationName}
+                value={organizationName}
+              />
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setStep(1);
+                    setGoogleIdToken(null);
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  <ArrowLeft className="size-4" />
+                  Back
+                </Button>
+                <PrimaryButton busy={busy} disabled={organizationName.trim().length === 0}>
+                  {busy ? "Creating…" : "Create organization"}
+                </PrimaryButton>
+              </div>
+            </form>
+          </div>
         )}
 
         <div className="mt-6">
