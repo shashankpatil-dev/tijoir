@@ -34,8 +34,10 @@ public class AuthService {
     private final OrganizationRepository organizationRepository;
     private final UserAccountRepository userAccountRepository;
     private final EmailVerificationTokenRepository verificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private static final long PASSWORD_RESET_EXP_MINUTES = 30;
     private final JwtService jwtService;
     private final NotificationService notificationService;
     private final NotificationProperties notificationProperties;
@@ -46,6 +48,7 @@ public class AuthService {
             OrganizationRepository organizationRepository,
             UserAccountRepository userAccountRepository,
             EmailVerificationTokenRepository verificationTokenRepository,
+            PasswordResetTokenRepository passwordResetTokenRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
@@ -57,6 +60,7 @@ public class AuthService {
         this.organizationRepository = organizationRepository;
         this.userAccountRepository = userAccountRepository;
         this.verificationTokenRepository = verificationTokenRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -68,8 +72,11 @@ public class AuthService {
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        String organizationEmail = normalizeEmail(request.organizationEmail());
         String userEmail = normalizeEmail(request.userEmail());
+        // Organization email is optional; default it to the owner's email (two-step signup).
+        String organizationEmail = request.organizationEmail() != null && !request.organizationEmail().isBlank()
+                ? normalizeEmail(request.organizationEmail())
+                : userEmail;
 
         if (organizationRepository.existsByEmailIgnoreCase(organizationEmail)) {
             throw new ApiException(HttpStatus.CONFLICT, "Organization email is already registered");
@@ -194,6 +201,37 @@ public class AuthService {
                 notificationProperties.isExposeDevTokens() ? verification.rawToken() : null,
                 verification.expiresAt()
         );
+    }
+
+    @Transactional
+    public void requestPasswordReset(String email) {
+        // Generic behavior: do the work only if the user exists, but the caller always
+        // responds identically so this endpoint cannot be used to enumerate accounts.
+        userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(email))
+                .ifPresent(user -> {
+                    String rawToken = CryptoUtil.randomUrlToken(32);
+                    Instant expiresAt = Instant.now().plusSeconds(PASSWORD_RESET_EXP_MINUTES * 60);
+                    passwordResetTokenRepository.save(
+                            new PasswordResetToken(user, CryptoUtil.sha256Hex(rawToken), expiresAt));
+                    notificationService.recordPasswordResetRequested(user, rawToken, expiresAt);
+                });
+    }
+
+    @Transactional
+    public void resetPassword(String rawToken, String newPassword) {
+        PasswordResetToken token = passwordResetTokenRepository.findByTokenHash(CryptoUtil.sha256Hex(rawToken))
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid or expired reset link"));
+        if (token.isConsumed() || token.isExpired(Instant.now())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid or expired reset link");
+        }
+
+        UserAccount user = token.getUser();
+        user.changePassword(passwordEncoder.encode(newPassword));
+        token.consume();
+        // Kill any existing sessions after a password reset.
+        for (RefreshToken refreshToken : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(user.getId())) {
+            refreshToken.revoke();
+        }
     }
 
     private IssuedSession issueAuthResponse(UserAccount user, boolean includeRefreshToken) {

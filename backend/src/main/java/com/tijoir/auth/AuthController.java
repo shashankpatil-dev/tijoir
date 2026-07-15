@@ -1,7 +1,10 @@
 package com.tijoir.auth;
 
 import com.tijoir.auth.dto.AuthResponse;
+import com.tijoir.auth.dto.ForgotPasswordRequest;
 import com.tijoir.auth.dto.LoginRequest;
+import com.tijoir.auth.dto.MessageResponse;
+import com.tijoir.auth.dto.ResetPasswordRequest;
 import com.tijoir.auth.dto.RefreshRequest;
 import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
@@ -94,6 +97,18 @@ public class AuthController {
     @GetMapping("/me")
     public AuthResponse me(@AuthenticationPrincipal AuthenticatedUser user) {
         return authService.currentUser(user.userId());
+    }
+
+    @PostMapping("/password/forgot")
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request.email());
+        return new MessageResponse("If that email is registered, a password reset link has been sent.");
+    }
+
+    @PostMapping("/password/reset")
+    public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.token(), request.newPassword());
+        return new MessageResponse("Password updated. You can now sign in.");
     }
 
     @PostMapping("/verify-email")

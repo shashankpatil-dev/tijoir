@@ -98,6 +98,9 @@ export default function LoginPage() {
           <Link className="font-medium text-(--color-brand-strong)" href="/signup">
             Create an account
           </Link>
+          <Link className="font-medium text-(--color-brand-strong)" href="/forgot">
+            Forgot password?
+          </Link>
           <Link className="font-medium text-(--color-brand-strong)" href="/verify">
             Verify your email
           </Link>

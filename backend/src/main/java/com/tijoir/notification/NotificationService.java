@@ -133,6 +133,40 @@ public class NotificationService {
         applyDeliveryResult(record, emailSender.send(message));
     }
 
+    @Transactional
+    public void recordPasswordResetRequested(UserAccount user, String rawToken, Instant expiresAt) {
+        if (!notificationProperties.isEnabled()) {
+            return;
+        }
+
+        String actionUrl = notificationLinkFactory.passwordResetLink(rawToken);
+        boolean shouldSendEmail = notificationProperties.getEmail().isEnabled();
+
+        NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
+                user.getOrganization(),
+                user,
+                NotificationType.PASSWORD_RESET,
+                "Password reset requested",
+                "A password reset link was issued for %s.".formatted(user.getEmail()),
+                actionUrl,
+                user.getEmail(),
+                shouldSendEmail ? NotificationEmailDeliveryStatus.NOT_REQUESTED : NotificationEmailDeliveryStatus.SKIPPED
+        ));
+
+        if (!shouldSendEmail) {
+            record.markSkipped();
+            return;
+        }
+
+        EmailMessage message = emailTemplateFactory.passwordResetMessage(
+                user.getEmail(),
+                user.getName(),
+                actionUrl,
+                expiresAt
+        );
+        applyDeliveryResult(record, emailSender.send(message));
+    }
+
     private NotificationResponse toResponse(NotificationRecord record) {
         return new NotificationResponse(
                 record.getId(),

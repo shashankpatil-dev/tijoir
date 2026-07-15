@@ -26,6 +26,10 @@ public class NotificationLinkFactory {
         return "%s/invite?token=%s".formatted(publicBaseUrl, encode(rawToken));
     }
 
+    public String passwordResetLink(String rawToken) {
+        return "%s/reset?token=%s".formatted(publicBaseUrl, encode(rawToken));
+    }
+
     private String trimTrailingSlash(String value) {
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }

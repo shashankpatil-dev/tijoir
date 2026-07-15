@@ -60,6 +60,29 @@ public class EmailTemplateFactory {
         return new EmailMessage(recipientEmail, "You're invited to Tijoir", body);
     }
 
+    public EmailMessage passwordResetMessage(
+            String recipientEmail,
+            String recipientName,
+            String actionUrl,
+            Instant expiresAt
+    ) {
+        String body = """
+                Hello %s,
+
+                We received a request to reset your Tijoir password. Open this link to set a new one:
+                %s
+
+                This link expires at %s.
+
+                If you did not request this, you can safely ignore this email — your password will not change.
+                """.formatted(
+                safeName(recipientName),
+                actionUrl,
+                FORMATTER.format(expiresAt)
+        );
+        return new EmailMessage(recipientEmail, "Reset your Tijoir password", body);
+    }
+
     private String safeName(String name) {
         return (name == null || name.isBlank()) ? "there" : name.trim();
     }

@@ -40,6 +40,20 @@ export async function resendVerificationRequest(email: string) {
   });
 }
 
+export async function forgotPasswordRequest(email: string) {
+  return apiRequest<{ message: string }>("/api/auth/password/forgot", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPasswordRequest(token: string, newPassword: string) {
+  return apiRequest<{ message: string }>("/api/auth/password/reset", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
 export async function currentUserRequest(accessToken: string) {
   return apiRequest<AuthResponse>("/api/auth/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
