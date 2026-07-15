@@ -35,6 +35,9 @@ services:
   frontend:
     build:
       context: ../../frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: 306075557187-cmcq4g3p7rud2ettsuhs8ocl7h3qk9eo.apps.googleusercontent.com
     container_name: tijoir-frontend
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
