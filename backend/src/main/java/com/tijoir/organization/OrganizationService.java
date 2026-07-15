@@ -82,7 +82,6 @@ public class OrganizationService {
         this.inviteExpirationHours = inviteExpirationHours;
     }
 
-    @Transactional(readOnly = true)
     @Transactional
     public OrganizationSummary updateOrganizationName(AuthenticatedUser principal, String name) {
         UserAccount actor = authorizationService.requireActor(principal);
@@ -97,6 +96,7 @@ public class OrganizationService {
         );
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<MemberResponse> listMembers(
             AuthenticatedUser principal,
             Integer page,
