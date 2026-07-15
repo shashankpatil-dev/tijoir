@@ -31,8 +31,13 @@ public class UserAccount {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    // Nullable: Google-only users have no password until they set one.
+    @Column
     private String passwordHash;
+
+    // Nullable: set when a Google identity is linked to this user.
+    @Column(name = "google_sub", unique = true)
+    private String googleSub;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -90,6 +95,18 @@ public class UserAccount {
         }
     }
 
+    public void linkGoogle(String googleSub) {
+        this.googleSub = googleSub;
+    }
+
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void rename(String name) {
+        this.name = name;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -108,6 +125,10 @@ public class UserAccount {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public String getGoogleSub() {
+        return googleSub;
     }
 
     public UserRole getRole() {
