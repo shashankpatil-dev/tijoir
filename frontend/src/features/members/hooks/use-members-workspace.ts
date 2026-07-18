@@ -17,6 +17,7 @@ import {
   fetchInvitesPage,
   fetchMembersPage,
   removeMember,
+  resendInvite,
   revokeInvite,
   updateMemberRole,
 } from "@/features/members/api/members.api";
@@ -158,6 +159,9 @@ export function useMembersWorkspace({
   const inviteColumns = useMemo<DataTableColumn<InviteSummary>[]>(
     () =>
       buildInviteColumns({
+        onResend: (invite) => {
+          void handleResendInvite(invite.id);
+        },
         onRevoke: (invite) => setInviteRevokeTarget(invite),
       }),
     [],
@@ -179,6 +183,10 @@ export function useMembersWorkspace({
 
   const revokeInviteMutation = useMutation({
     mutationFn: (inviteId: string) => revokeInvite(sessionAccessToken as string, inviteId),
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: (inviteId: string) => resendInvite(sessionAccessToken as string, inviteId),
   });
 
   async function invalidateMembers() {
@@ -342,6 +350,44 @@ export function useMembersWorkspace({
     }
   }
 
+  async function handleResendInvite(inviteId: string) {
+    if (!sessionAccessToken) {
+      router.replace("/login");
+      return;
+    }
+
+    setActionBusy(`resend-invite-${inviteId}`);
+    setMessage("Resending invite");
+
+    try {
+      const resent = await resendInviteMutation.mutateAsync(inviteId);
+      const preview =
+        resent.inviteToken && resent.acceptPath
+          ? {
+              token: resent.inviteToken,
+              appUrl: buildStaticAppUrl(resent.acceptPath, {
+                token: resent.inviteToken,
+              }),
+            }
+          : null;
+
+      await invalidateInvites();
+      setLastCreatedInvite(preview);
+      setMessage(`Invite resent to ${resent.email}.`);
+      showToast({
+        title: "Invite resent",
+        description: preview
+          ? `${resent.email} now has a fresh organization invite link.`
+          : `${resent.email} was sent a fresh organization invite.`,
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not resend invite");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   return {
     assignableRoles,
     createInviteOpen,
@@ -350,6 +396,7 @@ export function useMembersWorkspace({
     handleCreateInvite,
     handleRemoveMember,
     handleRevokeInvite,
+    handleResendInvite,
     handleUpdateMemberRole,
     inviteColumns,
     inviteEmail,

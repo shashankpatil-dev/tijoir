@@ -93,6 +93,74 @@ class OrganizationControllerIntegrationTest {
     }
 
     @Test
+    void ownerCanResendInviteAndOldTokenStopsWorking() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Acme Invite Recovery", "owner@acme-invite-recovery.test");
+
+        String inviteResponse = mockMvc.perform(post("/api/organization/invites")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "member@acme-invite-recovery.test",
+                                  "role": "MEMBER"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.emailDeliveryStatus").value("SKIPPED"))
+                .andExpect(jsonPath("$.inviteToken").isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode inviteJson = objectMapper.readTree(inviteResponse);
+        String inviteId = inviteJson.get("id").asText();
+        String firstToken = inviteJson.get("inviteToken").asText();
+
+        String resentResponse = mockMvc.perform(post("/api/organization/invites/" + inviteId + "/resend")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.emailDeliveryStatus").value("SKIPPED"))
+                .andExpect(jsonPath("$.inviteToken").isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String secondToken = objectMapper.readTree(resentResponse).get("inviteToken").asText();
+
+        mockMvc.perform(post("/api/organization/invites/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s",
+                                  "name": "Wrong Token User",
+                                  "password": "MemberPass@123"
+                                }
+                                """.formatted(firstToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid invite token"));
+
+        mockMvc.perform(post("/api/organization/invites/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s",
+                                  "name": "Recovered Member",
+                                  "password": "MemberPass@123"
+                                }
+                                """.formatted(secondToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.role").value("MEMBER"));
+
+        mockMvc.perform(get("/api/organization/invites")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.items[0].emailDeliveryStatus").value("SKIPPED"));
+    }
+
+    @Test
     void adminCanInviteMembersButCannotInviteAdminsAndMembersCannotManageOrganizationUsers() throws Exception {
         String ownerToken = registerVerifyAndLogin("Acme Admin", "owner@acme-admin.test");
         String adminToken = inviteAndAccept(ownerToken, "admin@acme-admin.test", "ADMIN", "Admin User", "AdminPass@123");

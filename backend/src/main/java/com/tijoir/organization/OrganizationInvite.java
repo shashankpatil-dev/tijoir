@@ -119,6 +119,11 @@ public class OrganizationInvite {
         }
     }
 
+    public void reissue(String nextTokenHash, Instant nextExpiresAt) {
+        tokenHash = nextTokenHash;
+        expiresAt = nextExpiresAt;
+    }
+
     public UUID getId() {
         return id;
     }

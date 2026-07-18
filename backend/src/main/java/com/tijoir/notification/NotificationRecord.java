@@ -1,6 +1,7 @@
 package com.tijoir.notification;
 
 import com.tijoir.organization.Organization;
+import com.tijoir.organization.OrganizationInvite;
 import com.tijoir.organization.UserAccount;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +33,10 @@ public class NotificationRecord {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private UserAccount user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organization_invite_id")
+    private OrganizationInvite organizationInvite;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 64)
@@ -71,6 +76,7 @@ public class NotificationRecord {
     public NotificationRecord(
             Organization organization,
             UserAccount user,
+            OrganizationInvite organizationInvite,
             NotificationType type,
             String title,
             String message,
@@ -80,6 +86,7 @@ public class NotificationRecord {
     ) {
         this.organization = organization;
         this.user = user;
+        this.organizationInvite = organizationInvite;
         this.type = type;
         this.title = title;
         this.message = message;
@@ -122,6 +129,10 @@ public class NotificationRecord {
 
     public UserAccount getUser() {
         return user;
+    }
+
+    public OrganizationInvite getOrganizationInvite() {
+        return organizationInvite;
     }
 
     public NotificationType getType() {

@@ -219,6 +219,51 @@ public class OrganizationService {
     }
 
     @Transactional
+    public InviteResponse resendInvite(AuthenticatedUser principal, UUID inviteId) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireOrganizationManager(actor.getRole());
+
+        OrganizationInvite invite = organizationInviteRepository.findByIdAndOrganizationId(inviteId, principal.organizationId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Invite not found"));
+
+        OrganizationInviteStatus currentStatus = invite.statusAt(Instant.now());
+        if (currentStatus == OrganizationInviteStatus.ACCEPTED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Accepted invites cannot be resent");
+        }
+        if (currentStatus == OrganizationInviteStatus.REVOKED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Revoked invites cannot be resent");
+        }
+        if (userAccountRepository.existsByOrganizationIdAndEmailIgnoreCaseAndDeactivatedAtIsNull(actor.getOrganization().getId(), invite.getEmail())) {
+            throw new ApiException(HttpStatus.CONFLICT, "That email is already a member of this organization");
+        }
+
+        String rawToken = CryptoUtil.randomUrlToken(32);
+        Instant expiresAt = Instant.now().plusSeconds(inviteExpirationHours * 60 * 60);
+        invite.reissue(CryptoUtil.sha256Hex(rawToken), expiresAt);
+
+        auditEventRepository.save(new AuditEvent(
+                actor.getOrganization(),
+                actor,
+                AuditAction.MEMBER_INVITED,
+                "ORGANIZATION_INVITE",
+                invite.getId(),
+                toJson(Map.of(
+                        "email", invite.getEmail(),
+                        "role", invite.getRole().name(),
+                        "resent", true
+                ))
+        ));
+
+        dashboardSummaryService.evict(principal.organizationId());
+        notificationService.recordInviteResent(actor, invite, rawToken);
+        return toInviteResponse(
+                invite,
+                notificationProperties.isExposeDevTokens() ? rawToken : null,
+                Instant.now()
+        );
+    }
+
+    @Transactional
     public InviteResolutionResponse resolveInvite(String token) {
         OrganizationInvite invite = findInviteByToken(token);
         Instant now = Instant.now();
@@ -421,7 +466,7 @@ public class OrganizationService {
                 invite.getExpiresAt(),
                 invite.getAcceptedAt(),
                 invite.getCreatedAt(),
-                rawToken != null ? NotificationEmailDeliveryStatus.SKIPPED : NotificationEmailDeliveryStatus.NOT_REQUESTED,
+                notificationService.latestInviteDeliveryStatus(invite.getId()),
                 rawToken,
                 rawToken != null ? "/invite" : null
         );

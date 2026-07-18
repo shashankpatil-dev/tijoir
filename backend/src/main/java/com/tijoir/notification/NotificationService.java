@@ -77,6 +77,7 @@ public class NotificationService {
         NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
                 user.getOrganization(),
                 user,
+                null,
                 type,
                 resend ? "Verification email resent" : "Verification email prepared",
                 resend
@@ -105,6 +106,22 @@ public class NotificationService {
 
     @Transactional
     public void recordInviteCreated(UserAccount actor, OrganizationInvite invite, String rawToken) {
+        recordInviteDelivery(actor, invite, rawToken, false);
+    }
+
+    @Transactional
+    public void recordInviteResent(UserAccount actor, OrganizationInvite invite, String rawToken) {
+        recordInviteDelivery(actor, invite, rawToken, true);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationEmailDeliveryStatus latestInviteDeliveryStatus(UUID inviteId) {
+        return notificationRecordRepository.findTopByOrganizationInviteIdOrderByCreatedAtDesc(inviteId)
+                .map(NotificationRecord::getEmailDeliveryStatus)
+                .orElse(NotificationEmailDeliveryStatus.NOT_REQUESTED);
+    }
+
+    private void recordInviteDelivery(UserAccount actor, OrganizationInvite invite, String rawToken, boolean resend) {
         if (!notificationProperties.isEnabled()) {
             return;
         }
@@ -116,9 +133,12 @@ public class NotificationService {
         NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
                 actor.getOrganization(),
                 actor,
+                invite,
                 NotificationType.ORGANIZATION_INVITE,
-                "Organization invite created",
-                "An organization invite was issued for %s.".formatted(invite.getEmail()),
+                resend ? "Organization invite resent" : "Organization invite created",
+                resend
+                        ? "A fresh organization invite was issued for %s.".formatted(invite.getEmail())
+                        : "An organization invite was issued for %s.".formatted(invite.getEmail()),
                 actionUrl,
                 invite.getEmail(),
                 shouldSendEmail ? NotificationEmailDeliveryStatus.NOT_REQUESTED : NotificationEmailDeliveryStatus.SKIPPED
@@ -150,6 +170,7 @@ public class NotificationService {
         NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
                 user.getOrganization(),
                 user,
+                null,
                 NotificationType.PASSWORD_RESET,
                 "Password reset requested",
                 "A password reset link was issued for %s.".formatted(user.getEmail()),
@@ -270,6 +291,7 @@ public class NotificationService {
         NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
                 recipient.getOrganization(),
                 recipient,
+                null,
                 type,
                 title,
                 message,

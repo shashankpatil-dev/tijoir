@@ -94,8 +94,10 @@ export function buildMemberColumns({
 
 export function buildInviteColumns({
   onRevoke,
+  onResend,
 }: {
   onRevoke: (invite: InviteSummary) => void;
+  onResend: (invite: InviteSummary) => void;
 }): DataTableColumn<InviteSummary>[] {
   return [
     {
@@ -152,6 +154,15 @@ export function buildInviteColumns({
           buttonClassName="px-3 py-2 text-xs"
           label={<span aria-label="Invite actions">•••</span>}
         >
+          <MenuItem
+            onClick={() => {
+              if (invite.status === "PENDING" || invite.status === "EXPIRED") {
+                onResend(invite);
+              }
+            }}
+          >
+            <span>Resend invite</span>
+          </MenuItem>
           <MenuItem
             onClick={() => {
               if (invite.status === "PENDING") {

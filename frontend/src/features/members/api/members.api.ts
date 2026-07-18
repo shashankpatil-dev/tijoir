@@ -100,3 +100,11 @@ export async function revokeInvite(accessToken: string, inviteId: string) {
     { method: "POST" },
   );
 }
+
+export async function resendInvite(accessToken: string, inviteId: string) {
+  return authenticatedApiRequest<InviteSummary>(
+    `/api/organization/invites/${inviteId}/resend`,
+    accessToken,
+    { method: "POST" },
+  );
+}

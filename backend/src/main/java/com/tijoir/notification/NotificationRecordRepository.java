@@ -11,4 +11,6 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     Page<NotificationRecord> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
     Optional<NotificationRecord> findByIdAndUserId(UUID id, UUID userId);
+
+    Optional<NotificationRecord> findTopByOrganizationInviteIdOrderByCreatedAtDesc(UUID organizationInviteId);
 }

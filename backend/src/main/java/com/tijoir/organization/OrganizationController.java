@@ -126,6 +126,14 @@ public class OrganizationController {
         return organizationService.revokeInvite(user, inviteId);
     }
 
+    @PostMapping("/invites/{inviteId}/resend")
+    public InviteResponse resendInvite(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID inviteId
+    ) {
+        return organizationService.resendInvite(user, inviteId);
+    }
+
     @PostMapping("/invites/accept")
     public ResponseEntity<AuthResponse> acceptInvite(
             @AuthenticationPrincipal AuthenticatedUser user,
