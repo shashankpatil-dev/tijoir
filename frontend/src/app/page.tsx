@@ -176,7 +176,7 @@ export default function HomePage() {
             </p>
             <Link
               className="inline-flex items-center gap-2 text-sm font-semibold text-(--color-brand-strong) hover:underline"
-              href="/signup"
+              href="/access?mode=create"
             >
               Create your first link
               <ArrowRight className="size-4" />

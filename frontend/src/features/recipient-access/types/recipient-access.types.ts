@@ -4,8 +4,11 @@ import type {
   ShareLinkStatus,
 } from "@/features/share-links/types/share-links.types";
 
+export type PublicShareSourceType = "ORGANIZATION" | "ANONYMOUS";
+
 export type PublicShareLinkMetadataResponse = {
-  organizationName: string;
+  senderName: string;
+  organizationName?: string | null;
   secretName: string;
   secretType: SecretType;
   recipientLabel?: string | null;
@@ -13,6 +16,7 @@ export type PublicShareLinkMetadataResponse = {
   status: ShareLinkStatus;
   expiresAt?: string | null;
   canReveal: boolean;
+  sourceType: PublicShareSourceType;
 };
 
 export type ConsumeShareLinkResponse = {
@@ -24,4 +28,34 @@ export type ConsumeShareLinkResponse = {
   value: string;
   permission: ContractPermission;
   status: ShareLinkStatus;
+  sourceType: PublicShareSourceType;
+};
+
+export type CreatePublicSecretShareResponse = {
+  id: string;
+  shareToken: string;
+  manageToken: string;
+  accessPath: string;
+  metadataPath: string;
+  consumePath: string;
+  managePath: string;
+  expiresAt: string;
+};
+
+export type RevokePublicSecretShareResponse = {
+  id: string;
+  status: ShareLinkStatus;
+  expiresAt: string;
+  consumedAt?: string | null;
+};
+
+export type PublicSecretShareManagementResponse = {
+  id: string;
+  senderName: string;
+  secretName: string;
+  secretKey: string;
+  status: ShareLinkStatus;
+  expiresAt: string;
+  consumedAt?: string | null;
+  canRevoke: boolean;
 };

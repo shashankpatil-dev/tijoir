@@ -24,6 +24,12 @@ public final class PhaseOneSecurityPolicies {
             new RateLimitRule(300, Duration.ofMinutes(10), "Too many public share link lookups. Try again later.");
     public static final RateLimitRule PUBLIC_SHARE_METADATA_PER_TOKEN =
             new RateLimitRule(30, Duration.ofMinutes(10), "Too many public share link lookups for this token. Try again later.");
+    public static final RateLimitRule PUBLIC_SHARE_CREATE_PER_IP =
+            new RateLimitRule(12, Duration.ofHours(1), "Too many public quick-share creations. Try again later.");
+    public static final RateLimitRule PUBLIC_SHARE_MANAGE_PER_IP =
+            new RateLimitRule(60, Duration.ofMinutes(30), "Too many public share management attempts. Try again later.");
+    public static final RateLimitRule PUBLIC_SHARE_MANAGE_PER_TOKEN =
+            new RateLimitRule(10, Duration.ofMinutes(30), "Too many public share management attempts for this link. Try again later.");
     public static final RateLimitRule PUBLIC_SHARE_CONSUME_PER_IP =
             new RateLimitRule(100, Duration.ofMinutes(10), "Too many share link reveal attempts. Try again later.");
     public static final RateLimitRule PUBLIC_SHARE_CONSUME_PER_TOKEN =

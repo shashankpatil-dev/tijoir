@@ -14,6 +14,7 @@ public record ConsumeShareLinkResponse(
         int versionNumber,
         String value,
         ContractPermission permission,
-        ShareLinkStatus status
+        ShareLinkStatus status,
+        com.tijoir.sharelink.PublicShareSourceType sourceType
 ) {
 }

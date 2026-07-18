@@ -102,6 +102,97 @@ class ShareLinkControllerIntegrationTest {
     }
 
     @Test
+    void anonymousQuickShareCanBeCreatedAndConsumedOnlyOnce() throws Exception {
+        String createResponse = mockMvc.perform(post("/api/public/share-links/quick")
+                        .header("X-Forwarded-For", "198.51.100.20")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretName": "Standalone SSH Password",
+                                  "secretKey": "vendor-sftp-password",
+                                  "secretType": "SFTP_PASSWORD",
+                                  "value": "OutsideOrgPass@123",
+                                  "senderLabel": "External sender",
+                                  "recipientLabel": "Vendor operator"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.shareToken").isString())
+                .andExpect(jsonPath("$.accessPath").value(org.hamcrest.Matchers.containsString("/access?token=")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String shareToken = objectMapper.readTree(createResponse).get("shareToken").asText();
+
+        mockMvc.perform(get("/api/public/share-links/" + shareToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceType").value("ANONYMOUS"))
+                .andExpect(jsonPath("$.senderName").value("External sender"))
+                .andExpect(jsonPath("$.organizationName").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.secretName").value("Standalone SSH Password"))
+                .andExpect(jsonPath("$.permission").value("VIEW_ONCE"))
+                .andExpect(jsonPath("$.canReveal").value(true));
+
+        mockMvc.perform(post("/api/public/share-links/" + shareToken + "/consume"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourceType").value("ANONYMOUS"))
+                .andExpect(jsonPath("$.secretKey").value("vendor-sftp-password"))
+                .andExpect(jsonPath("$.value").value("OutsideOrgPass@123"))
+                .andExpect(jsonPath("$.status").value("CONSUMED"));
+
+        mockMvc.perform(post("/api/public/share-links/" + shareToken + "/consume"))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.message").value("Share link has already been consumed"));
+    }
+
+    @Test
+    void anonymousQuickShareCanBeRevokedBeforeConsume() throws Exception {
+        String createResponse = mockMvc.perform(post("/api/public/share-links/quick")
+                        .header("X-Forwarded-For", "198.51.100.30")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretName": "Standalone API Key",
+                                  "secretKey": "external-api-key",
+                                  "secretType": "API_KEY",
+                                  "value": "abc-123-standalone",
+                                  "senderLabel": "External sender"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.manageToken").isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode created = objectMapper.readTree(createResponse);
+        String shareToken = created.get("shareToken").asText();
+        String manageToken = created.get("manageToken").asText();
+
+        mockMvc.perform(get("/api/public/share-links/manage/" + manageToken)
+                        .header("X-Forwarded-For", "198.51.100.30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.secretName").value("Standalone API Key"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.canRevoke").value(true));
+
+        mockMvc.perform(post("/api/public/share-links/manage/" + manageToken + "/revoke")
+                        .header("X-Forwarded-For", "198.51.100.30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REVOKED"));
+
+        mockMvc.perform(get("/api/public/share-links/" + shareToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REVOKED"))
+                .andExpect(jsonPath("$.canReveal").value(false));
+
+        mockMvc.perform(post("/api/public/share-links/" + shareToken + "/consume"))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.message").value("Share link has been revoked"));
+    }
+
+    @Test
     void revokedShareLinkCannotBeConsumed() throws Exception {
         String ownerToken = registerVerifyAndLogin("Acme Revoke", "owner@acme-revoke.test");
         String secretId = createSecret(ownerToken, "Vendor SSH Key", "SSH_PUBLIC_KEY", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB7testkeymaterial vendor@test");
@@ -335,6 +426,38 @@ class ShareLinkControllerIntegrationTest {
                         .header("X-Forwarded-For", "203.0.113.44"))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.message").value("Too many invalid public share link attempts. Try again later."));
+    }
+
+    @Test
+    void repeatedPublicQuickShareCreationRequestsTriggerRateLimit() throws Exception {
+        for (int attempt = 1; attempt <= 12; attempt++) {
+            mockMvc.perform(post("/api/public/share-links/quick")
+                            .header("X-Forwarded-For", "203.0.113.77")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "secretName": "Burst %s",
+                                      "secretKey": "burst-key-%s",
+                                      "secretType": "PASSWORD",
+                                      "value": "burst-value-%s"
+                                    }
+                                    """.formatted(attempt, attempt, attempt)))
+                    .andExpect(status().isCreated());
+        }
+
+        mockMvc.perform(post("/api/public/share-links/quick")
+                        .header("X-Forwarded-For", "203.0.113.77")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretName": "Burst overflow",
+                                  "secretKey": "burst-key-overflow",
+                                  "secretType": "PASSWORD",
+                                  "value": "burst-value-overflow"
+                                }
+                                """))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many public quick-share creations. Try again later."));
     }
 
     private String createSecret(String ownerToken, String name, String type, String value) throws Exception {

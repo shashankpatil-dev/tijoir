@@ -7,6 +7,7 @@ import com.tijoir.sharelink.ShareLinkStatus;
 import java.time.Instant;
 
 public record PublicShareLinkMetadataResponse(
+        String senderName,
         String organizationName,
         String secretName,
         SecretType secretType,
@@ -14,6 +15,7 @@ public record PublicShareLinkMetadataResponse(
         ContractPermission permission,
         ShareLinkStatus status,
         Instant expiresAt,
-        boolean canReveal
+        boolean canReveal,
+        com.tijoir.sharelink.PublicShareSourceType sourceType
 ) {
 }

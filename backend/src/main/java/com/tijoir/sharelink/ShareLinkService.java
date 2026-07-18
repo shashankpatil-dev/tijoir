@@ -217,6 +217,7 @@ public class ShareLinkService {
 
         return new PublicShareLinkMetadataResponse(
                 shareLink.getOrganization().getName(),
+                shareLink.getOrganization().getName(),
                 shareLink.getSecret().getName(),
                 shareLink.getSecret().getSecretType(),
                 shareLink.getRecipientLabel(),
@@ -225,6 +226,8 @@ public class ShareLinkService {
                 shareLink.getExpiresAt(),
                 shareLink.getContractPermission() != ContractPermission.ROTATION_NOTIFY_ONLY
                         && status == ShareLinkStatus.ACTIVE
+                ,
+                PublicShareSourceType.ORGANIZATION
         );
     }
 
@@ -273,7 +276,8 @@ public class ShareLinkService {
                     version.getVersionNumber(),
                     secretPayloadStore.reveal(version),
                     shareLink.getContractPermission(),
-                    shareLink.getStatus()
+                    shareLink.getStatus(),
+                    PublicShareSourceType.ORGANIZATION
             );
         }
     }

@@ -43,7 +43,10 @@ export type {
 
 export type {
   ConsumeShareLinkResponse,
+  CreatePublicSecretShareResponse,
+  PublicSecretShareManagementResponse,
   PublicShareLinkMetadataResponse,
+  RevokePublicSecretShareResponse,
 } from "@/features/recipient-access/types/recipient-access.types";
 
 export { readLastPublicToken, saveLastPublicToken } from "@/features/recipient-access/api/recipient-access.api";
