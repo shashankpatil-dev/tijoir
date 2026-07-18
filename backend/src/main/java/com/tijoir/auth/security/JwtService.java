@@ -3,6 +3,7 @@ package com.tijoir.auth.security;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tijoir.common.exception.ApiException;
+import com.tijoir.identity.IdentityUser;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserRole;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,7 +46,7 @@ public class JwtService {
         this.expiration = Duration.ofMinutes(expirationMinutes);
     }
 
-    public TokenResult issueToken(UserAccount user) {
+    public TokenResult issueToken(IdentityUser identityUser, UserAccount user) {
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plus(expiration);
 
@@ -54,6 +55,7 @@ public class JwtService {
         header.put("typ", "JWT");
 
         Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("identity_user_id", identityUser.getId().toString());
         payload.put("sub", user.getId().toString());
         payload.put("org_id", user.getOrganization().getId().toString());
         payload.put("email", user.getEmail());
@@ -86,6 +88,7 @@ public class JwtService {
             }
 
             return new JwtClaims(
+                    UUID.fromString((String) payload.get("identity_user_id")),
                     UUID.fromString((String) payload.get("sub")),
                     UUID.fromString((String) payload.get("org_id")),
                     (String) payload.get("email"),
@@ -139,4 +142,3 @@ public class JwtService {
         }
     }
 }
-

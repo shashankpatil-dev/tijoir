@@ -3,6 +3,8 @@
 import { apiRequest } from "@/lib/api/client";
 import type {
   AuthResponse,
+  GoogleExchangeResponse,
+  InviteResolutionResponse,
   RegisterResponse,
 } from "@/features/auth/types/auth.types";
 
@@ -41,7 +43,7 @@ export async function resendVerificationRequest(email: string) {
 }
 
 export async function googleExchangeRequest(idToken: string) {
-  return apiRequest<{ needsOrganization: boolean; session: AuthResponse | null }>(
+  return apiRequest<GoogleExchangeResponse>(
     "/api/auth/google/exchange",
     { method: "POST", body: JSON.stringify({ idToken }) },
   );
@@ -110,6 +112,40 @@ export async function resetPasswordRequest(token: string, newPassword: string) {
 export async function currentUserRequest(accessToken: string) {
   return apiRequest<AuthResponse>("/api/auth/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export async function switchOrganizationRequest(
+  accessToken: string,
+  organizationId: string,
+) {
+  return apiRequest<AuthResponse>("/api/auth/switch-organization", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ organizationId }),
+  });
+}
+
+export async function resolveInviteRequest(token: string) {
+  const searchParams = new URLSearchParams({ token });
+  return apiRequest<InviteResolutionResponse>(
+    `/api/organization/invites/resolve?${searchParams.toString()}`,
+  );
+}
+
+export async function acceptInviteRequest(
+  token: string,
+  payload?: { name?: string; password?: string },
+  accessToken?: string,
+) {
+  return apiRequest<AuthResponse>("/api/organization/invites/accept", {
+    method: "POST",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    body: JSON.stringify({
+      token,
+      ...(payload?.name ? { name: payload.name } : {}),
+      ...(payload?.password ? { password: payload.password } : {}),
+    }),
   });
 }
 

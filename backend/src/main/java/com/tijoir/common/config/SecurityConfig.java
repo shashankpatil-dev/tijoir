@@ -56,6 +56,7 @@ public class SecurityConfig {
                                 "/api/auth/password/reset",
                                 "/api/auth/google/exchange",
                                 "/api/auth/google/register",
+                                "/api/organization/invites/resolve",
                                 "/api/organization/invites/accept",
                                 "/api/public/share-links/**"
                         ).permitAll()

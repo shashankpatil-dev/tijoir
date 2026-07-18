@@ -3,10 +3,10 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { DashboardNavItem } from "@/components/dashboard/dashboard-shell";
 import { ApiRequestError } from "@/lib/api/errors";
-import { logoutRequest } from "@/features/auth/api/auth.api";
+import { logoutRequest, switchOrganizationRequest } from "@/features/auth/api/auth.api";
 import type { AuthResponse } from "@/features/auth/types/auth.types";
-import { clearSession } from "@/features/auth/lib/auth-storage";
-import { titleForView, viewFromPath } from "@/features/dashboard/lib/dashboard-routing";
+import { clearSession, saveSession } from "@/features/auth/lib/auth-storage";
+import { titleForView, viewFromPath, viewPath } from "@/features/dashboard/lib/dashboard-routing";
 import type { DashboardHookArgs, RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 import {
   Building2,
@@ -40,9 +40,12 @@ export type DashboardWorkspaceValue = {
   navigationItems: DashboardNavItem[];
   router: RouterLike;
   session: AuthResponse | null;
+  setSession: (value: AuthResponse | null) => void;
   setActionBusy: (value: string | null) => void;
   setMessage: (value: string) => void;
   showToast: ShowToast;
+  switchOrganization: (organizationId: string) => Promise<void>;
+  switchingOrganizationId: string | null;
   title: string;
 };
 
@@ -66,6 +69,7 @@ export function DashboardWorkspaceProvider({
   const [session, setSession] = useState<AuthResponse | null>(initialSession);
   const [message, setMessage] = useState("");
   const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [switchingOrganizationId, setSwitchingOrganizationId] = useState<string | null>(null);
 
   const activeView = useMemo(() => viewFromPath(pathname), [pathname]);
   const title = useMemo(() => titleForView(activeView), [activeView]);
@@ -217,6 +221,35 @@ export function DashboardWorkspaceProvider({
     }
   }, [removeSession, router, showToast]);
 
+  const switchOrganization = useCallback(
+    async (organizationId: string) => {
+      if (!session?.accessToken || session.organization.id === organizationId) {
+        return;
+      }
+
+      setSwitchingOrganizationId(organizationId);
+      try {
+        const nextSession = await switchOrganizationRequest(
+          session.accessToken,
+          organizationId,
+        );
+        saveSession(nextSession);
+        setSession(nextSession);
+        showToast({
+          title: "Workspace switched",
+          description: `Now working in ${nextSession.organization.name}.`,
+          tone: "success",
+        });
+        router.push(viewPath(activeView));
+      } catch (error) {
+        handleSessionError(error, "Could not switch organization.");
+      } finally {
+        setSwitchingOrganizationId(null);
+      }
+    },
+    [activeView, handleSessionError, router, session, showToast],
+  );
+
   const value = useMemo<DashboardWorkspaceValue>(
     () => ({
       actionBusy,
@@ -233,9 +266,12 @@ export function DashboardWorkspaceProvider({
       navigationItems,
       router,
       session,
+      setSession,
       setActionBusy,
       setMessage,
       showToast,
+      switchOrganization,
+      switchingOrganizationId,
       title,
     }),
     [
@@ -252,7 +288,10 @@ export function DashboardWorkspaceProvider({
       navigationItems,
       router,
       session,
+      setSession,
       showToast,
+      switchOrganization,
+      switchingOrganizationId,
       title,
     ],
   );

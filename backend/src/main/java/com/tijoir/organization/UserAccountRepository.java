@@ -10,15 +10,21 @@ import java.util.UUID;
 public interface UserAccountRepository extends JpaRepository<UserAccount, UUID>, JpaSpecificationExecutor<UserAccount> {
     boolean existsByEmailIgnoreCaseAndDeactivatedAtIsNull(String email);
 
+    boolean existsByOrganizationIdAndEmailIgnoreCaseAndDeactivatedAtIsNull(UUID organizationId, String email);
+
     long countByOrganizationIdAndDeactivatedAtIsNull(UUID organizationId);
 
     Optional<UserAccount> findByEmailIgnoreCaseAndDeactivatedAtIsNull(String email);
+
+    Optional<UserAccount> findByOrganizationIdAndEmailIgnoreCaseAndDeactivatedAtIsNull(UUID organizationId, String email);
 
     Optional<UserAccount> findByGoogleSubAndDeactivatedAtIsNull(String googleSub);
 
     Optional<UserAccount> findByIdAndDeactivatedAtIsNull(UUID id);
 
     Optional<UserAccount> findByIdAndOrganizationIdAndDeactivatedAtIsNull(UUID id, UUID organizationId);
+
+    List<UserAccount> findAllByEmailIgnoreCaseAndDeactivatedAtIsNull(String email);
 
     List<UserAccount> findAllByOrganizationIdAndDeactivatedAtIsNullOrderByCreatedAtAsc(UUID organizationId);
 }

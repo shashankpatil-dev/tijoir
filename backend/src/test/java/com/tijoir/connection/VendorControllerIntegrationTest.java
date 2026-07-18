@@ -2,6 +2,7 @@ package com.tijoir.connection;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tijoir.identity.IdentityMembershipSyncService;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
@@ -38,6 +39,9 @@ class VendorControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private IdentityMembershipSyncService identityMembershipSyncService;
 
     @Test
     void ownerCanCreateContractShareLinkAndOffboardVendor() throws Exception {
@@ -149,6 +153,7 @@ class VendorControllerIntegrationTest {
         );
         viewer.markEmailVerified();
         userAccountRepository.save(viewer);
+        identityMembershipSyncService.mirrorLegacyUser(viewer);
         String viewerToken = login("viewer@acme-vendor-viewer.test", "ViewerPass@123");
 
         mockMvc.perform(post("/api/vendors")

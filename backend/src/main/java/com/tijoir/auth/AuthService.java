@@ -2,10 +2,15 @@ package com.tijoir.auth;
 
 import com.tijoir.auth.dto.AuthResponse;
 import com.tijoir.auth.dto.LoginRequest;
+import com.tijoir.auth.dto.WorkspaceMembershipSummary;
 import com.tijoir.auth.security.GoogleTokenVerifier;
 import com.tijoir.auth.security.JwtService;
 import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.util.CryptoUtil;
+import com.tijoir.identity.IdentityUser;
+import com.tijoir.identity.IdentityUserRepository;
+import com.tijoir.identity.OrganizationMembership;
+import com.tijoir.identity.OrganizationMembershipRepository;
 import com.tijoir.notification.NotificationProperties;
 import com.tijoir.notification.NotificationService;
 import com.tijoir.auth.dto.OrganizationSummary;
@@ -13,11 +18,13 @@ import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
 import com.tijoir.auth.dto.UserSummary;
 import com.tijoir.auth.dto.VerificationResponse;
+import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.organization.Organization;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
 import com.tijoir.organization.UserRole;
+import com.tijoir.identity.IdentityMembershipSyncService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -27,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +44,8 @@ import java.util.UUID;
 public class AuthService {
     private final OrganizationRepository organizationRepository;
     private final UserAccountRepository userAccountRepository;
+    private final IdentityUserRepository identityUserRepository;
+    private final OrganizationMembershipRepository organizationMembershipRepository;
     private final EmailVerificationTokenRepository verificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -44,12 +55,15 @@ public class AuthService {
     private final GoogleTokenVerifier googleTokenVerifier;
     private final NotificationService notificationService;
     private final NotificationProperties notificationProperties;
+    private final IdentityMembershipSyncService identityMembershipSyncService;
     private final long verificationExpirationMinutes;
     private final long refreshTokenExpirationDays;
 
     public AuthService(
             OrganizationRepository organizationRepository,
             UserAccountRepository userAccountRepository,
+            IdentityUserRepository identityUserRepository,
+            OrganizationMembershipRepository organizationMembershipRepository,
             EmailVerificationTokenRepository verificationTokenRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             RefreshTokenRepository refreshTokenRepository,
@@ -58,11 +72,14 @@ public class AuthService {
             GoogleTokenVerifier googleTokenVerifier,
             NotificationService notificationService,
             NotificationProperties notificationProperties,
+            IdentityMembershipSyncService identityMembershipSyncService,
             @Value("${tijoir.security.email-verification-expiration-minutes}") long verificationExpirationMinutes,
             @Value("${tijoir.security.refresh-token-expiration-days}") long refreshTokenExpirationDays
     ) {
         this.organizationRepository = organizationRepository;
         this.userAccountRepository = userAccountRepository;
+        this.identityUserRepository = identityUserRepository;
+        this.organizationMembershipRepository = organizationMembershipRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -71,6 +88,7 @@ public class AuthService {
         this.googleTokenVerifier = googleTokenVerifier;
         this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
+        this.identityMembershipSyncService = identityMembershipSyncService;
         this.verificationExpirationMinutes = verificationExpirationMinutes;
         this.refreshTokenExpirationDays = refreshTokenExpirationDays;
     }
@@ -86,7 +104,7 @@ public class AuthService {
         if (organizationRepository.existsByEmailIgnoreCase(organizationEmail)) {
             throw new ApiException(HttpStatus.CONFLICT, "Organization email is already registered");
         }
-        if (userAccountRepository.existsByEmailIgnoreCaseAndDeactivatedAtIsNull(userEmail)) {
+        if (identityUserRepository.findByEmailIgnoreCase(userEmail).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "User email is already registered");
         }
 
@@ -102,6 +120,7 @@ public class AuthService {
                 passwordEncoder.encode(request.password()),
                 UserRole.ORG_OWNER
         ));
+        identityMembershipSyncService.mirrorLegacyUser(user);
         VerificationTokenResult verification = createVerificationToken(user);
         notificationService.recordVerificationRequested(user, verification.rawToken(), verification.expiresAt(), false);
 
@@ -116,32 +135,39 @@ public class AuthService {
 
     @Transactional
     public IssuedSession login(LoginRequest request) {
-        UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(request.email()))
+        IdentityUser identityUser = identityUserRepository.findByEmailIgnoreCase(normalizeEmail(request.email()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (identityUser.getPasswordHash() == null || !passwordEncoder.matches(request.password(), identityUser.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
         }
-        if (user.getEmailVerifiedAt() == null) {
+        if (identityUser.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
-        ensureActive(user);
-        return issueAuthResponse(user, true);
+        ensureIdentityActive(identityUser);
+        UserAccount user = resolveDefaultWorkspaceUser(identityUser);
+        return issueAuthResponse(user, identityUser, true);
     }
 
     @Transactional
     public IssuedSession issueSessionForUser(UserAccount user) {
-        if (user.getEmailVerifiedAt() == null) {
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(user.getId());
+        if (identityUser.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
+        ensureIdentityActive(identityUser);
         ensureActive(user);
-        return issueAuthResponse(user, true);
+        return issueAuthResponse(user, identityUser, true);
     }
 
-    @Transactional(readOnly = true)
-    public AuthResponse currentUser(UUID userId) {
-        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
+    @Transactional
+    public AuthResponse currentUser(AuthenticatedUser principal) {
+        UserAccount user = userAccountRepository.findByIdAndOrganizationIdAndDeactivatedAtIsNull(
+                        principal.userId(),
+                        principal.organizationId()
+                )
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
-        return issueAuthResponse(user, false).authResponse();
+        IdentityUser identityUser = findIdentityByIdOrThrow(principal.identityUserId());
+        return issueAuthResponse(user, identityUser, false).authResponse();
     }
 
     @Transactional
@@ -154,13 +180,15 @@ public class AuthService {
         }
 
         UserAccount user = refreshToken.getUser();
-        if (user.getEmailVerifiedAt() == null) {
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(user.getId());
+        if (identityUser.getEmailVerifiedAt() == null) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Email verification is required before login");
         }
+        ensureIdentityActive(identityUser);
         ensureActive(user);
 
         refreshToken.consume();
-        return issueAuthResponse(user, true);
+        return issueAuthResponse(user, identityUser, true);
     }
 
     @Transactional
@@ -186,15 +214,20 @@ public class AuthService {
         }
 
         token.getUser().markEmailVerified();
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(token.getUser().getId());
+        identityUser.markEmailVerified();
+        identityUserRepository.save(identityUser);
+        propagateIdentityProfile(identityUser);
         token.consume();
         return new VerificationResponse(true, "Email verified");
     }
 
     @Transactional
     public RegisterResponse resendVerification(String email) {
-        UserAccount user = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(email))
+        IdentityUser identityUser = identityUserRepository.findByEmailIgnoreCase(normalizeEmail(email))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
-        if (user.getEmailVerifiedAt() != null) {
+        UserAccount user = resolveDefaultWorkspaceUser(identityUser);
+        if (identityUser.getEmailVerifiedAt() != null) {
             return new RegisterResponse(null, false, false, null, null);
         }
         VerificationTokenResult verification = createVerificationToken(user);
@@ -213,17 +246,19 @@ public class AuthService {
         GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
         String email = normalizeEmail(identity.email());
 
-        Optional<UserAccount> bySub = userAccountRepository.findByGoogleSubAndDeactivatedAtIsNull(identity.sub());
+        Optional<IdentityUser> bySub = identityUserRepository.findByGoogleSub(identity.sub());
         if (bySub.isPresent()) {
-            return new GoogleOutcome(false, issueSessionForUser(bySub.get()));
+            return new GoogleOutcome(false, issueAuthResponse(resolveDefaultWorkspaceUser(bySub.get()), bySub.get(), true));
         }
 
-        Optional<UserAccount> byEmail = userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(email);
+        Optional<IdentityUser> byEmail = identityUserRepository.findByEmailIgnoreCase(email);
         if (byEmail.isPresent()) {
-            UserAccount user = byEmail.get();
-            user.linkGoogle(identity.sub());
-            user.markEmailVerified();
-            return new GoogleOutcome(false, issueSessionForUser(user));
+            IdentityUser identityUser = byEmail.get();
+            identityUser.linkGoogle(identity.sub());
+            identityUser.markEmailVerified();
+            identityUserRepository.save(identityUser);
+            propagateIdentityProfile(identityUser);
+            return new GoogleOutcome(false, issueAuthResponse(resolveDefaultWorkspaceUser(identityUser), identityUser, true));
         }
 
         return new GoogleOutcome(true, null);
@@ -233,7 +268,7 @@ public class AuthService {
     public IssuedSession googleRegister(String idToken, String organizationName) {
         GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
         String email = normalizeEmail(identity.email());
-        if (userAccountRepository.existsByEmailIgnoreCaseAndDeactivatedAtIsNull(email)) {
+        if (identityUserRepository.findByEmailIgnoreCase(email).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "An account with this email already exists. Try signing in.");
         }
 
@@ -246,43 +281,64 @@ public class AuthService {
         user.linkGoogle(identity.sub());
         user.markEmailVerified();
         userAccountRepository.save(user);
-        return issueAuthResponse(user, true);
+        identityMembershipSyncService.mirrorLegacyUser(user);
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(user.getId());
+        identityUser.linkGoogle(identity.sub());
+        identityUser.markEmailVerified();
+        identityUserRepository.save(identityUser);
+        return issueAuthResponse(user, identityUser, true);
+    }
+
+    @Transactional
+    public IssuedSession switchOrganization(AuthenticatedUser principal, UUID organizationId) {
+        IdentityUser identityUser = findIdentityByIdOrThrow(principal.identityUserId());
+        ensureIdentityActive(identityUser);
+        OrganizationMembership membership = requireActiveMembership(identityUser.getId(), organizationId);
+        UserAccount user = resolveWorkspaceUser(membership, identityUser);
+        return issueAuthResponse(user, identityUser, true);
     }
 
     @Transactional
     public void linkGoogle(UUID userId, String idToken) {
         GoogleTokenVerifier.GoogleIdentity identity = googleTokenVerifier.verify(idToken);
-        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
-        userAccountRepository.findByGoogleSubAndDeactivatedAtIsNull(identity.sub())
-                .filter(other -> !other.getId().equals(userId))
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(userId);
+        identityUserRepository.findByGoogleSub(identity.sub())
+                .filter(other -> !other.getId().equals(identityUser.getId()))
                 .ifPresent(other -> {
                     throw new ApiException(HttpStatus.CONFLICT, "This Google account is already linked to another user");
                 });
-        user.linkGoogle(identity.sub());
+        identityUser.linkGoogle(identity.sub());
+        identityUserRepository.save(identityUser);
     }
 
     @Transactional
     public AuthResponse updateName(UUID userId, String name) {
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(userId);
+        identityUser.rename(name.trim());
+        identityUserRepository.save(identityUser);
+        propagateIdentityProfile(identityUser);
         UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
-        user.rename(name.trim());
-        return issueAuthResponse(user, false).authResponse();
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
+        return issueAuthResponse(user, identityUser, false).authResponse();
     }
 
     @Transactional
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
-        UserAccount user = userAccountRepository.findByIdAndDeactivatedAtIsNull(userId)
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(userId);
         // Users with an existing password must confirm it. Google-only users (no password yet)
         // can set one without a current password.
-        if (user.getPasswordHash() != null
-                && (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash()))) {
+        if (identityUser.getPasswordHash() != null
+                && (currentPassword == null || !passwordEncoder.matches(currentPassword, identityUser.getPasswordHash()))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
         }
-        user.changePassword(passwordEncoder.encode(newPassword));
-        for (RefreshToken refreshToken : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(user.getId())) {
-            refreshToken.revoke();
+        String encoded = passwordEncoder.encode(newPassword);
+        identityUser.changePassword(encoded);
+        identityUserRepository.save(identityUser);
+        propagateIdentityProfile(identityUser);
+        for (UserAccount account : userAccountRepository.findAllByEmailIgnoreCaseAndDeactivatedAtIsNull(identityUser.getEmail())) {
+            for (RefreshToken refreshToken : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(account.getId())) {
+                refreshToken.revoke();
+            }
         }
     }
 
@@ -290,8 +346,9 @@ public class AuthService {
     public void requestPasswordReset(String email) {
         // Generic behavior: do the work only if the user exists, but the caller always
         // responds identically so this endpoint cannot be used to enumerate accounts.
-        userAccountRepository.findByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizeEmail(email))
-                .ifPresent(user -> {
+        identityUserRepository.findByEmailIgnoreCase(normalizeEmail(email))
+                .ifPresent(identityUser -> {
+                    UserAccount user = resolveDefaultWorkspaceUser(identityUser);
                     String rawToken = CryptoUtil.randomUrlToken(32);
                     Instant expiresAt = Instant.now().plusSeconds(PASSWORD_RESET_EXP_MINUTES * 60);
                     passwordResetTokenRepository.save(
@@ -309,17 +366,27 @@ public class AuthService {
         }
 
         UserAccount user = token.getUser();
-        user.changePassword(passwordEncoder.encode(newPassword));
+        IdentityUser identityUser = findIdentityByLegacyUserOrThrow(user.getId());
+        identityUser.changePassword(passwordEncoder.encode(newPassword));
+        identityUserRepository.save(identityUser);
+        propagateIdentityProfile(identityUser);
         token.consume();
         // Kill any existing sessions after a password reset.
-        for (RefreshToken refreshToken : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(user.getId())) {
-            refreshToken.revoke();
+        for (UserAccount account : userAccountRepository.findAllByEmailIgnoreCaseAndDeactivatedAtIsNull(identityUser.getEmail())) {
+            for (RefreshToken refreshToken : refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(account.getId())) {
+                refreshToken.revoke();
+            }
         }
     }
 
-    private IssuedSession issueAuthResponse(UserAccount user, boolean includeRefreshToken) {
+    private IssuedSession issueAuthResponse(UserAccount user, IdentityUser identityUser, boolean includeRefreshToken) {
         ensureActive(user);
-        JwtService.TokenResult accessToken = jwtService.issueToken(user);
+        ensureIdentityActive(identityUser);
+        if (!user.getId().equals(identityUser.getLegacyUserId())) {
+            identityUser.preferLegacyUser(user.getId());
+            identityUserRepository.save(identityUser);
+        }
+        JwtService.TokenResult accessToken = jwtService.issueToken(identityUser, user);
         RefreshTokenResult refreshToken = includeRefreshToken ? createRefreshToken(user) : null;
 
         return new IssuedSession(new AuthResponse(
@@ -328,21 +395,40 @@ public class AuthService {
                 "Bearer",
                 accessToken.expiresAt(),
                 refreshToken != null ? refreshToken.expiresAt() : null,
-                userSummary(user),
-                organizationSummary(user.getOrganization())
+                userSummary(user, identityUser),
+                organizationSummary(user.getOrganization()),
+                membershipSummaries(identityUser.getId(), user.getOrganization().getId())
         ), refreshToken != null ? refreshToken.rawToken() : null);
     }
 
-    private UserSummary userSummary(UserAccount user) {
+    private UserSummary userSummary(UserAccount user, IdentityUser identityUser) {
         return new UserSummary(
                 user.getId(),
+                identityUser.getId(),
                 user.getOrganization().getId(),
-                user.getName(),
-                user.getEmail(),
+                identityUser.getName(),
+                identityUser.getEmail(),
                 user.getRole(),
-                user.getEmailVerifiedAt() != null,
+                identityUser.getEmailVerifiedAt() != null,
                 user.getCreatedAt()
         );
+    }
+
+    private List<WorkspaceMembershipSummary> membershipSummaries(UUID identityUserId, UUID activeOrganizationId) {
+        return organizationMembershipRepository.findAllByIdentityUserIdOrderByJoinedAtAsc(identityUserId).stream()
+                .filter(OrganizationMembership::isActive)
+                .sorted(Comparator.comparing(OrganizationMembership::getJoinedAt))
+                .map(membership -> new WorkspaceMembershipSummary(
+                        membership.getOrganization().getId(),
+                        membership.getLegacyUserId(),
+                        membership.getOrganization().getName(),
+                        membership.getOrganization().getSlug(),
+                        membership.getOrganization().getEmail(),
+                        membership.getRole(),
+                        membership.getOrganization().getId().equals(activeOrganizationId),
+                        membership.getJoinedAt()
+                ))
+                .toList();
     }
 
     private OrganizationSummary organizationSummary(Organization organization) {
@@ -398,6 +484,89 @@ public class AuthService {
     private void ensureActive(UserAccount user) {
         if (!user.isActive()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists");
+        }
+    }
+
+    private void ensureIdentityActive(IdentityUser identityUser) {
+        if (!identityUser.isActive()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists");
+        }
+    }
+
+    private IdentityUser findIdentityByIdOrThrow(UUID identityUserId) {
+        return identityUserRepository.findById(identityUserId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+    }
+
+    private IdentityUser findIdentityByLegacyUserOrThrow(UUID legacyUserId) {
+        return identityUserRepository.findByLegacyUserId(legacyUserId)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+    }
+
+    private UserAccount resolveDefaultWorkspaceUser(IdentityUser identityUser) {
+        List<OrganizationMembership> memberships = organizationMembershipRepository.findAllByIdentityUserIdOrderByJoinedAtAsc(identityUser.getId())
+                .stream()
+                .filter(OrganizationMembership::isActive)
+                .toList();
+        if (memberships.isEmpty()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists");
+        }
+
+        OrganizationMembership preferred = memberships.stream()
+                .filter(membership -> membership.getLegacyUserId() != null && membership.getLegacyUserId().equals(identityUser.getLegacyUserId()))
+                .findFirst()
+                .orElse(memberships.get(0));
+        return resolveWorkspaceUser(preferred, identityUser);
+    }
+
+    private OrganizationMembership requireActiveMembership(UUID identityUserId, UUID organizationId) {
+        OrganizationMembership membership = organizationMembershipRepository.findByIdentityUserIdAndOrganizationId(identityUserId, organizationId)
+                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "You do not belong to the requested organization"));
+        if (!membership.isActive()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You do not belong to the requested organization");
+        }
+        return membership;
+    }
+
+    private UserAccount resolveWorkspaceUser(OrganizationMembership membership, IdentityUser identityUser) {
+        if (membership.getLegacyUserId() != null) {
+            return userAccountRepository.findByIdAndOrganizationIdAndDeactivatedAtIsNull(
+                            membership.getLegacyUserId(),
+                            membership.getOrganization().getId()
+                    )
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+        }
+
+        Optional<UserAccount> existing = userAccountRepository.findByOrganizationIdAndEmailIgnoreCaseAndDeactivatedAtIsNull(
+                membership.getOrganization().getId(),
+                identityUser.getEmail()
+        );
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        UserAccount user = new UserAccount(
+                membership.getOrganization(),
+                identityUser.getName(),
+                identityUser.getEmail(),
+                identityUser.getPasswordHash(),
+                membership.getRole()
+        );
+        if (identityUser.getEmailVerifiedAt() != null) {
+            user.markEmailVerified();
+        }
+        userAccountRepository.save(user);
+        identityMembershipSyncService.mirrorLegacyUser(user);
+        return user;
+    }
+
+    private void propagateIdentityProfile(IdentityUser identityUser) {
+        for (UserAccount user : userAccountRepository.findAllByEmailIgnoreCaseAndDeactivatedAtIsNull(identityUser.getEmail())) {
+            user.rename(identityUser.getName());
+            user.changePassword(identityUser.getPasswordHash());
+            if (identityUser.getEmailVerifiedAt() != null) {
+                user.markEmailVerified();
+            }
         }
     }
 

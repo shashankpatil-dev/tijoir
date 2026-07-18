@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.contract.ContractPermission;
+import com.tijoir.identity.IdentityMembershipSyncService;
 import com.tijoir.organization.OrganizationPolicy;
 import com.tijoir.organization.OrganizationPolicyRepository;
 import com.tijoir.organization.OrganizationRepository;
@@ -56,6 +57,9 @@ class ShareLinkControllerIntegrationTest {
 
     @Autowired
     private OrganizationPolicyRepository organizationPolicyRepository;
+
+    @Autowired
+    private IdentityMembershipSyncService identityMembershipSyncService;
 
     @Test
     void viewOnceShareLinkCanBeConsumedOnlyOnce() throws Exception {
@@ -208,6 +212,7 @@ class ShareLinkControllerIntegrationTest {
         );
         viewer.markEmailVerified();
         userAccountRepository.save(viewer);
+        identityMembershipSyncService.mirrorLegacyUser(viewer);
 
         String viewerToken = login("viewer@acme-share-viewer.test", "ViewerPass@123");
 

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record UserSummary(
         UUID id,
+        UUID identityUserId,
         UUID organizationId,
         String name,
         String email,

@@ -1,6 +1,7 @@
 package com.tijoir.audit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tijoir.identity.IdentityMembershipSyncService;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.organization.UserAccountRepository;
@@ -39,6 +40,9 @@ class AuditControllerIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private IdentityMembershipSyncService identityMembershipSyncService;
+
     @Test
     void ownerAndAuditorCanReviewAuditLogsButViewerCannot() throws Exception {
         String ownerEmail = "owner@acme-audit.test";
@@ -67,6 +71,7 @@ class AuditControllerIntegrationTest {
         );
         auditor.markEmailVerified();
         userAccountRepository.save(auditor);
+        identityMembershipSyncService.mirrorLegacyUser(auditor);
 
         UserAccount viewer = new UserAccount(
                 organizationRepository.findById(owner.getOrganization().getId()).orElseThrow(),
@@ -77,6 +82,7 @@ class AuditControllerIntegrationTest {
         );
         viewer.markEmailVerified();
         userAccountRepository.save(viewer);
+        identityMembershipSyncService.mirrorLegacyUser(viewer);
 
         String auditorToken = login("auditor@acme-audit.test", "AuditPass@123");
         String viewerToken = login("viewer@acme-audit.test", "ViewerPass@123");

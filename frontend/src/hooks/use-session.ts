@@ -22,9 +22,54 @@ export function useProtectedSession() {
       setErrorMessage("Login required.");
       return;
     }
+    const storedSession = stored;
 
-    setSession(stored);
-    setChecking(false);
+    setSession(storedSession);
+    let cancelled = false;
+
+    async function validateSession() {
+      if (!storedSession.accessToken) {
+        clearSession();
+        if (!cancelled) {
+          setSession(null);
+          setErrorMessage("Login required.");
+          setChecking(false);
+        }
+        return;
+      }
+
+      try {
+        const fresh = await authenticatedApiRequest<AuthResponse>(
+          "/api/auth/me",
+          storedSession.accessToken,
+        );
+        if (cancelled) {
+          return;
+        }
+        saveSession(fresh);
+        setSession(fresh);
+        setErrorMessage("");
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        clearSession();
+        setSession(null);
+        setErrorMessage(
+          error instanceof Error ? error.message : "Session validation failed.",
+        );
+      } finally {
+        if (!cancelled) {
+          setChecking(false);
+        }
+      }
+    }
+
+    void validateSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function refresh() {

@@ -9,6 +9,7 @@ import com.tijoir.common.paging.PageResponse;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
+import com.tijoir.organization.dto.InviteResolutionResponse;
 import com.tijoir.organization.dto.MemberResponse;
 import com.tijoir.organization.dto.OrganizationPolicyResponse;
 import com.tijoir.organization.dto.UpdateMemberRoleRequest;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -125,12 +127,20 @@ public class OrganizationController {
     }
 
     @PostMapping("/invites/accept")
-    public ResponseEntity<AuthResponse> acceptInvite(@Valid @RequestBody AcceptInviteRequest request) {
-        AuthService.IssuedSession issuedSession = organizationService.acceptInvite(request);
+    public ResponseEntity<AuthResponse> acceptInvite(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody AcceptInviteRequest request
+    ) {
+        AuthService.IssuedSession issuedSession = organizationService.acceptInvite(user, request);
         HttpHeaders headers = new HttpHeaders();
         authCookieService.writeRefreshCookie(headers, issuedSession.rawRefreshToken(), issuedSession.authResponse().refreshExpiresAt());
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(issuedSession.authResponse());
+    }
+
+    @GetMapping("/invites/resolve")
+    public InviteResolutionResponse resolveInvite(@RequestParam String token) {
+        return organizationService.resolveInvite(token);
     }
 }

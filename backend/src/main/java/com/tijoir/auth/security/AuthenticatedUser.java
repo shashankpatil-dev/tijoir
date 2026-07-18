@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record AuthenticatedUser(
+        UUID identityUserId,
         UUID userId,
         UUID organizationId,
         String email,
@@ -30,4 +31,3 @@ public record AuthenticatedUser(
         return email;
     }
 }
-

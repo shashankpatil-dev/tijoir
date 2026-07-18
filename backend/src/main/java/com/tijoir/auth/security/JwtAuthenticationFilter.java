@@ -33,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             JwtClaims claims = jwtService.parse(authorization.substring("Bearer ".length()));
             AuthenticatedUser principal = new AuthenticatedUser(
+                    claims.identityUserId(),
                     claims.userId(),
                     claims.organizationId(),
                     claims.email(),
@@ -53,4 +54,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 }
-

@@ -12,12 +12,17 @@ import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.common.util.CryptoUtil;
 import com.tijoir.dashboard.DashboardSummaryService;
+import com.tijoir.identity.IdentityMembershipSyncService;
+import com.tijoir.identity.IdentityUser;
+import com.tijoir.identity.IdentityUserRepository;
+import com.tijoir.identity.OrganizationMembershipRepository;
 import com.tijoir.notification.NotificationEmailDeliveryStatus;
 import com.tijoir.notification.NotificationProperties;
 import com.tijoir.notification.NotificationService;
 import com.tijoir.organization.dto.AcceptInviteRequest;
 import com.tijoir.organization.dto.CreateInviteRequest;
 import com.tijoir.organization.dto.InviteResponse;
+import com.tijoir.organization.dto.InviteResolutionResponse;
 import com.tijoir.organization.dto.MemberResponse;
 import com.tijoir.organization.dto.OrganizationPolicyResponse;
 import com.tijoir.organization.dto.UpdateMemberRoleRequest;
@@ -44,11 +49,14 @@ public class OrganizationService {
     private final UserAccountRepository userAccountRepository;
     private final OrganizationInviteRepository organizationInviteRepository;
     private final OrganizationPolicyRepository organizationPolicyRepository;
+    private final IdentityUserRepository identityUserRepository;
+    private final OrganizationMembershipRepository organizationMembershipRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final AuditEventRepository auditEventRepository;
     private final DashboardSummaryService dashboardSummaryService;
+    private final IdentityMembershipSyncService identityMembershipSyncService;
     private final NotificationService notificationService;
     private final NotificationProperties notificationProperties;
     private final ObjectMapper objectMapper;
@@ -58,11 +66,14 @@ public class OrganizationService {
             UserAccountRepository userAccountRepository,
             OrganizationInviteRepository organizationInviteRepository,
             OrganizationPolicyRepository organizationPolicyRepository,
+            IdentityUserRepository identityUserRepository,
+            OrganizationMembershipRepository organizationMembershipRepository,
             OrganizationAuthorizationService authorizationService,
             PasswordEncoder passwordEncoder,
             AuthService authService,
             AuditEventRepository auditEventRepository,
             DashboardSummaryService dashboardSummaryService,
+            IdentityMembershipSyncService identityMembershipSyncService,
             NotificationService notificationService,
             NotificationProperties notificationProperties,
             ObjectMapper objectMapper,
@@ -71,11 +82,14 @@ public class OrganizationService {
         this.userAccountRepository = userAccountRepository;
         this.organizationInviteRepository = organizationInviteRepository;
         this.organizationPolicyRepository = organizationPolicyRepository;
+        this.identityUserRepository = identityUserRepository;
+        this.organizationMembershipRepository = organizationMembershipRepository;
         this.authorizationService = authorizationService;
         this.passwordEncoder = passwordEncoder;
         this.authService = authService;
         this.auditEventRepository = auditEventRepository;
         this.dashboardSummaryService = dashboardSummaryService;
+        this.identityMembershipSyncService = identityMembershipSyncService;
         this.notificationService = notificationService;
         this.notificationProperties = notificationProperties;
         this.objectMapper = objectMapper;
@@ -134,8 +148,8 @@ public class OrganizationService {
         authorizationService.requireInviteRole(actor.getRole(), request.role());
 
         String normalizedEmail = normalizeEmail(request.email());
-        if (userAccountRepository.existsByEmailIgnoreCaseAndDeactivatedAtIsNull(normalizedEmail)) {
-            throw new ApiException(HttpStatus.CONFLICT, "User email is already registered");
+        if (userAccountRepository.existsByOrganizationIdAndEmailIgnoreCaseAndDeactivatedAtIsNull(actor.getOrganization().getId(), normalizedEmail)) {
+            throw new ApiException(HttpStatus.CONFLICT, "That email is already a member of this organization");
         }
 
         Instant expiresAt = request.expiresAt() != null
@@ -205,51 +219,75 @@ public class OrganizationService {
     }
 
     @Transactional
-    public AuthService.IssuedSession acceptInvite(AcceptInviteRequest request) {
-        OrganizationInvite invite = organizationInviteRepository.findByTokenHash(CryptoUtil.sha256Hex(request.token()))
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Invite not found"));
-
+    public InviteResolutionResponse resolveInvite(String token) {
+        OrganizationInvite invite = findInviteByToken(token);
         Instant now = Instant.now();
-        OrganizationInviteStatus status = invite.statusAt(now);
-        if (status == OrganizationInviteStatus.REVOKED) {
-            throw new ApiException(HttpStatus.GONE, "Invite has been revoked");
-        }
-        if (status == OrganizationInviteStatus.ACCEPTED) {
-            throw new ApiException(HttpStatus.GONE, "Invite has already been accepted");
-        }
-        if (status == OrganizationInviteStatus.EXPIRED) {
-            throw new ApiException(HttpStatus.GONE, "Invite has expired");
-        }
-        if (userAccountRepository.existsByEmailIgnoreCaseAndDeactivatedAtIsNull(invite.getEmail())) {
-            throw new ApiException(HttpStatus.CONFLICT, "User email is already registered");
+        return new InviteResolutionResponse(
+                invite.getOrganization().getId(),
+                invite.getOrganization().getName(),
+                invite.getOrganization().getSlug(),
+                invite.getEmail(),
+                invite.getRole(),
+                invite.statusAt(now),
+                invite.getExpiresAt(),
+                identityUserRepository.findByEmailIgnoreCase(invite.getEmail()).isPresent()
+        );
+    }
+
+    @Transactional
+    public AuthService.IssuedSession acceptInvite(AuthenticatedUser principal, AcceptInviteRequest request) {
+        OrganizationInvite invite = findInviteByToken(request.token());
+        ensurePendingInvite(invite);
+
+        IdentityUser existingIdentity = identityUserRepository.findByEmailIgnoreCase(invite.getEmail()).orElse(null);
+        UserAccount workspaceUser;
+
+        if (principal != null) {
+            IdentityUser principalIdentity = identityUserRepository.findById(principal.identityUserId())
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user no longer exists"));
+            if (!normalizeEmail(principalIdentity.getEmail()).equals(normalizeEmail(invite.getEmail()))) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Sign in with the invited email to accept this invite");
+            }
+            workspaceUser = createWorkspaceUserForExistingIdentity(invite, principalIdentity);
+        } else if (existingIdentity != null) {
+            throw new ApiException(HttpStatus.CONFLICT, "Account already exists. Sign in with this email to accept the invite.");
+        } else {
+            if (request.name() == null || request.name().isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Name is required to accept this invite");
+            }
+            if (request.password() == null || request.password().isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Password is required to accept this invite");
+            }
+
+            workspaceUser = new UserAccount(
+                    invite.getOrganization(),
+                    request.name().trim(),
+                    invite.getEmail(),
+                    passwordEncoder.encode(request.password()),
+                    invite.getRole()
+            );
+            workspaceUser.markEmailVerified();
+            userAccountRepository.save(workspaceUser);
+            identityMembershipSyncService.mirrorLegacyUser(workspaceUser);
         }
 
-        UserAccount user = new UserAccount(
-                invite.getOrganization(),
-                request.name().trim(),
-                invite.getEmail(),
-                passwordEncoder.encode(request.password()),
-                invite.getRole()
-        );
-        user.markEmailVerified();
-        userAccountRepository.save(user);
         invite.accept();
 
         auditEventRepository.save(new AuditEvent(
                 invite.getOrganization(),
-                user,
+                workspaceUser,
                 AuditAction.MEMBER_INVITE_ACCEPTED,
                 "ORGANIZATION_INVITE",
                 invite.getId(),
                 toJson(Map.of(
                         "email", invite.getEmail(),
                         "role", invite.getRole().name(),
-                        "userId", user.getId()
+                        "userId", workspaceUser.getId()
                 ))
         ));
 
         dashboardSummaryService.evict(invite.getOrganization().getId());
-        return authService.issueSessionForUser(user);
+        return authService.issueSessionForUser(workspaceUser);
     }
 
     @Transactional
@@ -264,6 +302,7 @@ public class OrganizationService {
 
         authorizationService.requireRoleChange(actor, target, request.role());
         target.changeRole(request.role());
+        identityMembershipSyncService.mirrorLegacyUser(target);
 
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
@@ -288,6 +327,7 @@ public class OrganizationService {
 
         authorizationService.requireMemberRemoval(actor, target);
         target.deactivate();
+        identityMembershipSyncService.mirrorLegacyUser(target);
 
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
@@ -412,6 +452,45 @@ public class OrganizationService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private OrganizationInvite findInviteByToken(String token) {
+        return organizationInviteRepository.findByTokenHash(CryptoUtil.sha256Hex(token))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Invite not found"));
+    }
+
+    private void ensurePendingInvite(OrganizationInvite invite) {
+        Instant now = Instant.now();
+        OrganizationInviteStatus status = invite.statusAt(now);
+        if (status == OrganizationInviteStatus.REVOKED) {
+            throw new ApiException(HttpStatus.GONE, "Invite has been revoked");
+        }
+        if (status == OrganizationInviteStatus.ACCEPTED) {
+            throw new ApiException(HttpStatus.GONE, "Invite has already been accepted");
+        }
+        if (status == OrganizationInviteStatus.EXPIRED) {
+            throw new ApiException(HttpStatus.GONE, "Invite has expired");
+        }
+    }
+
+    private UserAccount createWorkspaceUserForExistingIdentity(OrganizationInvite invite, IdentityUser identityUser) {
+        if (organizationMembershipRepository.findByIdentityUserIdAndOrganizationId(identityUser.getId(), invite.getOrganization().getId()).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "This account already belongs to the invited organization");
+        }
+
+        UserAccount workspaceUser = new UserAccount(
+                invite.getOrganization(),
+                identityUser.getName(),
+                identityUser.getEmail(),
+                identityUser.getPasswordHash(),
+                invite.getRole()
+        );
+        if (identityUser.getEmailVerifiedAt() != null) {
+            workspaceUser.markEmailVerified();
+        }
+        userAccountRepository.save(workspaceUser);
+        identityMembershipSyncService.mirrorLegacyUser(workspaceUser);
+        return workspaceUser;
     }
 
     private void validatePolicyRequest(UpdateOrganizationPolicyRequest request) {

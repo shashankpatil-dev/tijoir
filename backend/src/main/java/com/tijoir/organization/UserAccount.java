@@ -28,7 +28,7 @@ public class UserAccount {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String email;
 
     // Nullable: Google-only users have no password until they set one.

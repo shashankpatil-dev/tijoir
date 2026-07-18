@@ -1,11 +1,11 @@
 "use client";
 
-import { QRCodeSVG } from "qrcode.react";
 import { DefinitionRows } from "@/components/dashboard/dashboard-shell";
 import { Badge, statusTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
+import { Link2 } from "lucide-react";
 
 function expiryProgress(createdAt: string, expiresAt?: string | null) {
   if (!expiresAt) {
@@ -62,8 +62,8 @@ export function SelectedShareLinkSection({
             </p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="rounded-xl border border-emerald-200 bg-white p-2">
-              <QRCodeSVG size={96} value={justCreated.appUrl} />
+            <div className="flex h-24 w-24 items-center justify-center rounded-xl border border-emerald-200 bg-white text-emerald-700">
+              <Link2 className="size-8" />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <p className="break-all font-mono text-xs text-[var(--color-ink-strong)]">

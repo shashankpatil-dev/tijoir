@@ -3,6 +3,7 @@ package com.tijoir.auth.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.Instant;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AuthResponse(
@@ -12,6 +13,7 @@ public record AuthResponse(
         Instant expiresAt,
         Instant refreshExpiresAt,
         UserSummary user,
-        OrganizationSummary organization
+        OrganizationSummary organization,
+        List<WorkspaceMembershipSummary> memberships
 ) {
 }

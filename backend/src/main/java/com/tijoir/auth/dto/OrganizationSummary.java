@@ -9,4 +9,3 @@ public record OrganizationSummary(
         String email
 ) {
 }
-

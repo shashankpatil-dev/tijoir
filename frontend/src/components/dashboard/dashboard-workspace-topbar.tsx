@@ -30,6 +30,7 @@ import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import {
   Bell,
   Building2,
+  Check,
   ChevronsUpDown,
   CreditCard,
   KeyRound,
@@ -128,6 +129,8 @@ export function DashboardWorkspaceSidebarOrganization({
 }: {
   workspace: DashboardWorkspaceValue;
 }) {
+  const memberships = workspace.session?.memberships.filter((membership) => membership.active) ?? [];
+
   return (
     <div className="space-y-3">
       <div className="px-1">
@@ -167,15 +170,34 @@ export function DashboardWorkspaceSidebarOrganization({
             <LayoutDashboard className="size-4" />
             <span>Organization settings</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => workspace.router.push("/dashboard/members")}>
+          <DropdownMenuItem onSelect={() => workspace.router.push("/dashboard/organization")}>
             <Users className="size-4" />
             <span>Members</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled>
-            <Building2 className="size-4" />
-            <span>Switch organization</span>
-          </DropdownMenuItem>
+          <DropdownMenuLabel className="text-xs text-muted">
+            Switch organization
+          </DropdownMenuLabel>
+          {memberships.map((membership) => {
+            const active = membership.organizationId === workspace.session?.organization.id;
+            const switching = membership.organizationId === workspace.switchingOrganizationId;
+
+            return (
+              <DropdownMenuItem
+                disabled={active || switching}
+                key={membership.organizationId}
+                onSelect={() => void workspace.switchOrganization(membership.organizationId)}
+              >
+                <Building2 className="size-4" />
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span className="min-w-0 truncate">{membership.organizationName}</span>
+                  {active ? (
+                    <Check className="size-4 text-(--color-brand)" />
+                  ) : null}
+                </span>
+              </DropdownMenuItem>
+            );
+          })}
           <DropdownMenuItem disabled>
             <CreditCard className="size-4" />
             <span>Billing</span>

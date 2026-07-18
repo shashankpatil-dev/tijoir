@@ -10,6 +10,7 @@ security/      threat model, RBAC, audit, reveal safety, rotation
 Recommended starting points:
 
 - [architecture/aws-production.md](architecture/aws-production.md)
+- [architecture/global-identity-and-vendor-sharing.md](architecture/global-identity-and-vendor-sharing.md)
 - [architecture/performance-and-cache-roadmap.md](architecture/performance-and-cache-roadmap.md)
 - [architecture/redis-auth-notifications-workplan.md](architecture/redis-auth-notifications-workplan.md)
 - [frontend/ui-ux-spec.md](frontend/ui-ux-spec.md)

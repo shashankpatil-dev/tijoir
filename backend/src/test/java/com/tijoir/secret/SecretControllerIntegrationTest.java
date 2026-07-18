@@ -2,6 +2,7 @@ package com.tijoir.secret;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tijoir.identity.IdentityMembershipSyncService;
 import com.tijoir.organization.Organization;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
@@ -39,6 +40,9 @@ class SecretControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private IdentityMembershipSyncService identityMembershipSyncService;
 
     @Test
     void ownerCanCreateListAndReadSecretMetadata() throws Exception {
@@ -155,6 +159,7 @@ class SecretControllerIntegrationTest {
         );
         viewer.markEmailVerified();
         userAccountRepository.save(viewer);
+        identityMembershipSyncService.mirrorLegacyUser(viewer);
 
         String viewerToken = login("viewer@acme-viewer.test", "ViewerPass@123");
 

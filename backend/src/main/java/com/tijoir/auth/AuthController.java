@@ -15,6 +15,7 @@ import com.tijoir.auth.dto.RefreshRequest;
 import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
 import com.tijoir.auth.dto.ResendVerificationRequest;
+import com.tijoir.auth.dto.SwitchOrganizationRequest;
 import com.tijoir.auth.dto.VerificationResponse;
 import com.tijoir.auth.dto.VerifyEmailRequest;
 import com.tijoir.auth.security.AuthenticatedUser;
@@ -103,7 +104,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public AuthResponse me(@AuthenticationPrincipal AuthenticatedUser user) {
-        return authService.currentUser(user.userId());
+        return authService.currentUser(user);
     }
 
     @PatchMapping("/me")
@@ -154,6 +155,14 @@ public class AuthController {
     @PostMapping("/google/register")
     public ResponseEntity<AuthResponse> googleRegister(@Valid @RequestBody GoogleRegisterRequest request) {
         return sessionResponse(authService.googleRegister(request.idToken(), request.organizationName()));
+    }
+
+    @PostMapping("/switch-organization")
+    public ResponseEntity<AuthResponse> switchOrganization(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody SwitchOrganizationRequest request
+    ) {
+        return sessionResponse(authService.switchOrganization(user, request.organizationId()));
     }
 
     @PostMapping("/google/link")
