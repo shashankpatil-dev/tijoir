@@ -11,12 +11,15 @@ import com.tijoir.common.paging.PageResponse;
 import com.tijoir.connection.dto.CreateVendorContractRequest;
 import com.tijoir.connection.dto.CreateVendorContractGrantRequest;
 import com.tijoir.connection.dto.CreateVendorRequest;
+import com.tijoir.connection.dto.IncomingVendorContractResponse;
 import com.tijoir.connection.dto.OffboardVendorResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
 import com.tijoir.connection.dto.VendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorResponse;
 import com.tijoir.contract.ContractPermission;
+import com.tijoir.organization.Organization;
 import com.tijoir.organization.OrganizationAuthorizationService;
+import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.secret.SecretStatus;
@@ -48,6 +51,7 @@ public class VendorService {
     private final VendorContractSecretGrantRepository vendorContractSecretGrantRepository;
     private final VaultSecretRepository vaultSecretRepository;
     private final ShareLinkRepository shareLinkRepository;
+    private final OrganizationRepository organizationRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
     private final DashboardSummaryService dashboardSummaryService;
@@ -59,6 +63,7 @@ public class VendorService {
             VendorContractSecretGrantRepository vendorContractSecretGrantRepository,
             VaultSecretRepository vaultSecretRepository,
             ShareLinkRepository shareLinkRepository,
+            OrganizationRepository organizationRepository,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
             DashboardSummaryService dashboardSummaryService,
@@ -69,6 +74,7 @@ public class VendorService {
         this.vendorContractSecretGrantRepository = vendorContractSecretGrantRepository;
         this.vaultSecretRepository = vaultSecretRepository;
         this.shareLinkRepository = shareLinkRepository;
+        this.organizationRepository = organizationRepository;
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
         this.dashboardSummaryService = dashboardSummaryService;
@@ -94,10 +100,12 @@ public class VendorService {
     public VendorResponse create(AuthenticatedUser principal, CreateVendorRequest request) {
         UserAccount actor = authorizationService.requireActor(principal);
         authorizationService.requireVendorManager(actor.getRole());
+        Organization linkedOrganization = resolveLinkedOrganization(actor.getOrganization(), request.linkedOrganizationSlug());
 
         Vendor vendor = vendorRepository.save(new Vendor(
                 actor.getOrganization(),
                 actor,
+                linkedOrganization,
                 request.name().trim(),
                 normalizeOptional(request.contactName()),
                 normalizeEmailOptional(request.contactEmail()),
@@ -107,6 +115,7 @@ public class VendorService {
         Map<String, Object> auditDetails = new LinkedHashMap<>();
         auditDetails.put("name", vendor.getName());
         auditDetails.put("contactEmail", vendor.getContactEmail());
+        auditDetails.put("linkedOrganizationSlug", linkedOrganization != null ? linkedOrganization.getSlug() : null);
 
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
@@ -145,6 +154,22 @@ public class VendorService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<IncomingVendorContractResponse> listIncomingContracts(
+            AuthenticatedUser principal,
+            Integer page,
+            Integer size,
+            VendorAccessContractStatus status
+    ) {
+        authorizationService.requireVendorManager(principal.role());
+        Instant now = Instant.now();
+        PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<IncomingVendorContractResponse> results = vendorAccessContractRepository
+                .findAll(incomingContractSpec(principal.organizationId(), status, now), pageRequest)
+                .map(contract -> toIncomingContractResponse(contract, effectiveContractStatus(contract, now)));
+        return PageResponse.from(results);
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<VendorContractGrantResponse> listGrants(
             AuthenticatedUser principal,
             UUID contractId,
@@ -175,29 +200,90 @@ public class VendorService {
         ensureVendorActive(vendor);
 
         validateExpiry(request.expiresAt());
+        VendorAccessContractStatus initialStatus = vendor.getLinkedOrganization() != null
+                ? VendorAccessContractStatus.PROPOSED
+                : VendorAccessContractStatus.ACTIVE;
 
         VendorAccessContract contract = vendorAccessContractRepository.save(new VendorAccessContract(
                 actor.getOrganization(),
                 vendor,
                 actor,
                 request.permission(),
+                initialStatus,
                 request.expiresAt()
         ));
 
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("vendorId", vendor.getId());
+        auditDetails.put("permission", request.permission().name());
+        auditDetails.put("status", initialStatus.name());
+        auditDetails.put("linkedOrganizationSlug", vendor.getLinkedOrganization() != null ? vendor.getLinkedOrganization().getSlug() : null);
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
                 actor,
                 AuditAction.VENDOR_CONTRACT_CREATED,
                 "VENDOR_ACCESS_CONTRACT",
                 contract.getId(),
-                toJson(Map.of(
-                        "vendorId", vendor.getId(),
-                        "permission", request.permission().name()
-                ))
+                toJson(auditDetails)
         ));
 
         dashboardSummaryService.evict(principal.organizationId());
         return toContractResponse(contract, contract.getStatus());
+    }
+
+    @Transactional
+    public IncomingVendorContractResponse acceptIncomingContract(AuthenticatedUser principal, UUID contractId) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireVendorManager(actor.getRole());
+
+        VendorAccessContract contract = vendorAccessContractRepository.findById(contractId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
+        Vendor vendor = contract.getVendor();
+        Organization linkedOrganization = vendor.getLinkedOrganization();
+        if (linkedOrganization == null || !linkedOrganization.getId().equals(principal.organizationId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Incoming vendor contract not found");
+        }
+
+        ensureVendorActive(vendor);
+        expireContractIfNeeded(contract, Instant.now());
+        if (contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor contract has already been accepted");
+        }
+        if (contract.getStatus() != VendorAccessContractStatus.PROPOSED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only proposed vendor contracts can be accepted");
+        }
+
+        contract.acceptByCounterparty(actor);
+
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("vendorId", vendor.getId());
+        auditDetails.put("vendorName", vendor.getName());
+        auditDetails.put("ownerOrganizationId", contract.getOrganization().getId());
+        auditDetails.put("ownerOrganizationSlug", contract.getOrganization().getSlug());
+        auditDetails.put("counterpartyOrganizationId", actor.getOrganization().getId());
+        auditDetails.put("counterpartyOrganizationSlug", actor.getOrganization().getSlug());
+        auditDetails.put("permission", contract.getContractPermission().name());
+
+        auditEventRepository.save(new AuditEvent(
+                contract.getOrganization(),
+                actor,
+                AuditAction.VENDOR_CONTRACT_ACCEPTED,
+                "VENDOR_ACCESS_CONTRACT",
+                contract.getId(),
+                toJson(auditDetails)
+        ));
+        auditEventRepository.save(new AuditEvent(
+                actor.getOrganization(),
+                actor,
+                AuditAction.VENDOR_CONTRACT_ACCEPTED,
+                "VENDOR_ACCESS_CONTRACT",
+                contract.getId(),
+                toJson(auditDetails)
+        ));
+
+        dashboardSummaryService.evict(contract.getOrganization().getId());
+        dashboardSummaryService.evict(actor.getOrganization().getId());
+        return toIncomingContractResponse(contract, contract.getStatus());
     }
 
     @Transactional
@@ -273,7 +359,7 @@ public class VendorService {
         }
 
         expireContractIfNeeded(contract, Instant.now());
-        if (contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
+        if (contract.getStatus() == VendorAccessContractStatus.ACTIVE || contract.getStatus() == VendorAccessContractStatus.PROPOSED) {
             contract.revoke();
             int revokedGrants = 0;
             for (VendorContractSecretGrant grant : vendorContractSecretGrantRepository.findAllByContractIdAndStatus(contract.getId(), VendorContractGrantStatus.ACTIVE)) {
@@ -346,9 +432,12 @@ public class VendorService {
 
         int revokedContracts = 0;
         int revokedGrants = 0;
-        for (VendorAccessContract contract : vendorAccessContractRepository.findAllByVendorIdAndStatus(vendorId, VendorAccessContractStatus.ACTIVE)) {
+        for (VendorAccessContract contract : vendorAccessContractRepository.findAllByVendorIdAndStatusIn(
+                vendorId,
+                List.of(VendorAccessContractStatus.PROPOSED, VendorAccessContractStatus.ACTIVE))) {
             expireContractIfNeeded(contract, now);
-            if (contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
+            if (contract.getStatus() == VendorAccessContractStatus.PROPOSED
+                    || contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
                 contract.revoke();
                 revokedContracts++;
             }
@@ -402,6 +491,18 @@ public class VendorService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
     }
 
+    private Organization resolveLinkedOrganization(Organization ownerOrganization, String linkedOrganizationSlug) {
+        if (linkedOrganizationSlug == null || linkedOrganizationSlug.isBlank()) {
+            return null;
+        }
+        Organization linkedOrganization = organizationRepository.findBySlug(linkedOrganizationSlug.trim())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Linked organization not found"));
+        if (linkedOrganization.getId().equals(ownerOrganization.getId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor cannot link to the same organization");
+        }
+        return linkedOrganization;
+    }
+
     private void ensureVendorActive(Vendor vendor) {
         if (vendor.getStatus() != VendorStatus.ACTIVE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor has already been offboarded");
@@ -438,13 +539,17 @@ public class VendorService {
     }
 
     private void expireContractIfNeeded(VendorAccessContract contract, Instant now) {
-        if (contract.getStatus() == VendorAccessContractStatus.ACTIVE && contract.isExpiredAt(now)) {
+        if ((contract.getStatus() == VendorAccessContractStatus.ACTIVE
+                || contract.getStatus() == VendorAccessContractStatus.PROPOSED)
+                && contract.isExpiredAt(now)) {
             contract.expire();
         }
     }
 
     private VendorAccessContractStatus effectiveContractStatus(VendorAccessContract contract, Instant now) {
-        if (contract.getStatus() == VendorAccessContractStatus.ACTIVE && contract.isExpiredAt(now)) {
+        if ((contract.getStatus() == VendorAccessContractStatus.ACTIVE
+                || contract.getStatus() == VendorAccessContractStatus.PROPOSED)
+                && contract.isExpiredAt(now)) {
             return VendorAccessContractStatus.EXPIRED;
         }
         return contract.getStatus();
@@ -464,6 +569,9 @@ public class VendorService {
                 vendor.getContactName(),
                 vendor.getContactEmail(),
                 vendor.getNotes(),
+                vendor.getLinkedOrganization() != null ? vendor.getLinkedOrganization().getId() : null,
+                vendor.getLinkedOrganization() != null ? vendor.getLinkedOrganization().getName() : null,
+                vendor.getLinkedOrganization() != null ? vendor.getLinkedOrganization().getSlug() : null,
                 vendor.getStatus(),
                 vendor.getCreatedBy().getName(),
                 vendor.getOffboardedAt(),
@@ -506,6 +614,26 @@ public class VendorService {
         );
     }
 
+    private IncomingVendorContractResponse toIncomingContractResponse(
+            VendorAccessContract contract,
+            VendorAccessContractStatus status
+    ) {
+        return new IncomingVendorContractResponse(
+                contract.getId(),
+                contract.getOrganization().getId(),
+                contract.getOrganization().getName(),
+                contract.getOrganization().getSlug(),
+                contract.getVendor().getId(),
+                contract.getVendor().getName(),
+                contract.getContractPermission(),
+                vendorContractSecretGrantRepository.findAllByContractIdAndStatus(contract.getId(), VendorContractGrantStatus.ACTIVE).size(),
+                status,
+                contract.getExpiresAt(),
+                contract.getCounterpartyAcceptedAt(),
+                contract.getCreatedAt()
+        );
+    }
+
     private Specification<Vendor> vendorSpec(UUID organizationId, String query, VendorStatus status) {
         return (root, criteriaQuery, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.equal(root.get("organization").get("id"), organizationId);
@@ -540,6 +668,23 @@ public class VendorService {
         };
     }
 
+    private Specification<VendorAccessContract> incomingContractSpec(
+            UUID counterpartyOrganizationId,
+            VendorAccessContractStatus status,
+            Instant now
+    ) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(
+                    root.get("vendor").get("linkedOrganization").get("id"),
+                    counterpartyOrganizationId
+            );
+            if (status != null) {
+                predicate = criteriaBuilder.and(predicate, contractStatusPredicate(root, criteriaBuilder, status, now));
+            }
+            return predicate;
+        };
+    }
+
     private Specification<VendorContractSecretGrant> grantSpec(
             UUID organizationId,
             UUID contractId,
@@ -563,6 +708,13 @@ public class VendorService {
             Instant now
     ) {
         return switch (status) {
+            case PROPOSED -> criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.PROPOSED),
+                    criteriaBuilder.or(
+                            criteriaBuilder.isNull(root.get("expiresAt")),
+                            criteriaBuilder.greaterThan(root.get("expiresAt"), now)
+                    )
+            );
             case ACTIVE -> criteriaBuilder.and(
                     criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.ACTIVE),
                     criteriaBuilder.or(
@@ -573,7 +725,7 @@ public class VendorService {
             case EXPIRED -> criteriaBuilder.or(
                     criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.EXPIRED),
                     criteriaBuilder.and(
-                            criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.ACTIVE),
+                            root.get("status").in(VendorAccessContractStatus.ACTIVE, VendorAccessContractStatus.PROPOSED),
                             criteriaBuilder.isNotNull(root.get("expiresAt")),
                             criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), now)
                     )

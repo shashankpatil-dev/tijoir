@@ -5,6 +5,7 @@ import type { AuditEventResponse } from "@/features/audit/types/audit.types";
 import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import type {
+  IncomingVendorContractResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
   VendorResponse,
@@ -62,7 +63,9 @@ export function buildVendorColumns(): DataTableColumn<VendorResponse>[] {
         <div className="space-y-1">
           <p className="font-semibold text-(--color-ink-strong)">{vendor.name}</p>
           <p className="text-xs text-muted">
-            {vendor.contactEmail || vendor.contactName || "No contact assigned"}
+            {vendor.linkedOrganizationName
+              ? `Linked to ${vendor.linkedOrganizationName}`
+              : vendor.contactEmail || vendor.contactName || "No contact assigned"}
           </p>
         </div>
       ),
@@ -143,13 +146,85 @@ export function buildVendorContractColumns({
           label={<span aria-label="Contract actions">•••</span>}
         >
           <MenuItem
-          onClick={() => {
-              if (contract.status === "ACTIVE") {
+            onClick={() => {
+              if (contract.status === "ACTIVE" || contract.status === "PROPOSED") {
                 onRevoke(contract);
               }
             }}
           >
             <span>Revoke contract</span>
+          </MenuItem>
+        </Menu>
+      ),
+    },
+  ];
+}
+
+export function buildIncomingVendorContractColumns({
+  onAccept,
+}: {
+  onAccept: (contract: IncomingVendorContractResponse) => void;
+}): DataTableColumn<IncomingVendorContractResponse>[] {
+  return [
+    {
+      key: "ownerOrganization",
+      label: "From organization",
+      sortable: true,
+      sortValue: (contract) => contract.ownerOrganizationName,
+      render: (contract) => (
+        <div className="space-y-1">
+          <p className="font-semibold text-(--color-ink-strong)">
+            {contract.ownerOrganizationName}
+          </p>
+          <p className="text-xs text-muted">{contract.ownerOrganizationSlug}</p>
+        </div>
+      ),
+    },
+    {
+      key: "vendorName",
+      label: "Vendor record",
+      sortable: true,
+      sortValue: (contract) => contract.vendorName,
+      render: (contract) => contract.vendorName,
+    },
+    {
+      key: "permission",
+      label: "Permission",
+      sortable: true,
+      sortValue: (contract) => contract.permission,
+      render: (contract) => (
+        <Badge tone={statusTone(contract.permission)}>{contract.permission}</Badge>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      sortValue: (contract) => contract.status,
+      render: (contract) => (
+        <Badge tone={statusTone(contract.status)}>{contract.status}</Badge>
+      ),
+    },
+    {
+      key: "expiresAt",
+      label: "Expiry",
+      sortable: true,
+      sortValue: (contract) => (contract.expiresAt ? new Date(contract.expiresAt).getTime() : 0),
+      render: (contract) => formatInstant(contract.expiresAt),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (contract) => (
+        <Menu
+          buttonClassName="px-3 py-2 text-xs"
+          label={<span aria-label="Incoming contract actions">•••</span>}
+        >
+          <MenuItem
+            disabled={contract.status !== "PROPOSED"}
+            onClick={() => onAccept(contract)}
+          >
+            <span>Accept proposal</span>
           </MenuItem>
         </Menu>
       ),

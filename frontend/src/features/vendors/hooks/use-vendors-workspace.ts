@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiRequestError } from "@/lib/api/errors";
 import type { DataTableColumn } from "@/components/ui/data-table";
 import {
+  buildIncomingVendorContractColumns,
   buildVendorColumns,
   buildVendorContractColumns,
   buildVendorGrantColumns,
@@ -20,9 +21,11 @@ import { buildShareColumns } from "@/features/share-links/lib/share-link-columns
 import type { ContractPermission } from "@/features/share-links/types/share-links.types";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
 import {
+  acceptIncomingVendorContract,
   createVendor,
   createVendorContract,
   createVendorContractGrant,
+  fetchIncomingVendorContractsPage,
   fetchVendorContractGrantsPage,
   fetchVendorContractsPage,
   fetchVendorsPage,
@@ -31,6 +34,7 @@ import {
   revokeVendorContractGrant,
 } from "@/features/vendors/api/vendors.api";
 import type {
+  IncomingVendorContractResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
   VendorResponse,
@@ -56,6 +60,8 @@ export function useVendorsWorkspace({
   const [vendorStatusFilter, setVendorStatusFilter] = useState("ALL");
   const [vendorPage, setVendorPage] = useState(1);
   const [selectedVendorId, setSelectedVendorId] = useState("");
+  const [incomingContractStatusFilter, setIncomingContractStatusFilter] = useState("ALL");
+  const [incomingContractPage, setIncomingContractPage] = useState(1);
   const [contractStatusFilter, setContractStatusFilter] = useState("ALL");
   const [contractPage, setContractPage] = useState(1);
   const [selectedContractId, setSelectedContractId] = useState("");
@@ -69,6 +75,7 @@ export function useVendorsWorkspace({
   const [vendorName, setVendorName] = useState("Primary SFTP Vendor");
   const [vendorContactName, setVendorContactName] = useState("Primary operator");
   const [vendorContactEmail, setVendorContactEmail] = useState("");
+  const [linkedOrganizationSlug, setLinkedOrganizationSlug] = useState("");
   const [vendorNotes, setVendorNotes] = useState(
     "Handles the organization external integration workflow.",
   );
@@ -89,6 +96,10 @@ export function useVendorsWorkspace({
   useEffect(() => {
     setVendorPage(1);
   }, [vendorSearch, vendorStatusFilter]);
+
+  useEffect(() => {
+    setIncomingContractPage(1);
+  }, [incomingContractStatusFilter]);
 
   useEffect(() => {
     setContractPage(1);
@@ -164,6 +175,42 @@ export function useVendorsWorkspace({
     }
   }, [handleSessionError, secretOptionsQuery.error]);
 
+  const incomingContractsPageQuery = useQuery({
+    queryKey: dashboardQueryKeys.incomingVendorContractsPage(sessionAccessToken, {
+      page: incomingContractPage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      status: incomingContractStatusFilter,
+    }),
+    queryFn: () =>
+      fetchIncomingVendorContractsPage(sessionAccessToken as string, {
+        page: incomingContractPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        status:
+          incomingContractStatusFilter === "ALL"
+            ? undefined
+            : (incomingContractStatusFilter as "PROPOSED" | "ACTIVE" | "REVOKED" | "EXPIRED"),
+      }),
+    enabled: Boolean(sessionAccessToken),
+    placeholderData: (previous) => previous,
+  });
+
+  useEffect(() => {
+    if (
+      incomingContractsPageQuery.error &&
+      !(incomingContractsPageQuery.error instanceof ApiRequestError
+        && incomingContractsPageQuery.error.status === 403)
+    ) {
+      handleSessionError(incomingContractsPageQuery.error, "Could not load incoming vendor contracts");
+    }
+  }, [handleSessionError, incomingContractsPageQuery.error]);
+
+  const paginatedIncomingContracts = incomingContractsPageQuery.data?.items ?? [];
+  const incomingContractsTotal =
+    incomingContractsPageQuery.data?.totalElements ?? paginatedIncomingContracts.length;
+  const incomingContractPageCount =
+    incomingContractsPageQuery.data?.totalPages ??
+    pageCount(paginatedIncomingContracts.length, DASHBOARD_ITEMS_PER_PAGE);
+
   useEffect(() => {
     if (!secretOptions.length) {
       setGrantSecretId("");
@@ -190,7 +237,7 @@ export function useVendorsWorkspace({
         status:
           contractStatusFilter === "ALL"
             ? undefined
-            : (contractStatusFilter as "ACTIVE" | "REVOKED" | "EXPIRED"),
+            : (contractStatusFilter as "PROPOSED" | "ACTIVE" | "REVOKED" | "EXPIRED"),
       }),
     enabled: Boolean(sessionAccessToken && selectedVendorId),
     placeholderData: (previous) => previous,
@@ -286,6 +333,16 @@ export function useVendorsWorkspace({
     [],
   );
 
+  const incomingContractColumns = useMemo<DataTableColumn<IncomingVendorContractResponse>[]>(
+    () =>
+      buildIncomingVendorContractColumns({
+        onAccept: (contract) => {
+          void handleAcceptIncomingContract(contract);
+        },
+      }),
+    [],
+  );
+
   const contractColumns = useMemo<DataTableColumn<VendorContractResponse>[]>(
     () =>
       buildVendorContractColumns({
@@ -319,6 +376,7 @@ export function useVendorsWorkspace({
       contactName?: string | null;
       contactEmail?: string | null;
       notes?: string | null;
+      linkedOrganizationSlug?: string | null;
     }) => createVendor(sessionAccessToken as string, payload),
   });
 
@@ -337,6 +395,11 @@ export function useVendorsWorkspace({
   const revokeVendorContractMutation = useMutation({
     mutationFn: (payload: { vendorId: string; contractId: string }) =>
       revokeVendorContract(sessionAccessToken as string, payload.vendorId, payload.contractId),
+  });
+
+  const acceptIncomingVendorContractMutation = useMutation({
+    mutationFn: (contractId: string) =>
+      acceptIncomingVendorContract(sessionAccessToken as string, contractId),
   });
 
   const createVendorContractGrantMutation = useMutation({
@@ -384,6 +447,13 @@ export function useVendorsWorkspace({
           size: DASHBOARD_ITEMS_PER_PAGE,
           query: vendorSearch,
           status: vendorStatusFilter,
+        }),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: dashboardQueryKeys.incomingVendorContractsPage(sessionAccessToken, {
+          page: incomingContractPage - 1,
+          size: DASHBOARD_ITEMS_PER_PAGE,
+          status: incomingContractStatusFilter,
         }),
       }),
       queryClient.invalidateQueries({
@@ -440,6 +510,7 @@ export function useVendorsWorkspace({
         contactName: vendorContactName.trim() || null,
         contactEmail: vendorContactEmail.trim() || null,
         notes: vendorNotes.trim() || null,
+        linkedOrganizationSlug: linkedOrganizationSlug.trim() || null,
       });
       setCreateVendorOpen(false);
       setSelectedVendorId(created.id);
@@ -447,7 +518,9 @@ export function useVendorsWorkspace({
       setMessage(`Vendor ${created.name} created.`);
       showToast({
         title: "Vendor created",
-        description: `${created.name} is ready for contract and share-link workflows.`,
+        description: created.linkedOrganizationSlug
+          ? `${created.name} is linked to ${created.linkedOrganizationSlug} for counterparty contract acceptance.`
+          : `${created.name} is ready for contract and share-link workflows.`,
         tone: "success",
       });
     } catch (error) {
@@ -474,11 +547,19 @@ export function useVendorsWorkspace({
         expiresAt: contractExpiry ? new Date(contractExpiry).toISOString() : null,
       });
       setCreateContractOpen(false);
+      setSelectedContractId(created.id);
       await invalidateVendors(selectedVendor.id);
-      setMessage(`Contract created for ${selectedVendor.name}.`);
+      setMessage(
+        created.status === "PROPOSED"
+          ? `Contract proposal sent for ${selectedVendor.name}.`
+          : `Contract created for ${selectedVendor.name}.`,
+      );
       showToast({
-        title: "Contract created",
-        description: `${selectedVendor.name} now has a vendor contract boundary ready for secret grants.`,
+        title: created.status === "PROPOSED" ? "Contract proposal sent" : "Contract created",
+        description:
+          created.status === "PROPOSED"
+            ? `${selectedVendor.name} must accept this proposal before grants or vendor delivery can begin.`
+            : `${selectedVendor.name} now has a vendor contract boundary ready for secret grants.`,
         tone: "success",
       });
     } catch (error) {
@@ -511,6 +592,31 @@ export function useVendorsWorkspace({
       });
     } catch (error) {
       handleSessionError(error, "Could not revoke vendor contract");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleAcceptIncomingContract(contract: IncomingVendorContractResponse) {
+    if (!sessionAccessToken) {
+      router.replace("/dashboard/vendors");
+      return;
+    }
+
+    setActionBusy(`accept-incoming-contract-${contract.id}`);
+    setMessage("Accepting incoming vendor contract");
+
+    try {
+      const accepted = await acceptIncomingVendorContractMutation.mutateAsync(contract.id);
+      await invalidateVendors();
+      setMessage(`Contract accepted from ${accepted.ownerOrganizationName}.`);
+      showToast({
+        title: "Contract accepted",
+        description: `The vendor boundary from ${accepted.ownerOrganizationName} is now active.`,
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not accept incoming vendor contract");
     } finally {
       setActionBusy(null);
     }
@@ -639,6 +745,10 @@ export function useVendorsWorkspace({
       setMessage("Select a contract before creating a secret grant.");
       return;
     }
+    if (selectedContract.status !== "ACTIVE") {
+      setMessage("Wait for the counterparty to accept this contract before creating grants.");
+      return;
+    }
     setGrantPermission(selectedContract.permission);
     setCreateGrantOpen(true);
   }
@@ -646,6 +756,10 @@ export function useVendorsWorkspace({
   return {
     contractColumns,
     contractExpiry,
+    incomingContractColumns,
+    incomingContractPage,
+    incomingContractPageCount,
+    incomingContractStatusFilter,
     contractPage,
     contractPageCount,
     contractPermission,
@@ -666,6 +780,7 @@ export function useVendorsWorkspace({
     grantsTotal,
     grantSecretId,
     grantStatusFilter,
+    handleAcceptIncomingContract,
     handleRevokeShareActivityLink,
     handleCreateVendor,
     handleCreateVendorContract,
@@ -685,6 +800,7 @@ export function useVendorsWorkspace({
     shareActivityTotal,
     paginatedVendorGrants: vendorGrants,
     paginatedVendorContracts: vendorContracts,
+    paginatedIncomingContracts,
     paginatedVendors,
     secretOptions,
     selectedContract,
@@ -705,6 +821,9 @@ export function useVendorsWorkspace({
     setGrantRevokeTarget,
     setGrantSecretId,
     setGrantStatusFilter,
+    setIncomingContractPage,
+    setIncomingContractStatusFilter,
+    setLinkedOrganizationSlug,
     setShareActivityPage,
     setShareActivityStatusFilter,
     setShareRevokeTarget,
@@ -721,6 +840,7 @@ export function useVendorsWorkspace({
     vendorColumns,
     vendorContactEmail,
     vendorContactName,
+    linkedOrganizationSlug,
     vendorName,
     vendorNotes,
     vendorOffboardTarget,
@@ -729,6 +849,10 @@ export function useVendorsWorkspace({
     vendorPageCount,
     vendorSearch,
     vendorStatusFilter,
+    incomingContractsLoading:
+      incomingContractsPageQuery.isLoading
+      || incomingContractsPageQuery.isFetching,
+    incomingContractsTotal,
     vendorsAvailable: !(
       vendorsPageQuery.error instanceof ApiRequestError && vendorsPageQuery.error.status === 403
     ),

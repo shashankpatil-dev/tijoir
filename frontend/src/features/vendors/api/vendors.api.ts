@@ -4,6 +4,7 @@ import { authenticatedApiRequest } from "@/features/auth/lib/auth-storage";
 import type { ContractPermission } from "@/features/share-links/types/share-links.types";
 import type { PageResponse } from "@/lib/api/types";
 import type {
+  IncomingVendorContractResponse,
   OffboardVendorResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
@@ -45,12 +46,31 @@ export async function createVendor(
     contactName?: string | null;
     contactEmail?: string | null;
     notes?: string | null;
+    linkedOrganizationSlug?: string | null;
   },
 ) {
   return authenticatedApiRequest<VendorResponse>("/api/vendors", accessToken, {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchIncomingVendorContractsPage(
+  accessToken: string,
+  params: {
+    page?: number;
+    size?: number;
+    status?: VendorContractStatus;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.size !== undefined) searchParams.set("size", String(params.size));
+  if (params.status) searchParams.set("status", params.status);
+  return authenticatedApiRequest<PageResponse<IncomingVendorContractResponse>>(
+    `/api/vendors/incoming-contracts?${searchParams.toString()}`,
+    accessToken,
+  );
 }
 
 export async function fetchVendorContractsPage(
@@ -97,6 +117,17 @@ export async function revokeVendorContract(
 ) {
   return authenticatedApiRequest<VendorContractResponse>(
     `/api/vendors/${vendorId}/contracts/${contractId}/revoke`,
+    accessToken,
+    { method: "POST" },
+  );
+}
+
+export async function acceptIncomingVendorContract(
+  accessToken: string,
+  contractId: string,
+) {
+  return authenticatedApiRequest<IncomingVendorContractResponse>(
+    `/api/vendors/contracts/${contractId}/accept`,
     accessToken,
     { method: "POST" },
   );

@@ -31,6 +31,10 @@ public class Vendor {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private UserAccount createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "linked_org_id")
+    private Organization linkedOrganization;
+
     @Column(nullable = false)
     private String name;
 
@@ -61,6 +65,7 @@ public class Vendor {
     public Vendor(
             Organization organization,
             UserAccount createdBy,
+            Organization linkedOrganization,
             String name,
             String contactName,
             String contactEmail,
@@ -68,6 +73,7 @@ public class Vendor {
     ) {
         this.organization = organization;
         this.createdBy = createdBy;
+        this.linkedOrganization = linkedOrganization;
         this.name = name;
         this.contactName = contactName;
         this.contactEmail = contactEmail;
@@ -100,6 +106,10 @@ public class Vendor {
 
     public UserAccount getCreatedBy() {
         return createdBy;
+    }
+
+    public Organization getLinkedOrganization() {
+        return linkedOrganization;
     }
 
     public String getName() {

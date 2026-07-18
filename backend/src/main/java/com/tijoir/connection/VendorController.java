@@ -5,6 +5,7 @@ import com.tijoir.common.paging.PageResponse;
 import com.tijoir.connection.dto.CreateVendorContractRequest;
 import com.tijoir.connection.dto.CreateVendorContractGrantRequest;
 import com.tijoir.connection.dto.CreateVendorRequest;
+import com.tijoir.connection.dto.IncomingVendorContractResponse;
 import com.tijoir.connection.dto.OffboardVendorResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
 import com.tijoir.connection.dto.VendorContractGrantResponse;
@@ -71,6 +72,16 @@ public class VendorController {
         return vendorService.listContracts(user, vendorId, page, size, status);
     }
 
+    @GetMapping("/incoming-contracts")
+    public PageResponse<IncomingVendorContractResponse> listIncomingContracts(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer page,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer size,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) VendorAccessContractStatus status
+    ) {
+        return vendorService.listIncomingContracts(user, page, size, status);
+    }
+
     @PostMapping("/{vendorId}/contracts")
     @ResponseStatus(HttpStatus.CREATED)
     public VendorContractResponse createContract(
@@ -79,6 +90,14 @@ public class VendorController {
             @Valid @RequestBody CreateVendorContractRequest request
     ) {
         return vendorService.createContract(user, vendorId, request);
+    }
+
+    @PostMapping("/contracts/{contractId}/accept")
+    public IncomingVendorContractResponse acceptIncomingContract(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID contractId
+    ) {
+        return vendorService.acceptIncomingContract(user, contractId);
     }
 
     @GetMapping("/contracts/{contractId}/grants")

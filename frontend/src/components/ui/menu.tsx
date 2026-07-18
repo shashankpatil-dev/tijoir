@@ -44,12 +44,18 @@ export function Menu({
 
 export function MenuItem({
   children,
+  disabled = false,
   onClick,
 }: {
   children: ReactNode;
+  disabled?: boolean;
   onClick?: () => void;
 }) {
-  return <DropdownMenuItem onSelect={onClick}>{children}</DropdownMenuItem>;
+  return (
+    <DropdownMenuItem disabled={disabled} onSelect={onClick}>
+      {children}
+    </DropdownMenuItem>
+  );
 }
 
 export function MenuDivider() {

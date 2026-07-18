@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table-controls";
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
 import type {
+  IncomingVendorContractResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
   VendorResponse,
@@ -29,6 +30,13 @@ import type {
 
 export function VendorsView({
   contractColumns,
+  incomingContractColumns,
+  incomingContractPage,
+  incomingContractPageCount,
+  incomingContractStatusFilter,
+  incomingContracts,
+  incomingContractsLoading,
+  incomingContractsTotal,
   grantColumns,
   contractPage,
   contractPageCount,
@@ -59,6 +67,8 @@ export function VendorsView({
   selectedVendor,
   setContractPage,
   setContractStatusFilter,
+  setIncomingContractPage,
+  setIncomingContractStatusFilter,
   setGrantPage,
   setGrantStatusFilter,
   setShareActivityPage,
@@ -78,6 +88,13 @@ export function VendorsView({
   vendorsTotal,
 }: {
   contractColumns: DataTableColumn<VendorContractResponse>[];
+  incomingContractColumns: DataTableColumn<IncomingVendorContractResponse>[];
+  incomingContractPage: number;
+  incomingContractPageCount: number;
+  incomingContractStatusFilter: string;
+  incomingContracts: IncomingVendorContractResponse[];
+  incomingContractsLoading: boolean;
+  incomingContractsTotal: number;
   grantColumns: DataTableColumn<VendorContractGrantResponse>[];
   contractPage: number;
   contractPageCount: number;
@@ -108,6 +125,8 @@ export function VendorsView({
   selectedVendor: VendorResponse | null;
   setContractPage: (page: number) => void;
   setContractStatusFilter: (value: string) => void;
+  setIncomingContractPage: (page: number) => void;
+  setIncomingContractStatusFilter: (value: string) => void;
   setGrantPage: (page: number) => void;
   setGrantStatusFilter: (value: string) => void;
   setShareActivityPage: (page: number) => void;
@@ -138,6 +157,41 @@ export function VendorsView({
 
   return (
     <>
+      <PageSection title="Incoming contract proposals">
+        <div className="space-y-4">
+          <TableToolbar>
+            <FilterSelect
+              onChange={setIncomingContractStatusFilter}
+              options={[
+                { label: "All statuses", value: "ALL" },
+                { label: "Proposed", value: "PROPOSED" },
+                { label: "Active", value: "ACTIVE" },
+                { label: "Revoked", value: "REVOKED" },
+                { label: "Expired", value: "EXPIRED" },
+              ]}
+              value={incomingContractStatusFilter}
+            />
+          </TableToolbar>
+
+          <DataTable
+            columns={incomingContractColumns}
+            data={incomingContracts}
+            emptyDescription="Linked vendor proposals from other organizations appear here for counterparty review."
+            emptyTitle="No incoming proposals to show"
+            loading={incomingContractsLoading}
+            rowKey={(contract) => contract.id}
+          />
+
+          <PaginationControls
+            currentPage={incomingContractPage}
+            itemLabel="incoming contracts"
+            onPageChange={setIncomingContractPage}
+            pageCount={incomingContractPageCount}
+            totalItems={incomingContractsTotal}
+          />
+        </div>
+      </PageSection>
+
       <PageSection title="Vendors">
         <div className="space-y-4">
           <TableToolbar
@@ -222,6 +276,13 @@ export function VendorsView({
                       label: "Contact email",
                       value: selectedVendor.contactEmail || "Not specified",
                     },
+                    {
+                      label: "Linked organization",
+                      value:
+                        selectedVendor.linkedOrganizationName ||
+                        selectedVendor.linkedOrganizationSlug ||
+                        "Not linked",
+                    },
                     { label: "Status", value: selectedVendor.status },
                     { label: "Created by", value: selectedVendor.createdByName },
                     {
@@ -271,6 +332,7 @@ export function VendorsView({
                     onChange={setContractStatusFilter}
                     options={[
                       { label: "All statuses", value: "ALL" },
+                      { label: "Proposed", value: "PROPOSED" },
                       { label: "Active", value: "ACTIVE" },
                       { label: "Revoked", value: "REVOKED" },
                       { label: "Expired", value: "EXPIRED" },
@@ -310,13 +372,24 @@ export function VendorsView({
                         </p>
                       </div>
                       <Button
-                        disabled={selectedVendor.status !== "ACTIVE"}
+                        disabled={
+                          selectedVendor.status !== "ACTIVE"
+                          || selectedContract.status !== "ACTIVE"
+                        }
                         onClick={onCreateGrant}
                         type="button"
                       >
                         Create grant
                       </Button>
                     </div>
+
+                    {selectedContract.status === "PROPOSED" ? (
+                      <InlineMessage
+                        body="This contract is still waiting for counterparty acceptance. Secret grants and vendor delivery remain blocked until it becomes active."
+                        title="Counterparty acceptance required"
+                        tone="warning"
+                      />
+                    ) : null}
 
                     <FilterSelect
                       onChange={setGrantStatusFilter}

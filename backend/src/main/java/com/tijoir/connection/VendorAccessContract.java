@@ -49,6 +49,12 @@ public class VendorAccessContract {
     @Column(nullable = false)
     private VendorAccessContractStatus status;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "counterparty_accepted_by_user_id")
+    private UserAccount counterpartyAcceptedBy;
+
+    private Instant counterpartyAcceptedAt;
+
     private Instant expiresAt;
 
     private Instant revokedAt;
@@ -67,14 +73,15 @@ public class VendorAccessContract {
             Vendor vendor,
             UserAccount createdBy,
             ContractPermission contractPermission,
+            VendorAccessContractStatus status,
             Instant expiresAt
     ) {
         this.organization = organization;
         this.vendor = vendor;
         this.createdBy = createdBy;
         this.contractPermission = contractPermission;
+        this.status = status;
         this.expiresAt = expiresAt;
-        this.status = VendorAccessContractStatus.ACTIVE;
     }
 
     @PrePersist
@@ -120,6 +127,14 @@ public class VendorAccessContract {
         return status;
     }
 
+    public UserAccount getCounterpartyAcceptedBy() {
+        return counterpartyAcceptedBy;
+    }
+
+    public Instant getCounterpartyAcceptedAt() {
+        return counterpartyAcceptedAt;
+    }
+
     public Instant getExpiresAt() {
         return expiresAt;
     }
@@ -143,8 +158,16 @@ public class VendorAccessContract {
         }
     }
 
+    public void acceptByCounterparty(UserAccount actor) {
+        if (status == VendorAccessContractStatus.PROPOSED) {
+            status = VendorAccessContractStatus.ACTIVE;
+            counterpartyAcceptedBy = actor;
+            counterpartyAcceptedAt = Instant.now();
+        }
+    }
+
     public void expire() {
-        if (status == VendorAccessContractStatus.ACTIVE) {
+        if (status == VendorAccessContractStatus.ACTIVE || status == VendorAccessContractStatus.PROPOSED) {
             status = VendorAccessContractStatus.EXPIRED;
         }
     }

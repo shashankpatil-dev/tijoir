@@ -21,13 +21,37 @@ This document is based on:
 
 This is a **target architecture** document, not a claim that the current implementation already behaves this way.
 
-Current Tijoir MVP still behaves closer to:
+Current Tijoir MVP now behaves closer to:
 
-- one email -> one user record
-- one user -> one org
-- invite acceptance creates a new org-local user
+- one global identity mirrored onto org-scoped workspace users
+- one identity -> many organization memberships
+- invite acceptance attaches to an existing identity when the email already exists
+- vendor collaboration still uses single-sided CRM-style vendor grants, not counterparty org collaboration
 
-The design below is the recommended direction for the next auth and collaboration phase.
+The design below is still the recommended direction, but the remaining work is now concentrated far more in vendor collaboration than in core identity.
+
+### Implementation status as of 2026-07-18
+
+The target model is still **not implemented end to end**, but the core identity and membership foundation is already live in the MVP:
+
+- [x] org-local email/password auth
+- [x] Google sign-in exchange and Google-first registration path
+- [x] global `identity_user` + `organization_membership` model behind current auth flows
+- [x] refresh-token session flow and active-org switching endpoint
+- [x] org invites and invite acceptance for both new and existing identities
+- [x] one identity belonging to multiple organizations
+- [x] membership-backed workspace switching
+- [x] email verification and resend-verification flow
+- [x] public anonymous one-time quick-share flow
+- [x] creator-side quick-share management and revoke flow
+- [x] vendor offboarding automation for current single-sided vendor access grants
+
+The core architecture from this document that still remains:
+
+- [ ] bilateral vendor contract handshake with counterparty acceptance
+- [ ] vendor org workspace access as a first-class collaboration model
+- [ ] domain-verified trust and stronger managed-account controls
+- [ ] further production email delivery confidence and invite-verification reliability
 
 ---
 
@@ -35,9 +59,8 @@ The design below is the recommended direction for the next auth and collaboratio
 
 The current MVP has these structural limitations:
 
-- a single email cannot join more than one organization
 - every non-invited new user must create a fresh organization
-- invite acceptance is too tightly coupled to org-local account creation
+- legacy org-scoped workspace users still exist as execution records beside global identities
 - vendor collaboration and internal membership can become conceptually mixed
 - email verification and invite trust are not modeled strongly enough for a long-term SaaS product
 
@@ -609,28 +632,85 @@ Tijoir should move in phases.
 
 ## Phase 1 - keep current MVP running
 
-- preserve current auth flow
-- preserve current org-local behavior
-- improve email delivery and verification quality
+Status: mostly completed
+
+- [x] preserve current auth flow
+- [x] preserve current org-local behavior
+- [x] improve email verification flow
+- [x] add Google auth path on top of current MVP
+- [x] add public anonymous quick-share outside the workspace
+- [x] add creator-side quick-share revoke path
+- [ ] improve production-grade email delivery confidence further
 
 ## Phase 2 - introduce global identity
 
-- add `identity_user`
-- add `organization_membership`
-- migrate current `users` rows into identity + membership rows
-- keep old auth endpoints but change internals
+Status: mostly completed
+
+- [x] add `identity_user`
+- [x] add `organization_membership`
+- [x] keep old auth endpoints but change internals
+- [x] mirror current workspace users into identity + membership rows
+- [ ] remove long-term dependence on legacy org-scoped user duplication if the product later chooses a cleaner identity-only execution model
 
 ## Phase 3 - support multi-org membership
 
-- allow existing users to accept invites into additional orgs
-- add org switcher
-- add active-org context to access tokens
+Status: implemented for the current MVP collaboration model
+
+- [x] allow existing users to accept invites into additional orgs
+- [x] add org switcher endpoint/UI direction
+- [x] add active-org context to access tokens
+- [x] back org switching with real multi-org membership
+- [ ] optionally add a dedicated memberships API if the product outgrows auth-payload-based workspace summaries
 
 ## Phase 4 - complete vendor contract-bound sharing
 
-- make contract the primary sharing boundary
-- support both external links and vendor workspace access
-- finish revoke/offboard automation
+Status: partially completed
+
+- [x] make contract the primary sharing boundary for current org-owned vendor grants
+- [x] finish revoke/offboard automation
+- [x] support external anonymous links outside the workspace
+- [x] add owner-proposed + counterparty-accepted contract activation flow for linked org vendors
+- [ ] support vendor workspace access as a counterparty org model
+- [ ] model full vendor-side workspace actors and collaboration views
+
+## 12.1 Remaining delivery phases from the current codebase
+
+If work resumes from the live MVP as it exists on 2026-07-18, the practical implementation order should now be:
+
+### Remaining Phase A - harden the current identity model
+
+- keep the current global identity + membership model as the source of truth
+- keep org-scoped workspace users only as compatibility/execution records
+- strengthen production email delivery confidence for verification and invites
+- add more end-to-end tests for multi-org invite acceptance and workspace switching
+
+### Remaining Phase B - expand the linked-org contract model into full counterparty collaboration
+
+- model vendor-side organization identity explicitly
+- allow vendor-side members to review active contracts meant for their org
+- expose incoming contract review/approval through the product UI, not only the API
+- keep vendor visibility narrower than full internal organization membership
+- keep all reveal and grant actions auditable from both sides
+
+Current implemented baseline in the live MVP:
+
+- owner org can create a vendor linked to another onboarded org by `linkedOrganizationSlug`
+- linked-org contracts start as `PROPOSED`
+- the linked counterparty org can list incoming contracts and accept them
+- once accepted, the contract becomes `ACTIVE`
+- grant creation remains blocked until the contract is active
+
+### Remaining Phase C - strengthen trust and delivery around collaboration
+
+- improve email/invite delivery confidence for collaboration and onboarding
+- add clearer acceptance/revocation surfaces in frontend flows
+- improve end-to-end tests around linked vendor collaboration and offboarding
+
+### Remaining Phase D - strengthen trust and operations
+
+- domain verification / managed-account trust
+- invite lifecycle reliability and delivery visibility
+- observability, alerting, and production support flows around auth and vendor sharing
 
 ---
 
@@ -768,4 +848,3 @@ This design was informed by the following official documentation and product pag
 
 - Slack Connect  
   https://slack.com/connect
-

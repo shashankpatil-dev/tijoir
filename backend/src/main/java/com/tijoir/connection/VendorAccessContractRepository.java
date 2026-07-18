@@ -13,4 +13,6 @@ public interface VendorAccessContractRepository extends JpaRepository<VendorAcce
 
     List<VendorAccessContract> findAllByVendorIdAndStatus(UUID vendorId, VendorAccessContractStatus status);
 
+    List<VendorAccessContract> findAllByVendorIdAndStatusIn(UUID vendorId, Collection<VendorAccessContractStatus> statuses);
+
 }

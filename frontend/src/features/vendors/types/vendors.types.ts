@@ -9,13 +9,16 @@ export type VendorResponse = {
   contactName?: string | null;
   contactEmail?: string | null;
   notes?: string | null;
+  linkedOrganizationId?: string | null;
+  linkedOrganizationName?: string | null;
+  linkedOrganizationSlug?: string | null;
   status: VendorStatus;
   createdByName: string;
   offboardedAt?: string | null;
   createdAt: string;
 };
 
-export type VendorContractStatus = "ACTIVE" | "REVOKED" | "EXPIRED";
+export type VendorContractStatus = "PROPOSED" | "ACTIVE" | "REVOKED" | "EXPIRED";
 
 export type VendorContractResponse = {
   id: string;
@@ -53,4 +56,19 @@ export type OffboardVendorResponse = {
   revokedContracts: number;
   revokedShareLinks: number;
   offboarded: boolean;
+};
+
+export type IncomingVendorContractResponse = {
+  id: string;
+  ownerOrganizationId: string;
+  ownerOrganizationName: string;
+  ownerOrganizationSlug: string;
+  vendorId: string;
+  vendorName: string;
+  permission: ContractPermission;
+  grantCount: number;
+  status: VendorContractStatus;
+  expiresAt?: string | null;
+  counterpartyAcceptedAt?: string | null;
+  createdAt: string;
 };

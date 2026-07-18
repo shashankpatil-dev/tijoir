@@ -38,6 +38,10 @@ export const dashboardQueryKeys = {
     vendorId: string | undefined,
     params: { page: number; size: number; status: string },
   ) => ["dashboard", "vendor-contracts-page", accessToken, vendorId, params] as const,
+  incomingVendorContractsPage: (
+    accessToken: string | undefined,
+    params: { page: number; size: number; status: string },
+  ) => ["dashboard", "incoming-vendor-contracts-page", accessToken, params] as const,
   vendorContractGrantsPage: (
     accessToken: string | undefined,
     contractId: string | undefined,

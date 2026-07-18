@@ -185,6 +185,85 @@ class VendorControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("You do not have permission to manage vendors"));
     }
 
+    @Test
+    void linkedVendorContractRequiresCounterpartyAcceptanceBeforeSecretGrant() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Alpha Buyer Org", "owner@alpha-buyer.test");
+        String counterpartyToken = registerVerifyAndLogin("Beta Vendor Org", "owner@beta-vendor.test");
+
+        String vendorResponse = mockMvc.perform(post("/api/vendors")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Beta Vendor Org",
+                                  "contactName": "Vendor Security Lead",
+                                  "contactEmail": "owner@beta-vendor.test",
+                                  "linkedOrganizationSlug": "beta-vendor-org"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.linkedOrganizationSlug").value("beta-vendor-org"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String vendorId = objectMapper.readTree(vendorResponse).get("id").asText();
+        String secretId = createSecret(ownerToken, "Vendor API Key", "API_KEY", "BetaSecret@123");
+
+        String contractResponse = mockMvc.perform(post("/api/vendors/" + vendorId + "/contracts")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "permission": "VIEW_UNTIL_REVOKED"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PROPOSED"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String contractId = objectMapper.readTree(contractResponse).get("id").asText();
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "permission": "VIEW_UNTIL_REVOKED"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Secret grants can only be created for active contracts"));
+
+        mockMvc.perform(get("/api/vendors/incoming-contracts")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].status").value("PROPOSED"))
+                .andExpect(jsonPath("$.items[0].ownerOrganizationSlug").value("alpha-buyer-org"));
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/accept")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.counterpartyAcceptedAt").isString());
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "permission": "VIEW_UNTIL_REVOKED"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.secretKey").value("vendor-api-key"));
+    }
+
     private String createSecret(String ownerToken, String name, String type, String value) throws Exception {
         String createResponse = mockMvc.perform(post("/api/secrets")
                         .header("Authorization", "Bearer " + ownerToken)

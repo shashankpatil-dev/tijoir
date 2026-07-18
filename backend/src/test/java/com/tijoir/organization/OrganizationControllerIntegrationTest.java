@@ -262,6 +262,106 @@ class OrganizationControllerIntegrationTest {
                 .andExpect(jsonPath("$.requireVendorContractForShareLinks").value(true));
     }
 
+    @Test
+    void existingIdentityCanAcceptInviteIntoSecondOrganizationAndSwitchWorkspaces() throws Exception {
+        String memberEmail = "member@multi-org.test";
+        String firstOrgSessionToken = registerVerifyAndLogin("Alpha Org", memberEmail);
+
+        String secondOrgOwnerToken = registerVerifyAndLogin("Beta Org", "owner@beta-org.test");
+        String secondOrgInviteResponse = mockMvc.perform(post("/api/organization/invites")
+                        .header("Authorization", "Bearer " + secondOrgOwnerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s",
+                                  "role": "ADMIN"
+                                }
+                                """.formatted(memberEmail)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.inviteToken").isString())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String inviteToken = objectMapper.readTree(secondOrgInviteResponse).get("inviteToken").asText();
+
+        String acceptedResponse = mockMvc.perform(post("/api/organization/invites/accept")
+                        .header("Authorization", "Bearer " + firstOrgSessionToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s"
+                                }
+                                """.formatted(inviteToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organization.slug").value("beta-org"))
+                .andExpect(jsonPath("$.user.email").value(memberEmail))
+                .andExpect(jsonPath("$.user.role").value("ADMIN"))
+                .andExpect(jsonPath("$.memberships.length()").value(2))
+                .andExpect(jsonPath("$.memberships[0].organizationSlug").value("alpha-org"))
+                .andExpect(jsonPath("$.memberships[1].organizationSlug").value("beta-org"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode acceptedJson = objectMapper.readTree(acceptedResponse);
+        String betaOrgAccessToken = acceptedJson.get("accessToken").asText();
+        String alphaOrganizationId = acceptedJson.get("memberships").get(0).get("organizationId").asText();
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + betaOrgAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organization.slug").value("beta-org"))
+                .andExpect(jsonPath("$.memberships.length()").value(2));
+
+        mockMvc.perform(post("/api/auth/switch-organization")
+                        .header("Authorization", "Bearer " + betaOrgAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationId": "%s"
+                                }
+                                """.formatted(alphaOrganizationId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organization.slug").value("alpha-org"))
+                .andExpect(jsonPath("$.memberships.length()").value(2))
+                .andExpect(jsonPath("$.memberships[0].active").value(true));
+    }
+
+    @Test
+    void signedInUserCannotAcceptInviteForDifferentEmail() throws Exception {
+        String signedInToken = registerVerifyAndLogin("Gamma Org", "wrong-user@test-org.test");
+        String invitingOwnerToken = registerVerifyAndLogin("Delta Org", "owner@delta-org.test");
+
+        String inviteResponse = mockMvc.perform(post("/api/organization/invites")
+                        .header("Authorization", "Bearer " + invitingOwnerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "target-user@test-org.test",
+                                  "role": "MEMBER"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String inviteToken = objectMapper.readTree(inviteResponse).get("inviteToken").asText();
+
+        mockMvc.perform(post("/api/organization/invites/accept")
+                        .header("Authorization", "Bearer " + signedInToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s"
+                                }
+                                """.formatted(inviteToken)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Sign in with the invited email to accept this invite"));
+    }
+
 
     private String inviteAndAccept(
             String managerToken,

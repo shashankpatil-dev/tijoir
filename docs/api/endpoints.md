@@ -10,9 +10,17 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 |--------|------|------|-------|
 | POST | `/register` | public | rate-limited per IP |
 | POST | `/login` | public | rate-limited per IP + failure limit |
+| POST | `/google/exchange` | public | verifies Google ID token; returns session or `needsOrganization=true` |
+| POST | `/google/register` | public | creates org + session from verified Google identity |
+| POST | `/google/link` | bearer | link Google identity to current account |
 | POST | `/refresh` | public | refresh cookie or body; rotates the refresh token |
 | POST | `/logout` | bearer | revokes the refresh token, clears cookie |
 | GET  | `/me` | bearer | current user + org |
+| PATCH | `/me` | bearer | update profile name |
+| POST | `/switch-organization` | bearer | switches active organization in current session |
+| POST | `/password/change` | bearer | change password |
+| POST | `/password/forgot` | public | password reset request |
+| POST | `/password/reset` | public | password reset confirm |
 | POST | `/verify-email` | public | rate-limited per IP + per token |
 | POST | `/resend-verification` | public | rate-limited per IP + per email |
 
@@ -51,6 +59,9 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 ## Public Share Links — `/api/public/share-links` (no auth)
 | Method | Path | Notes |
 |--------|------|-------|
+| POST | `/quick` | create anonymous one-time quick-share; rate-limited per IP |
+| GET  | `/manage/{manageToken}` | creator-side quick-share status; rate-limited per IP + per token |
+| POST | `/manage/{manageToken}/revoke` | revoke anonymous quick-share before/after read; rate-limited per IP + per token |
 | GET  | `/{token}` | public metadata; rate-limited per IP + per token |
 | POST | `/{token}/consume` | reveal/consume; one-time for VIEW_ONCE (DB pessimistic lock); rate-limited |
 
@@ -58,18 +69,22 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET  | `` | vendor-manager | list |
-| POST | `` | vendor-manager | create vendor (CRM record) |
+| POST | `` | vendor-manager | create vendor; optional `linkedOrganizationSlug` enables counterparty handshake |
 | GET  | `/{vendorId}` | vendor-manager | detail |
 | GET  | `/{vendorId}/contracts` | vendor-manager | list contracts |
 | POST | `/{vendorId}/contracts` | vendor-manager | create access contract (see note) |
+| GET  | `/incoming-contracts` | vendor-manager | list contracts proposed to the current org as counterparty |
+| POST | `/contracts/{contractId}/accept` | vendor-manager | counterparty org accepts a proposed contract |
 | POST | `/{vendorId}/contracts/{contractId}/revoke` | vendor-manager | |
 | POST | `/{vendorId}/offboard` | vendor-manager | revokes active contracts + vendor share links |
 
-> **Vendor contract model (Phase 1):** contracts are **single-sided access grants** created
-> directly as `ACTIVE` by the owning org. There is no `proposed → accepted-by-both → active`
-> mutual-accept handshake and no counterparty tenant — a `Vendor` is a CRM record, not a
-> platform org. A real bilateral handshake is a Phase-2 item (needs a counterparty identity
-> model). Status enum: `ACTIVE / REVOKED / EXPIRED`.
+> **Vendor contract model (current):**
+> - plain CRM vendors still create contracts directly as `ACTIVE`
+> - if a vendor is linked to another onboarded org through `linkedOrganizationSlug`, contracts
+>   start as `PROPOSED`
+> - the linked counterparty org must accept before the contract becomes `ACTIVE`
+> - grant creation and vendor share-link creation stay blocked until the contract is active
+> - status enum: `PROPOSED / ACTIVE / REVOKED / EXPIRED`
 
 ## Audit — `/api/audit-events`
 | Method | Path | Auth | Notes |

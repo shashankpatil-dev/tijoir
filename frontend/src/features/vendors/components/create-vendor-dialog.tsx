@@ -7,6 +7,7 @@ export function CreateVendorDialog({
   actionBusy,
   contactEmail,
   contactName,
+  linkedOrganizationSlug,
   name,
   notes,
   onClose,
@@ -14,12 +15,14 @@ export function CreateVendorDialog({
   open,
   setContactEmail,
   setContactName,
+  setLinkedOrganizationSlug,
   setName,
   setNotes,
 }: {
   actionBusy: string | null;
   contactEmail: string;
   contactName: string;
+  linkedOrganizationSlug: string;
   name: string;
   notes: string;
   onClose: () => void;
@@ -27,6 +30,7 @@ export function CreateVendorDialog({
   open: boolean;
   setContactEmail: (value: string) => void;
   setContactName: (value: string) => void;
+  setLinkedOrganizationSlug: (value: string) => void;
   setName: (value: string) => void;
   setNotes: (value: string) => void;
 }) {
@@ -51,6 +55,13 @@ export function CreateVendorDialog({
           required={false}
           type="email"
           value={contactEmail}
+        />
+        <TextField
+          hint="Optional. Set the onboarded organization slug here when this vendor should accept contract proposals as a counterparty org."
+          label="Counterparty org slug"
+          onChange={setLinkedOrganizationSlug}
+          required={false}
+          value={linkedOrganizationSlug}
         />
         <TextAreaField
           hint="Internal operator notes for this vendor relationship."

@@ -38,6 +38,13 @@ export default function DashboardVendorsPage() {
     <>
       <VendorsView
         contractColumns={vendors.contractColumns}
+        incomingContractColumns={vendors.incomingContractColumns}
+        incomingContractPage={vendors.incomingContractPage}
+        incomingContractPageCount={vendors.incomingContractPageCount}
+        incomingContractStatusFilter={vendors.incomingContractStatusFilter}
+        incomingContracts={vendors.paginatedIncomingContracts}
+        incomingContractsLoading={vendors.incomingContractsLoading}
+        incomingContractsTotal={vendors.incomingContractsTotal}
         grantColumns={vendors.grantColumns}
         contractPage={vendors.contractPage}
         contractPageCount={vendors.contractPageCount}
@@ -72,6 +79,8 @@ export default function DashboardVendorsPage() {
         selectedVendor={vendors.selectedVendor}
         setContractPage={vendors.setContractPage}
         setContractStatusFilter={vendors.setContractStatusFilter}
+        setIncomingContractPage={vendors.setIncomingContractPage}
+        setIncomingContractStatusFilter={vendors.setIncomingContractStatusFilter}
         setGrantPage={vendors.setGrantPage}
         setGrantStatusFilter={vendors.setGrantStatusFilter}
         setShareActivityPage={vendors.setShareActivityPage}
@@ -95,6 +104,7 @@ export default function DashboardVendorsPage() {
         actionBusy={shell.actionBusy}
         contactEmail={vendors.vendorContactEmail}
         contactName={vendors.vendorContactName}
+        linkedOrganizationSlug={vendors.linkedOrganizationSlug}
         name={vendors.vendorName}
         notes={vendors.vendorNotes}
         onClose={() => vendors.setCreateVendorOpen(false)}
@@ -102,6 +112,7 @@ export default function DashboardVendorsPage() {
         open={vendors.createVendorOpen}
         setContactEmail={vendors.setVendorContactEmail}
         setContactName={vendors.setVendorContactName}
+        setLinkedOrganizationSlug={vendors.setLinkedOrganizationSlug}
         setName={vendors.setVendorName}
         setNotes={vendors.setVendorNotes}
       />
