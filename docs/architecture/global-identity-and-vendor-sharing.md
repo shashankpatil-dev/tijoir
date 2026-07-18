@@ -42,16 +42,89 @@ The target model is still **not implemented end to end**, but the core identity 
 - [x] one identity belonging to multiple organizations
 - [x] membership-backed workspace switching
 - [x] email verification and resend-verification flow
+- [x] existing but unverified identities are blocked from accepting org invites
+- [x] invite resolution exposes whether an existing identity is already verified
+- [x] verification and invite APIs expose delivery state metadata
 - [x] public anonymous one-time quick-share flow
 - [x] creator-side quick-share management and revoke flow
-- [x] vendor offboarding automation for current single-sided vendor access grants
+- [x] bilateral vendor contract proposal -> accept/reject -> active flow
+- [x] vendor-side incoming grant visibility and reveal inside the workspace
+- [x] vendor offboarding automation and grant/share-link revoke flow
 
 The core architecture from this document that still remains:
 
-- [x] bilateral vendor contract handshake with counterparty accept/reject
-- [ ] vendor org workspace access as a first-class collaboration model
+- [x] vendor org workspace access as a first-class collaboration model
 - [ ] domain-verified trust and stronger managed-account controls
-- [ ] further production email delivery confidence and invite-verification reliability
+- [ ] production SES delivery confidence in deployed AWS configuration
+- [ ] production Google OAuth reliability and exact callback/config verification
+- [ ] full end-to-end production walkthrough across multi-org, vendor, and public-share flows
+
+### Current source-of-truth summary
+
+#### Done now
+
+- global identity plus multi-organization membership is live
+- one email identity can join more than one organization through invite acceptance
+- invite acceptance works for both:
+  - a brand-new invited user
+  - an already existing identity
+- invite trust is stronger than before:
+  - existing unverified identities cannot accept invites
+  - frontend now surfaces the verify-first path clearly
+- verification and invite delivery are observable:
+  - backend returns delivery status
+  - frontend shows delivery failures in organization invites and notifications
+- vendor collaboration is no longer single-sided:
+  - one org proposes
+  - counterparty accepts or rejects
+  - grants proceed only after activation
+- vendor recipients can now reveal granted secrets from their own workspace
+- public anonymous one-time share flow is already live
+
+#### Remaining now
+
+- no major new core collaboration primitive is still missing for the MVP backend
+- the remaining gaps are mainly:
+  - production confidence
+  - trust hardening
+  - end-to-end proof
+- prove SES delivery in real deployed environment, not only with noop/dev-token behavior
+- prove Google OAuth in deployed environment, not only local/test wiring
+- complete a strict production-style manual test matrix:
+  - signup
+  - verify
+  - login
+  - invite existing identity into second org
+  - workspace switch
+  - vault create/reveal/rotate
+  - internal share
+  - vendor contract activate on both sides
+  - vendor grant reveal
+  - public share consume once
+- add domain-verification and managed-account trust controls if Tijoir wants stronger B2B admin posture
+- continue frontend clarity work so org membership, vendor collaboration, and public share flows feel obvious without product knowledge
+
+#### Practical reading of this status
+
+Tijoir has already crossed the line from a single-org vault into a real multi-tenant collaboration MVP.
+
+What remains is less about missing core domain primitives and more about:
+
+1. production confidence
+2. trust hardening
+3. clearer user-facing experience
+4. deeper operational readiness
+
+For the current implementation, the vendor collaboration model is already functionally present as:
+
+- linked vendor organization proposal
+- counterparty accept or reject
+- active-contract-only secret grants
+- counterparty incoming grant visibility
+- counterparty grant reveal
+- offboarding revoke path
+
+So the next best engineering step is to lock that behavior down with broad end-to-end integration coverage rather than invent another contract primitive.
 
 ---
 
