@@ -41,6 +41,10 @@ public class VendorContractSecretGrant {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private UserAccount createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "consumed_by_user_id")
+    private UserAccount consumedBy;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "grant_permission", nullable = false)
     private ContractPermission permission;
@@ -52,6 +56,8 @@ public class VendorContractSecretGrant {
     private Instant expiresAt;
 
     private Instant revokedAt;
+
+    private Instant consumedAt;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -134,8 +140,27 @@ public class VendorContractSecretGrant {
         return createdAt;
     }
 
+    public Instant getConsumedAt() {
+        return consumedAt;
+    }
+
+    public UserAccount getConsumedBy() {
+        return consumedBy;
+    }
+
     public boolean isExpiredAt(Instant now) {
         return expiresAt != null && !expiresAt.isAfter(now);
+    }
+
+    public boolean isConsumed() {
+        return consumedAt != null;
+    }
+
+    public void consume(UserAccount actor) {
+        if (consumedAt == null) {
+            consumedAt = Instant.now();
+            consumedBy = actor;
+        }
     }
 
     public void revoke() {

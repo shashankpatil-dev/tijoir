@@ -670,7 +670,7 @@ Status: partially completed
 - [x] finish revoke/offboard automation
 - [x] support external anonymous links outside the workspace
 - [x] add owner-proposed + counterparty-accepted contract activation flow for linked org vendors
-- [ ] support vendor workspace access as a counterparty org model
+- [x] support vendor workspace access as a counterparty org model
 - [ ] model full vendor-side workspace actors and collaboration views
 
 ## 12.1 Remaining delivery phases from the current codebase
@@ -698,6 +698,9 @@ Current implemented baseline in the live MVP:
 - linked-org contracts start as `PROPOSED`
 - the linked counterparty org can list incoming contracts and accept or reject them
 - the linked counterparty org can inspect accepted incoming contracts and the attached grant inventory from its own workspace
+- the linked counterparty org can reveal active incoming grants from its own workspace under contract permission rules
+- `VIEW_ONCE` incoming grants are consumed on first reveal, `VIEW_UNTIL_REVOKED` remains repeatable, and `ROTATION_NOTIFY_ONLY` stays metadata-only
+- incoming grant reveals are audited for both the owner org and the linked counterparty org
 - accepted proposals become `ACTIVE`, rejected proposals become `REJECTED`
 - grant creation remains blocked until the contract is active
 

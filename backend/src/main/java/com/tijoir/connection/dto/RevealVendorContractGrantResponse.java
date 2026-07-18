@@ -7,22 +7,17 @@ import com.tijoir.secret.SecretType;
 import java.time.Instant;
 import java.util.UUID;
 
-public record VendorContractGrantResponse(
-        UUID id,
+public record RevealVendorContractGrantResponse(
+        UUID grantId,
         UUID contractId,
-        UUID vendorId,
-        String vendorName,
         UUID secretId,
         String secretName,
         String secretKey,
         SecretType secretType,
         ContractPermission permission,
         VendorContractGrantStatus status,
-        Instant expiresAt,
-        Instant revokedAt,
-        Instant consumedAt,
-        String consumedByName,
-        boolean canReveal,
-        Instant createdAt
+        int versionNumber,
+        String value,
+        Instant consumedAt
 ) {
 }

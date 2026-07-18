@@ -6,6 +6,7 @@ import type { PageResponse } from "@/lib/api/types";
 import type {
   IncomingVendorContractResponse,
   OffboardVendorResponse,
+  RevealVendorContractGrantResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
   VendorContractGrantStatus,
@@ -189,6 +190,18 @@ export async function revokeVendorContractGrant(
 ) {
   return authenticatedApiRequest<VendorContractGrantResponse>(
     `/api/vendors/contracts/${contractId}/grants/${grantId}/revoke`,
+    accessToken,
+    { method: "POST" },
+  );
+}
+
+export async function revealVendorContractGrant(
+  accessToken: string,
+  contractId: string,
+  grantId: string,
+) {
+  return authenticatedApiRequest<RevealVendorContractGrantResponse>(
+    `/api/vendors/contracts/${contractId}/grants/${grantId}/reveal`,
     accessToken,
     { method: "POST" },
   );

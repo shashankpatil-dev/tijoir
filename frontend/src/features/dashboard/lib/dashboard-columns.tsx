@@ -242,8 +242,10 @@ export function buildIncomingVendorContractColumns({
 
 export function buildVendorGrantColumns({
   onRevoke,
+  onReveal,
 }: {
   onRevoke?: (grant: VendorContractGrantResponse) => void;
+  onReveal?: (grant: VendorContractGrantResponse) => void;
 }): DataTableColumn<VendorContractGrantResponse>[] {
   const columns: DataTableColumn<VendorContractGrantResponse>[] = [
     {
@@ -287,7 +289,7 @@ export function buildVendorGrantColumns({
     },
   ];
 
-  if (onRevoke) {
+  if (onRevoke || onReveal) {
     columns.push({
       key: "actions",
       label: "Actions",
@@ -296,15 +298,30 @@ export function buildVendorGrantColumns({
           buttonClassName="px-3 py-2 text-xs"
           label={<span aria-label="Grant actions">•••</span>}
         >
-          <MenuItem
-            onClick={() => {
-              if (grant.status === "ACTIVE") {
-                onRevoke(grant);
-              }
-            }}
-          >
-            <span>Revoke grant</span>
-          </MenuItem>
+          {onReveal ? (
+            <MenuItem
+              disabled={!grant.canReveal}
+              onClick={() => {
+                if (grant.canReveal) {
+                  onReveal(grant);
+                }
+              }}
+            >
+              <span>Reveal secret</span>
+            </MenuItem>
+          ) : null}
+          {onRevoke ? (
+            <MenuItem
+              disabled={grant.status !== "ACTIVE"}
+              onClick={() => {
+                if (grant.status === "ACTIVE") {
+                  onRevoke(grant);
+                }
+              }}
+            >
+              <span>Revoke grant</span>
+            </MenuItem>
+          ) : null}
         </Menu>
       ),
     });

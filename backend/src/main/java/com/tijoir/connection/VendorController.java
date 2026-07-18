@@ -7,6 +7,7 @@ import com.tijoir.connection.dto.CreateVendorContractGrantRequest;
 import com.tijoir.connection.dto.CreateVendorRequest;
 import com.tijoir.connection.dto.IncomingVendorContractResponse;
 import com.tijoir.connection.dto.OffboardVendorResponse;
+import com.tijoir.connection.dto.RevealVendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
 import com.tijoir.connection.dto.VendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorResponse;
@@ -136,6 +137,15 @@ public class VendorController {
             @PathVariable UUID grantId
     ) {
         return vendorService.revokeGrant(user, contractId, grantId);
+    }
+
+    @PostMapping("/contracts/{contractId}/grants/{grantId}/reveal")
+    public RevealVendorContractGrantResponse revealGrant(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID contractId,
+            @PathVariable UUID grantId
+    ) {
+        return vendorService.revealGrant(user, contractId, grantId);
     }
 
     @PostMapping("/{vendorId}/contracts/{contractId}/revoke")

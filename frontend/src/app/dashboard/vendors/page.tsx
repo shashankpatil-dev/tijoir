@@ -52,6 +52,7 @@ export default function DashboardVendorsPage() {
         incomingContracts={vendors.paginatedIncomingContracts}
         incomingContractsLoading={vendors.incomingContractsLoading}
         incomingContractsTotal={vendors.incomingContractsTotal}
+        onRevealIncomingGrant={vendors.handleRevealIncomingGrant}
         grantColumns={vendors.grantColumns}
         contractPage={vendors.contractPage}
         contractPageCount={vendors.contractPageCount}
@@ -82,12 +83,15 @@ export default function DashboardVendorsPage() {
             vendors.setVendorOffboardTarget(vendors.selectedVendor);
           }
         }}
+        revealedIncomingGrant={vendors.revealedIncomingGrant}
         selectedIncomingContract={vendors.selectedIncomingContract}
+        selectedIncomingGrant={vendors.selectedIncomingGrant}
         selectedContract={vendors.selectedContract}
         selectedVendor={vendors.selectedVendor}
         setContractPage={vendors.setContractPage}
         setContractStatusFilter={vendors.setContractStatusFilter}
         setIncomingContractPage={vendors.setIncomingContractPage}
+        setSelectedIncomingGrantId={vendors.setSelectedIncomingGrantId}
         setIncomingGrantPage={vendors.setIncomingGrantPage}
         setIncomingGrantStatusFilter={vendors.setIncomingGrantStatusFilter}
         setIncomingContractStatusFilter={vendors.setIncomingContractStatusFilter}

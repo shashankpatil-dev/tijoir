@@ -77,6 +77,7 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 | POST | `/contracts/{contractId}/accept` | vendor-manager | counterparty org accepts a proposed contract |
 | POST | `/contracts/{contractId}/reject` | vendor-manager | counterparty org rejects a proposed contract |
 | GET  | `/contracts/{contractId}/grants` | vendor-manager | owner org or linked counterparty org can inspect grant inventory for an accessible contract |
+| POST | `/contracts/{contractId}/grants/{grantId}/reveal` | vendor-manager | linked counterparty org reveals an active contract grant; `VIEW_ONCE` consumes once, `ROTATION_NOTIFY_ONLY` is blocked |
 | POST | `/{vendorId}/contracts/{contractId}/revoke` | vendor-manager | |
 | POST | `/{vendorId}/offboard` | vendor-manager | revokes active contracts + vendor share links |
 
@@ -87,6 +88,7 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 > - the linked counterparty org can accept or reject the proposal
 > - only accepted proposals become `ACTIVE`
 > - grant creation and vendor share-link creation stay blocked until the contract is active
+> - linked counterparty org reveal stays inside the vendor workspace and is audited for both sides
 > - status enum: `PROPOSED / ACTIVE / REJECTED / REVOKED / EXPIRED`
 
 ## Audit — `/api/audit-events`

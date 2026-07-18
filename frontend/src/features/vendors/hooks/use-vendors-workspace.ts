@@ -30,12 +30,14 @@ import {
   fetchVendorContractsPage,
   fetchVendorsPage,
   offboardVendor,
+  revealVendorContractGrant,
   rejectIncomingVendorContract,
   revokeVendorContract,
   revokeVendorContractGrant,
 } from "@/features/vendors/api/vendors.api";
 import type {
   IncomingVendorContractResponse,
+  RevealVendorContractGrantResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
   VendorResponse,
@@ -64,8 +66,11 @@ export function useVendorsWorkspace({
   const [incomingContractStatusFilter, setIncomingContractStatusFilter] = useState("ALL");
   const [incomingContractPage, setIncomingContractPage] = useState(1);
   const [selectedIncomingContractId, setSelectedIncomingContractId] = useState("");
+  const [selectedIncomingGrantId, setSelectedIncomingGrantId] = useState("");
   const [incomingGrantStatusFilter, setIncomingGrantStatusFilter] = useState("ALL");
   const [incomingGrantPage, setIncomingGrantPage] = useState(1);
+  const [revealedIncomingGrant, setRevealedIncomingGrant] =
+    useState<RevealVendorContractGrantResponse | null>(null);
   const [contractStatusFilter, setContractStatusFilter] = useState("ALL");
   const [contractPage, setContractPage] = useState(1);
   const [selectedContractId, setSelectedContractId] = useState("");
@@ -108,6 +113,11 @@ export function useVendorsWorkspace({
   useEffect(() => {
     setIncomingGrantPage(1);
   }, [incomingGrantStatusFilter, selectedIncomingContractId]);
+
+  useEffect(() => {
+    setSelectedIncomingGrantId("");
+    setRevealedIncomingGrant(null);
+  }, [selectedIncomingContractId]);
 
   useEffect(() => {
     setContractPage(1);
@@ -271,6 +281,8 @@ export function useVendorsWorkspace({
   const incomingGrantPageCount =
     incomingGrantsPageQuery.data?.totalPages ??
     pageCount(incomingContractGrants.length, DASHBOARD_ITEMS_PER_PAGE);
+  const selectedIncomingGrant =
+    incomingContractGrants.find((grant) => grant.id === selectedIncomingGrantId) ?? null;
 
   useEffect(() => {
     if (!secretOptions.length) {
@@ -426,7 +438,12 @@ export function useVendorsWorkspace({
   );
 
   const incomingGrantColumns = useMemo<DataTableColumn<VendorContractGrantResponse>[]>(
-    () => buildVendorGrantColumns({}),
+    () =>
+      buildVendorGrantColumns({
+        onReveal: (grant) => {
+          void handleRevealIncomingGrant(grant);
+        },
+      }),
     [],
   );
 
@@ -495,6 +512,11 @@ export function useVendorsWorkspace({
   const revokeVendorContractGrantMutation = useMutation({
     mutationFn: (payload: { contractId: string; grantId: string }) =>
       revokeVendorContractGrant(sessionAccessToken as string, payload.contractId, payload.grantId),
+  });
+
+  const revealIncomingVendorGrantMutation = useMutation({
+    mutationFn: (payload: { contractId: string; grantId: string }) =>
+      revealVendorContractGrant(sessionAccessToken as string, payload.contractId, payload.grantId),
   });
 
   const offboardVendorMutation = useMutation({
@@ -833,6 +855,44 @@ export function useVendorsWorkspace({
     }
   }
 
+  async function handleRevealIncomingGrant(grant: VendorContractGrantResponse) {
+    if (!sessionAccessToken) {
+      router.replace("/dashboard/vendors");
+      return;
+    }
+
+    setActionBusy(`reveal-incoming-grant-${grant.id}`);
+    setMessage("Revealing vendor contract secret");
+
+    try {
+      const revealed = await revealIncomingVendorGrantMutation.mutateAsync({
+        contractId: grant.contractId,
+        grantId: grant.id,
+      });
+      setSelectedIncomingGrantId(grant.id);
+      setRevealedIncomingGrant(revealed);
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboard", "incoming-vendor-contracts-page", sessionAccessToken],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboard", "vendor-contract-grants-page", sessionAccessToken, grant.contractId],
+      });
+      setMessage(`Revealed ${revealed.secretKey}.`);
+      showToast({
+        title: "Contract grant revealed",
+        description:
+          revealed.permission === "VIEW_ONCE"
+            ? `${revealed.secretKey} was revealed and consumed under one-time access.`
+            : `${revealed.secretKey} was revealed through the active vendor contract.`,
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not reveal vendor contract secret");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   function openCreateContract() {
     if (!selectedVendor) {
       setMessage("Select a vendor before creating a contract.");
@@ -889,6 +949,7 @@ export function useVendorsWorkspace({
     grantSecretId,
     grantStatusFilter,
     handleAcceptIncomingContract,
+    handleRevealIncomingGrant,
     handleRevokeShareActivityLink,
     handleCreateVendor,
     handleCreateVendorContract,
@@ -911,9 +972,12 @@ export function useVendorsWorkspace({
     incomingContractGrants,
     paginatedIncomingContracts,
     paginatedVendors,
+    revealedIncomingGrant,
     secretOptions,
     selectedIncomingContract,
     selectedIncomingContractId,
+    selectedIncomingGrant,
+    selectedIncomingGrantId,
     selectedContract,
     selectedContractId,
     selectedVendor,
@@ -941,6 +1005,7 @@ export function useVendorsWorkspace({
     setShareActivityStatusFilter,
     setShareRevokeTarget,
     setSelectedIncomingContractId,
+    setSelectedIncomingGrantId,
     setSelectedContractId,
     setSelectedVendorId,
     setVendorContactEmail,

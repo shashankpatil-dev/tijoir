@@ -52,7 +52,24 @@ export type VendorContractGrantResponse = {
   status: VendorContractGrantStatus;
   expiresAt?: string | null;
   revokedAt?: string | null;
+  consumedAt?: string | null;
+  consumedByName?: string | null;
+  canReveal: boolean;
   createdAt: string;
+};
+
+export type RevealVendorContractGrantResponse = {
+  grantId: string;
+  contractId: string;
+  secretId: string;
+  secretName: string;
+  secretKey: string;
+  secretType: SecretType;
+  permission: ContractPermission;
+  status: VendorContractGrantStatus;
+  versionNumber: number;
+  value: string;
+  consumedAt?: string | null;
 };
 
 export type OffboardVendorResponse = {

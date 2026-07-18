@@ -13,6 +13,7 @@ import com.tijoir.connection.dto.CreateVendorContractGrantRequest;
 import com.tijoir.connection.dto.CreateVendorRequest;
 import com.tijoir.connection.dto.IncomingVendorContractResponse;
 import com.tijoir.connection.dto.OffboardVendorResponse;
+import com.tijoir.connection.dto.RevealVendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
 import com.tijoir.connection.dto.VendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorResponse;
@@ -23,10 +24,14 @@ import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.dashboard.DashboardSummaryService;
 import com.tijoir.notification.NotificationService;
+import com.tijoir.secret.SecretPayloadStore;
 import com.tijoir.secret.SecretStatus;
+import com.tijoir.secret.SecretVersion;
+import com.tijoir.secret.SecretVersionRepository;
 import com.tijoir.secret.VaultSecret;
 import com.tijoir.secret.VaultSecretRepository;
 import com.tijoir.sharelink.ShareLink;
+import com.tijoir.sharelink.ShareLinkConsumeGuard;
 import com.tijoir.sharelink.ShareLinkRepository;
 import com.tijoir.sharelink.ShareLinkStatus;
 import jakarta.persistence.criteria.Predicate;
@@ -51,7 +56,10 @@ public class VendorService {
     private final VendorAccessContractRepository vendorAccessContractRepository;
     private final VendorContractSecretGrantRepository vendorContractSecretGrantRepository;
     private final VaultSecretRepository vaultSecretRepository;
+    private final SecretVersionRepository secretVersionRepository;
+    private final SecretPayloadStore secretPayloadStore;
     private final ShareLinkRepository shareLinkRepository;
+    private final ShareLinkConsumeGuard shareLinkConsumeGuard;
     private final OrganizationRepository organizationRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
@@ -64,7 +72,10 @@ public class VendorService {
             VendorAccessContractRepository vendorAccessContractRepository,
             VendorContractSecretGrantRepository vendorContractSecretGrantRepository,
             VaultSecretRepository vaultSecretRepository,
+            SecretVersionRepository secretVersionRepository,
+            SecretPayloadStore secretPayloadStore,
             ShareLinkRepository shareLinkRepository,
+            ShareLinkConsumeGuard shareLinkConsumeGuard,
             OrganizationRepository organizationRepository,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
@@ -76,7 +87,10 @@ public class VendorService {
         this.vendorAccessContractRepository = vendorAccessContractRepository;
         this.vendorContractSecretGrantRepository = vendorContractSecretGrantRepository;
         this.vaultSecretRepository = vaultSecretRepository;
+        this.secretVersionRepository = secretVersionRepository;
+        this.secretPayloadStore = secretPayloadStore;
         this.shareLinkRepository = shareLinkRepository;
+        this.shareLinkConsumeGuard = shareLinkConsumeGuard;
         this.organizationRepository = organizationRepository;
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
@@ -511,6 +525,100 @@ public class VendorService {
     }
 
     @Transactional
+    public RevealVendorContractGrantResponse revealGrant(
+            AuthenticatedUser principal,
+            UUID contractId,
+            UUID grantId
+    ) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireVendorManager(actor.getRole());
+
+        VendorContractSecretGrant grant = findIncomingRevealGrant(principal.organizationId(), contractId, grantId);
+
+        try (ShareLinkConsumeGuard.GuardLease ignored =
+                     shareLinkConsumeGuard.acquire("vendor-grant:" + grant.getId())) {
+            Instant now = Instant.now();
+            VendorAccessContract contract = grant.getContract();
+            ensureVendorActive(contract.getVendor());
+            expireContractIfNeeded(contract, now);
+            if (contract.getStatus() != VendorAccessContractStatus.ACTIVE) {
+                throw new ApiException(HttpStatus.GONE, "Vendor contract is no longer active");
+            }
+
+            expireGrantIfNeeded(grant, now);
+            if (grant.getStatus() != VendorContractGrantStatus.ACTIVE) {
+                throw new ApiException(HttpStatus.GONE, "Vendor contract grant is no longer active");
+            }
+            if (grant.getPermission() == ContractPermission.ROTATION_NOTIFY_ONLY) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "This vendor contract grant does not permit secret reveal");
+            }
+            if (grant.getPermission() == ContractPermission.VIEW_ONCE && grant.isConsumed()) {
+                throw new ApiException(HttpStatus.GONE, "Vendor contract grant has already been consumed");
+            }
+
+            VaultSecret secret = grant.getSecret();
+            if (secret.getStatus() != SecretStatus.ACTIVE) {
+                throw new ApiException(HttpStatus.GONE, "The underlying secret is no longer available");
+            }
+
+            SecretVersion version = secretVersionRepository
+                    .findBySecretIdAndVersionNumber(secret.getId(), secret.getCurrentVersionNumber())
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Secret version not found"));
+
+            if (grant.getPermission() == ContractPermission.VIEW_ONCE) {
+                grant.consume(actor);
+            }
+
+            Map<String, Object> auditDetails = new LinkedHashMap<>();
+            auditDetails.put("contractId", contract.getId());
+            auditDetails.put("vendorId", contract.getVendor().getId());
+            auditDetails.put("vendorName", contract.getVendor().getName());
+            auditDetails.put("secretId", secret.getId());
+            auditDetails.put("secretKey", secret.getSecretKey());
+            auditDetails.put("permission", grant.getPermission().name());
+            auditDetails.put("version", version.getVersionNumber());
+            auditDetails.put("ownerOrganizationId", contract.getOrganization().getId());
+            auditDetails.put("ownerOrganizationSlug", contract.getOrganization().getSlug());
+            auditDetails.put("recipientOrganizationId", actor.getOrganization().getId());
+            auditDetails.put("recipientOrganizationSlug", actor.getOrganization().getSlug());
+
+            auditEventRepository.save(new AuditEvent(
+                    contract.getOrganization(),
+                    actor,
+                    AuditAction.VENDOR_CONTRACT_GRANT_REVEALED,
+                    "VENDOR_CONTRACT_SECRET_GRANT",
+                    grant.getId(),
+                    toJson(auditDetails)
+            ));
+            auditEventRepository.save(new AuditEvent(
+                    actor.getOrganization(),
+                    actor,
+                    AuditAction.VENDOR_CONTRACT_GRANT_REVEALED,
+                    "VENDOR_CONTRACT_SECRET_GRANT",
+                    grant.getId(),
+                    toJson(auditDetails)
+            ));
+
+            dashboardSummaryService.evict(contract.getOrganization().getId());
+            dashboardSummaryService.evict(actor.getOrganization().getId());
+
+            return new RevealVendorContractGrantResponse(
+                    grant.getId(),
+                    contract.getId(),
+                    secret.getId(),
+                    secret.getName(),
+                    secret.getSecretKey(),
+                    secret.getSecretType(),
+                    grant.getPermission(),
+                    effectiveGrantStatus(grant, Instant.now()),
+                    version.getVersionNumber(),
+                    secretPayloadStore.reveal(version),
+                    grant.getConsumedAt()
+            );
+        }
+    }
+
+    @Transactional
     public OffboardVendorResponse offboard(AuthenticatedUser principal, UUID vendorId) {
         UserAccount actor = authorizationService.requireActor(principal);
         authorizationService.requireVendorManager(actor.getRole());
@@ -590,6 +698,22 @@ public class VendorService {
             return contract;
         }
         throw new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found");
+    }
+
+    private VendorContractSecretGrant findIncomingRevealGrant(UUID organizationId, UUID contractId, UUID grantId) {
+        VendorAccessContract contract = vendorAccessContractRepository.findById(contractId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
+        Organization linkedOrganization = contract.getVendor().getLinkedOrganization();
+        if (linkedOrganization == null || !linkedOrganization.getId().equals(organizationId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Incoming vendor contract not found");
+        }
+
+        VendorContractSecretGrant grant = vendorContractSecretGrantRepository.findById(grantId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract grant not found"));
+        if (!grant.getContract().getId().equals(contract.getId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Vendor contract grant not found");
+        }
+        return grant;
     }
 
     private Organization resolveLinkedOrganization(Organization ownerOrganization, String linkedOrganizationSlug) {
@@ -698,6 +822,11 @@ public class VendorService {
             VendorContractSecretGrant grant,
             VendorContractGrantStatus status
     ) {
+        VendorAccessContractStatus contractStatus = effectiveContractStatus(grant.getContract(), Instant.now());
+        boolean canReveal = status == VendorContractGrantStatus.ACTIVE
+                && contractStatus == VendorAccessContractStatus.ACTIVE
+                && grant.getPermission() != ContractPermission.ROTATION_NOTIFY_ONLY
+                && !(grant.getPermission() == ContractPermission.VIEW_ONCE && grant.isConsumed());
         return new VendorContractGrantResponse(
                 grant.getId(),
                 grant.getContract().getId(),
@@ -711,6 +840,9 @@ public class VendorService {
                 status,
                 grant.getExpiresAt(),
                 grant.getRevokedAt(),
+                grant.getConsumedAt(),
+                grant.getConsumedBy() != null ? grant.getConsumedBy().getName() : null,
+                canReveal,
                 grant.getCreatedAt()
         );
     }

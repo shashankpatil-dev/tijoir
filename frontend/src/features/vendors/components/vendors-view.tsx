@@ -23,6 +23,7 @@ import {
 import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
 import type {
   IncomingVendorContractResponse,
+  RevealVendorContractGrantResponse,
   VendorContractResponse,
   VendorContractGrantResponse,
   VendorResponse,
@@ -44,6 +45,7 @@ export function VendorsView({
   incomingContracts,
   incomingContractsLoading,
   incomingContractsTotal,
+  onRevealIncomingGrant,
   grantColumns,
   contractPage,
   contractPageCount,
@@ -64,7 +66,9 @@ export function VendorsView({
   onCreateGrant,
   onCreateVendor,
   onOffboardVendor,
+  revealedIncomingGrant,
   selectedIncomingContract,
+  selectedIncomingGrant,
   shareActivityColumns,
   shareActivityLoading,
   shareActivityPage,
@@ -76,6 +80,7 @@ export function VendorsView({
   setContractPage,
   setContractStatusFilter,
   setIncomingContractPage,
+  setSelectedIncomingGrantId,
   setIncomingGrantPage,
   setIncomingGrantStatusFilter,
   setIncomingContractStatusFilter,
@@ -113,6 +118,7 @@ export function VendorsView({
   incomingContracts: IncomingVendorContractResponse[];
   incomingContractsLoading: boolean;
   incomingContractsTotal: number;
+  onRevealIncomingGrant: (grant: VendorContractGrantResponse) => void;
   grantColumns: DataTableColumn<VendorContractGrantResponse>[];
   contractPage: number;
   contractPageCount: number;
@@ -133,7 +139,9 @@ export function VendorsView({
   onCreateGrant: () => void;
   onCreateVendor: () => void;
   onOffboardVendor: () => void;
+  revealedIncomingGrant: RevealVendorContractGrantResponse | null;
   selectedIncomingContract: IncomingVendorContractResponse | null;
+  selectedIncomingGrant: VendorContractGrantResponse | null;
   shareActivityColumns: DataTableColumn<ShareLinkResponse>[];
   shareActivityLoading: boolean;
   shareActivityPage: number;
@@ -145,6 +153,7 @@ export function VendorsView({
   setContractPage: (page: number) => void;
   setContractStatusFilter: (value: string) => void;
   setIncomingContractPage: (page: number) => void;
+  setSelectedIncomingGrantId: (value: string) => void;
   setIncomingGrantPage: (page: number) => void;
   setIncomingGrantStatusFilter: (value: string) => void;
   setIncomingContractStatusFilter: (value: string) => void;
@@ -273,7 +282,9 @@ export function VendorsView({
                 emptyDescription="Grant inventory becomes visible here after the owner organization attaches secrets to this contract."
                 emptyTitle="No grants available yet"
                 loading={incomingGrantsLoading}
+                onRowClick={(grant) => setSelectedIncomingGrantId(grant.id)}
                 rowKey={(grant) => grant.id}
+                selectedRowKey={selectedIncomingGrant?.id ?? null}
               />
 
               <PaginationControls
@@ -283,6 +294,101 @@ export function VendorsView({
                 pageCount={incomingGrantPageCount}
                 totalItems={incomingGrantsTotal}
               />
+
+              {selectedIncomingGrant ? (
+                <div className="space-y-4 rounded-2xl border border-border bg-(--color-panel) p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-(--color-ink-strong)">
+                        Selected incoming grant
+                      </p>
+                      <p className="text-sm text-muted">
+                        Reveal stays bound to the accepted contract and your current organization session.
+                      </p>
+                    </div>
+                    <Button
+                      disabled={!selectedIncomingGrant.canReveal}
+                      onClick={() => onRevealIncomingGrant(selectedIncomingGrant)}
+                      type="button"
+                    >
+                      Reveal secret
+                    </Button>
+                  </div>
+
+                  <DefinitionRows
+                    items={[
+                      { label: "Secret", value: selectedIncomingGrant.secretName },
+                      { label: "Secret key", value: selectedIncomingGrant.secretKey },
+                      { label: "Permission", value: selectedIncomingGrant.permission },
+                      { label: "Status", value: selectedIncomingGrant.status },
+                      { label: "Expires at", value: selectedIncomingGrant.expiresAt || "No expiry" },
+                      {
+                        label: "Consumed at",
+                        value: selectedIncomingGrant.consumedAt || "Not consumed",
+                      },
+                      {
+                        label: "Consumed by",
+                        value: selectedIncomingGrant.consumedByName || "Not consumed",
+                      },
+                    ]}
+                  />
+
+                  {selectedIncomingGrant.permission === "ROTATION_NOTIFY_ONLY" ? (
+                    <InlineMessage
+                      body="This grant only signals rotation state. Raw reveal is intentionally blocked."
+                      title="Metadata-only contract grant"
+                      tone="warning"
+                    />
+                  ) : null}
+
+                  {selectedIncomingGrant.permission === "VIEW_ONCE" &&
+                  selectedIncomingGrant.consumedAt ? (
+                    <InlineMessage
+                      body="This one-time contract grant has already been used. A new grant is required for future raw access."
+                      title="One-time access consumed"
+                      tone="warning"
+                    />
+                  ) : null}
+
+                  <div className="space-y-3 rounded-2xl border border-dashed border-border bg-(--color-surface) p-4">
+                    <div>
+                      <p className="text-sm font-semibold text-(--color-ink-strong)">
+                        Reveal output
+                      </p>
+                      <p className="text-sm text-muted">
+                        Only active grants with reveal permission can return the current secret value.
+                      </p>
+                    </div>
+
+                    {revealedIncomingGrant &&
+                    revealedIncomingGrant.grantId === selectedIncomingGrant.id ? (
+                      <div className="space-y-3">
+                        <DefinitionRows
+                          items={[
+                            { label: "Secret key", value: revealedIncomingGrant.secretKey },
+                            { label: "Version", value: `v${revealedIncomingGrant.versionNumber}` },
+                            { label: "Permission", value: revealedIncomingGrant.permission },
+                            {
+                              label: "Consumed at",
+                              value: revealedIncomingGrant.consumedAt || "Not consumed",
+                            },
+                          ]}
+                        />
+                        <div className="rounded-2xl bg-(--color-ink-strong) p-4">
+                          <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-sm text-white">
+                            {revealedIncomingGrant.value}
+                          </pre>
+                        </div>
+                      </div>
+                    ) : (
+                      <EmptyState
+                        description="Reveal the selected grant only when the raw credential is actually needed."
+                        title="No revealed value"
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

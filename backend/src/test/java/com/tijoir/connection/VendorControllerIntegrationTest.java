@@ -251,7 +251,7 @@ class VendorControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.counterpartyAcceptedAt").isString());
 
-        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants")
+        String grantResponse = mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants")
                         .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -261,14 +261,106 @@ class VendorControllerIntegrationTest {
                                 }
                                 """.formatted(secretId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.secretKey").value("vendor-api-key"));
+                .andExpect(jsonPath("$.secretKey").value("vendor-api-key"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String grantId = objectMapper.readTree(grantResponse).get("id").asText();
 
         mockMvc.perform(get("/api/vendors/contracts/" + contractId + "/grants")
                         .header("Authorization", "Bearer " + counterpartyToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].secretKey").value("vendor-api-key"))
-                .andExpect(jsonPath("$.items[0].permission").value("VIEW_UNTIL_REVOKED"));
+                .andExpect(jsonPath("$.items[0].permission").value("VIEW_UNTIL_REVOKED"))
+                .andExpect(jsonPath("$.items[0].canReveal").value(true));
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants/" + grantId + "/reveal")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.secretKey").value("vendor-api-key"))
+                .andExpect(jsonPath("$.value").value("BetaSecret@123"))
+                .andExpect(jsonPath("$.permission").value("VIEW_UNTIL_REVOKED"));
+    }
+
+    @Test
+    void viewOnceIncomingGrantCanBeRevealedOnlyOnceByCounterparty() throws Exception {
+        String ownerToken = registerVerifyAndLogin("Omega Buyer Org", "owner@omega-buyer.test");
+        String counterpartyToken = registerVerifyAndLogin("Sigma Vendor Org", "owner@sigma-vendor.test");
+
+        String vendorResponse = mockMvc.perform(post("/api/vendors")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Sigma Vendor Org",
+                                  "contactName": "Vendor Security Lead",
+                                  "contactEmail": "owner@sigma-vendor.test",
+                                  "linkedOrganizationSlug": "sigma-vendor-org"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String vendorId = objectMapper.readTree(vendorResponse).get("id").asText();
+        String secretId = createSecret(ownerToken, "Partner Token", "TOKEN", "SigmaSecret@123");
+
+        String contractResponse = mockMvc.perform(post("/api/vendors/" + vendorId + "/contracts")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "permission": "VIEW_ONCE"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String contractId = objectMapper.readTree(contractResponse).get("id").asText();
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/accept")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        String grantResponse = mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "permission": "VIEW_ONCE"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String grantId = objectMapper.readTree(grantResponse).get("id").asText();
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants/" + grantId + "/reveal")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.secretKey").value("partner-token"))
+                .andExpect(jsonPath("$.value").value("SigmaSecret@123"))
+                .andExpect(jsonPath("$.consumedAt").isString());
+
+        mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants/" + grantId + "/reveal")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.message").value("Vendor contract grant has already been consumed"));
+
+        mockMvc.perform(get("/api/vendors/contracts/" + contractId + "/grants")
+                        .header("Authorization", "Bearer " + counterpartyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].consumedAt").isString())
+                .andExpect(jsonPath("$.items[0].canReveal").value(false));
     }
 
     @Test
