@@ -39,6 +39,9 @@ export type RegisterResponse = {
   verificationEmailRequested?: boolean;
   emailVerificationToken?: string;
   emailVerificationExpiresAt?: string;
+  emailDeliveryStatus?: "NOT_REQUESTED" | "SKIPPED" | "SENT" | "FAILED" | null;
+  emailDeliveredAt?: string | null;
+  emailDeliveryError?: string | null;
 };
 
 export type PendingVerification = {
@@ -56,6 +59,7 @@ export type InviteResolutionResponse = {
   status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
   expiresAt: string;
   existingAccount: boolean;
+  existingAccountVerified: boolean;
 };
 
 export type GoogleExchangeResponse = {

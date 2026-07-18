@@ -1,6 +1,7 @@
 package com.tijoir.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.tijoir.notification.NotificationEmailDeliveryStatus;
 
 import java.time.Instant;
 
@@ -10,6 +11,9 @@ public record RegisterResponse(
         boolean verificationRequired,
         boolean verificationEmailRequested,
         String emailVerificationToken,
-        Instant emailVerificationExpiresAt
+        Instant emailVerificationExpiresAt,
+        NotificationEmailDeliveryStatus emailDeliveryStatus,
+        Instant emailDeliveredAt,
+        String emailDeliveryError
 ) {
 }

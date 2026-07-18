@@ -19,6 +19,8 @@ export type InviteSummary = {
   acceptedAt?: string | null;
   createdAt: string;
   emailDeliveryStatus?: string | null;
+  emailDeliveredAt?: string | null;
+  emailDeliveryError?: string | null;
   inviteToken?: string | null;
   acceptPath?: string | null;
 };

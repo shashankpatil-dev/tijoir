@@ -138,8 +138,8 @@ class OrganizationControllerIntegrationTest {
                                   "password": "MemberPass@123"
                                 }
                                 """.formatted(firstToken)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid invite token"));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Invite not found"));
 
         mockMvc.perform(post("/api/organization/invites/accept")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -395,6 +395,90 @@ class OrganizationControllerIntegrationTest {
                 .andExpect(jsonPath("$.organization.slug").value("alpha-org"))
                 .andExpect(jsonPath("$.memberships.length()").value(2))
                 .andExpect(jsonPath("$.memberships[0].active").value(true));
+    }
+
+    @Test
+    void unverifiedExistingIdentityCannotAcceptInviteUntilEmailIsVerified() throws Exception {
+        String registerResponse = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "organizationName": "Unverified Home Org",
+                                  "organizationEmail": "security@unverified-home.test",
+                                  "userName": "Owner User",
+                                  "userEmail": "member@unverified-cross-org.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.emailDeliveryStatus").value("SKIPPED"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String verificationToken = objectMapper.readTree(registerResponse).get("emailVerificationToken").asText();
+        String invitingOwnerToken = registerVerifyAndLogin("Verified Target Org", "owner@verified-target.test");
+
+        String inviteResponse = mockMvc.perform(post("/api/organization/invites")
+                        .header("Authorization", "Bearer " + invitingOwnerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "member@unverified-cross-org.test",
+                                  "role": "MEMBER"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String inviteToken = objectMapper.readTree(inviteResponse).get("inviteToken").asText();
+
+        mockMvc.perform(get("/api/organization/invites/resolve?token=" + inviteToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.existingAccount").value(true))
+                .andExpect(jsonPath("$.existingAccountVerified").value(false));
+
+        mockMvc.perform(post("/api/organization/invites/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s"
+                                }
+                                """.formatted(inviteToken)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Account already exists but the email is not verified. Verify this email before accepting the invite."));
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + verificationToken + "\"}"))
+                .andExpect(status().isOk());
+
+        String loginResponse = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "member@unverified-cross-org.test",
+                                  "password": "StrongPass@123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String existingUserToken = objectMapper.readTree(loginResponse).get("accessToken").asText();
+
+        mockMvc.perform(post("/api/organization/invites/accept")
+                        .header("Authorization", "Bearer " + existingUserToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "token": "%s"
+                                }
+                                """.formatted(inviteToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memberships.length()").value(2));
     }
 
     @Test

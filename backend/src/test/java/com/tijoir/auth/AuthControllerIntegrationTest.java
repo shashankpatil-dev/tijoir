@@ -64,6 +64,8 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.auth").doesNotExist())
                 .andExpect(jsonPath("$.emailVerificationToken").isString())
+                .andExpect(jsonPath("$.emailDeliveryStatus").value("SKIPPED"))
+                .andExpect(jsonPath("$.emailDeliveredAt").isString())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -406,7 +408,9 @@ class AuthControllerIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.emailVerificationToken").isString());
+                .andExpect(jsonPath("$.emailVerificationToken").isString())
+                .andExpect(jsonPath("$.emailDeliveryStatus").value("SKIPPED"))
+                .andExpect(jsonPath("$.emailDeliveredAt").isString());
     }
 
     private String latestPasswordResetToken(String email) {

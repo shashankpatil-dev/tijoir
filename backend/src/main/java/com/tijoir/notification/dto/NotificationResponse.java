@@ -16,6 +16,7 @@ public record NotificationResponse(
         NotificationEmailDeliveryStatus emailDeliveryStatus,
         Instant readAt,
         Instant deliveredAt,
+        String emailDeliveryError,
         Instant createdAt
 ) {
 }

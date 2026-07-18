@@ -110,6 +110,11 @@ export function NotificationsView({
                     <p className="text-sm leading-6 text-muted">
                       {notification.message}
                     </p>
+                    {notification.emailDeliveryStatus === "FAILED" && notification.emailDeliveryError ? (
+                      <p className="text-sm leading-6 text-(--color-warning-strong)">
+                        Delivery error: {notification.emailDeliveryError}
+                      </p>
+                    ) : null}
                   </div>
 
                   <dl className="mt-4 grid gap-3 sm:grid-cols-2">

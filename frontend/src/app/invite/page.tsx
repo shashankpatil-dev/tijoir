@@ -34,7 +34,10 @@ export default function InvitePage() {
   const sessionEmail = session?.user.email?.toLowerCase() ?? "";
   const invitedEmail = resolution?.invitedEmail?.toLowerCase() ?? "";
   const emailMatchesActiveSession = Boolean(sessionEmail && invitedEmail && sessionEmail === invitedEmail);
-  const requiresLogin = Boolean(resolution?.existingAccount && !session);
+  const requiresVerification = Boolean(resolution?.existingAccount && !resolution?.existingAccountVerified);
+  const requiresLogin = Boolean(
+    resolution?.existingAccount && resolution?.existingAccountVerified && !session,
+  );
   const wrongSessionActive = Boolean(session && invitedEmail && sessionEmail !== invitedEmail);
   const canSelfRegister = Boolean(resolution && !resolution.existingAccount && !session);
 
@@ -204,7 +207,21 @@ export default function InvitePage() {
             </div>
           ) : null}
 
-          {wrongSessionActive ? (
+          {requiresVerification ? (
+            <div className="space-y-4">
+              <StatusPanel
+                title="Verify email before accepting"
+                body={`The invited email ${resolution.invitedEmail} already belongs to a Tijoir identity, but that identity is not verified yet. Complete email verification first, then sign in and accept the invite.`}
+              />
+              <div className="flex justify-end">
+                <Button onClick={redirectToLogin} type="button" variant="outline">
+                  Go to sign in
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {wrongSessionActive && !requiresVerification ? (
             <div className="space-y-4">
               <StatusPanel
                 title="Wrong account signed in"
@@ -218,7 +235,7 @@ export default function InvitePage() {
             </div>
           ) : null}
 
-          {emailMatchesActiveSession ? (
+          {emailMatchesActiveSession && !requiresVerification ? (
             <div className="space-y-4">
               <StatusPanel
                 title="Ready to join"

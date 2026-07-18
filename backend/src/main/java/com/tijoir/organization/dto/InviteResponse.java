@@ -17,6 +17,8 @@ public record InviteResponse(
         Instant acceptedAt,
         Instant createdAt,
         NotificationEmailDeliveryStatus emailDeliveryStatus,
+        Instant emailDeliveredAt,
+        String emailDeliveryError,
         String inviteToken,
         String acceptPath
 ) {

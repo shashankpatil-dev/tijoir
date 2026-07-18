@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -116,9 +117,24 @@ public class NotificationService {
 
     @Transactional(readOnly = true)
     public NotificationEmailDeliveryStatus latestInviteDeliveryStatus(UUID inviteId) {
+        return latestInviteDelivery(inviteId).status();
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationDeliverySnapshot latestInviteDelivery(UUID inviteId) {
         return notificationRecordRepository.findTopByOrganizationInviteIdOrderByCreatedAtDesc(inviteId)
-                .map(NotificationRecord::getEmailDeliveryStatus)
-                .orElse(NotificationEmailDeliveryStatus.NOT_REQUESTED);
+                .map(this::toDeliverySnapshot)
+                .orElse(NotificationDeliverySnapshot.notRequested());
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationDeliverySnapshot latestVerificationDelivery(UUID userId) {
+        return notificationRecordRepository.findTopByUserIdAndTypeInOrderByCreatedAtDesc(
+                        userId,
+                        List.of(NotificationType.EMAIL_VERIFICATION, NotificationType.EMAIL_VERIFICATION_RESEND)
+                )
+                .map(this::toDeliverySnapshot)
+                .orElse(NotificationDeliverySnapshot.notRequested());
     }
 
     private void recordInviteDelivery(UserAccount actor, OrganizationInvite invite, String rawToken, boolean resend) {
@@ -261,7 +277,16 @@ public class NotificationService {
                 record.getEmailDeliveryStatus(),
                 record.getReadAt(),
                 record.getDeliveredAt(),
+                record.getLastError(),
                 record.getCreatedAt()
+        );
+    }
+
+    private NotificationDeliverySnapshot toDeliverySnapshot(NotificationRecord record) {
+        return new NotificationDeliverySnapshot(
+                record.getEmailDeliveryStatus(),
+                record.getDeliveredAt(),
+                record.getLastError()
         );
     }
 

@@ -134,9 +134,14 @@ export function buildInviteColumns({
       sortable: true,
       sortValue: (invite) => invite.emailDeliveryStatus || "",
       render: (invite) => (
-        <Badge tone={invite.emailDeliveryStatus === "FAILED" ? "warning" : "info"}>
-          {invite.emailDeliveryStatus || "UNKNOWN"}
-        </Badge>
+        <div className="space-y-1">
+          <Badge tone={invite.emailDeliveryStatus === "FAILED" ? "warning" : "info"}>
+            {invite.emailDeliveryStatus || "UNKNOWN"}
+          </Badge>
+          {invite.emailDeliveryStatus === "FAILED" && invite.emailDeliveryError ? (
+            <p className="max-w-56 text-xs text-muted">{invite.emailDeliveryError}</p>
+          ) : null}
+        </div>
       ),
     },
     {

@@ -14,6 +14,7 @@ public record InviteResolutionResponse(
         UserRole role,
         OrganizationInviteStatus status,
         Instant expiresAt,
-        boolean existingAccount
+        boolean existingAccount,
+        boolean existingAccountVerified
 ) {
 }

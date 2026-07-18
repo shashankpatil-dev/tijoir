@@ -22,5 +22,6 @@ export type NotificationSummary = {
   emailDeliveryStatus: NotificationDeliveryStatus;
   readAt?: string | null;
   deliveredAt?: string | null;
+  emailDeliveryError?: string | null;
   createdAt: string;
 };

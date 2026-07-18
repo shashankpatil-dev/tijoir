@@ -17,6 +17,7 @@ import com.tijoir.identity.IdentityUser;
 import com.tijoir.identity.IdentityUserRepository;
 import com.tijoir.identity.OrganizationMembershipRepository;
 import com.tijoir.notification.NotificationEmailDeliveryStatus;
+import com.tijoir.notification.NotificationDeliverySnapshot;
 import com.tijoir.notification.NotificationProperties;
 import com.tijoir.notification.NotificationService;
 import com.tijoir.organization.dto.AcceptInviteRequest;
@@ -267,6 +268,7 @@ public class OrganizationService {
     public InviteResolutionResponse resolveInvite(String token) {
         OrganizationInvite invite = findInviteByToken(token);
         Instant now = Instant.now();
+        IdentityUser existingIdentity = identityUserRepository.findByEmailIgnoreCase(invite.getEmail()).orElse(null);
         return new InviteResolutionResponse(
                 invite.getOrganization().getId(),
                 invite.getOrganization().getName(),
@@ -275,7 +277,8 @@ public class OrganizationService {
                 invite.getRole(),
                 invite.statusAt(now),
                 invite.getExpiresAt(),
-                identityUserRepository.findByEmailIgnoreCase(invite.getEmail()).isPresent()
+                existingIdentity != null,
+                existingIdentity != null && existingIdentity.getEmailVerifiedAt() != null
         );
     }
 
@@ -293,8 +296,14 @@ public class OrganizationService {
             if (!normalizeEmail(principalIdentity.getEmail()).equals(normalizeEmail(invite.getEmail()))) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "Sign in with the invited email to accept this invite");
             }
+            if (principalIdentity.getEmailVerifiedAt() == null) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "Verify your email before accepting this invite");
+            }
             workspaceUser = createWorkspaceUserForExistingIdentity(invite, principalIdentity);
         } else if (existingIdentity != null) {
+            if (existingIdentity.getEmailVerifiedAt() == null) {
+                throw new ApiException(HttpStatus.CONFLICT, "Account already exists but the email is not verified. Verify this email before accepting the invite.");
+            }
             throw new ApiException(HttpStatus.CONFLICT, "Account already exists. Sign in with this email to accept the invite.");
         } else {
             if (request.name() == null || request.name().isBlank()) {
@@ -457,6 +466,7 @@ public class OrganizationService {
     }
 
     private InviteResponse toInviteResponse(OrganizationInvite invite, String rawToken, Instant now) {
+        NotificationDeliverySnapshot delivery = notificationService.latestInviteDelivery(invite.getId());
         return new InviteResponse(
                 invite.getId(),
                 invite.getEmail(),
@@ -466,7 +476,9 @@ public class OrganizationService {
                 invite.getExpiresAt(),
                 invite.getAcceptedAt(),
                 invite.getCreatedAt(),
-                notificationService.latestInviteDeliveryStatus(invite.getId()),
+                delivery.status(),
+                delivery.deliveredAt(),
+                delivery.error(),
                 rawToken,
                 rawToken != null ? "/invite" : null
         );

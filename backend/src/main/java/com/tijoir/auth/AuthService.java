@@ -13,6 +13,7 @@ import com.tijoir.identity.OrganizationMembership;
 import com.tijoir.identity.OrganizationMembershipRepository;
 import com.tijoir.notification.NotificationProperties;
 import com.tijoir.notification.NotificationService;
+import com.tijoir.notification.NotificationDeliverySnapshot;
 import com.tijoir.auth.dto.OrganizationSummary;
 import com.tijoir.auth.dto.RegisterRequest;
 import com.tijoir.auth.dto.RegisterResponse;
@@ -123,13 +124,17 @@ public class AuthService {
         identityMembershipSyncService.mirrorLegacyUser(user);
         VerificationTokenResult verification = createVerificationToken(user);
         notificationService.recordVerificationRequested(user, verification.rawToken(), verification.expiresAt(), false);
+        NotificationDeliverySnapshot delivery = notificationService.latestVerificationDelivery(user.getId());
 
         return new RegisterResponse(
                 null,
                 true,
                 true,
                 notificationProperties.isExposeDevTokens() ? verification.rawToken() : null,
-                verification.expiresAt()
+                verification.expiresAt(),
+                delivery.status(),
+                delivery.deliveredAt(),
+                delivery.error()
         );
     }
 
@@ -228,16 +233,20 @@ public class AuthService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         UserAccount user = resolveDefaultWorkspaceUser(identityUser);
         if (identityUser.getEmailVerifiedAt() != null) {
-            return new RegisterResponse(null, false, false, null, null);
+            return new RegisterResponse(null, false, false, null, null, null, null, null);
         }
         VerificationTokenResult verification = createVerificationToken(user);
         notificationService.recordVerificationRequested(user, verification.rawToken(), verification.expiresAt(), true);
+        NotificationDeliverySnapshot delivery = notificationService.latestVerificationDelivery(user.getId());
         return new RegisterResponse(
                 null,
                 true,
                 true,
                 notificationProperties.isExposeDevTokens() ? verification.rawToken() : null,
-                verification.expiresAt()
+                verification.expiresAt(),
+                delivery.status(),
+                delivery.deliveredAt(),
+                delivery.error()
         );
     }
 
