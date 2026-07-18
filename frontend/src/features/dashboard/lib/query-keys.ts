@@ -13,7 +13,16 @@ export const dashboardQueryKeys = {
   shareLinks: (accessToken?: string) => ["dashboard", "share-links", accessToken] as const,
   shareLinksPage: (
     accessToken: string | undefined,
-    params: { page: number; size: number; query: string; permission: string; status: string },
+    params: {
+      page: number;
+      size: number;
+      query: string;
+      permission: string;
+      status: string;
+      vendorId?: string;
+      contractId?: string;
+      grantId?: string;
+    },
   ) => ["dashboard", "share-links-page", accessToken, params] as const,
   notificationsPage: (
     accessToken: string | undefined,
@@ -29,6 +38,11 @@ export const dashboardQueryKeys = {
     vendorId: string | undefined,
     params: { page: number; size: number; status: string },
   ) => ["dashboard", "vendor-contracts-page", accessToken, vendorId, params] as const,
+  vendorContractGrantsPage: (
+    accessToken: string | undefined,
+    contractId: string | undefined,
+    params: { page: number; size: number; status: string },
+  ) => ["dashboard", "vendor-contract-grants-page", accessToken, contractId, params] as const,
   auditEventsPage: (
     accessToken: string | undefined,
     params: { page: number; size: number; query: string; action: string; resourceType: string },

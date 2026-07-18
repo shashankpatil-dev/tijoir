@@ -2,6 +2,7 @@ package com.tijoir.sharelink;
 
 import com.tijoir.connection.Vendor;
 import com.tijoir.connection.VendorAccessContract;
+import com.tijoir.connection.VendorContractSecretGrant;
 import com.tijoir.contract.ContractPermission;
 import com.tijoir.organization.Organization;
 import com.tijoir.organization.UserAccount;
@@ -47,6 +48,10 @@ public class ShareLink {
     @JoinColumn(name = "contract_id")
     private VendorAccessContract contract;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grant_id")
+    private VendorContractSecretGrant grant;
+
     @Column(length = 255)
     private String recipientLabel;
 
@@ -83,7 +88,7 @@ public class ShareLink {
             ContractPermission contractPermission,
             Instant expiresAt
     ) {
-        this(organization, secret, createdBy, null, null, recipientLabel, tokenHash, contractPermission, expiresAt);
+        this(organization, secret, createdBy, null, null, null, recipientLabel, tokenHash, contractPermission, expiresAt);
     }
 
     public ShareLink(
@@ -92,6 +97,7 @@ public class ShareLink {
             UserAccount createdBy,
             Vendor vendor,
             VendorAccessContract contract,
+            VendorContractSecretGrant grant,
             String recipientLabel,
             String tokenHash,
             ContractPermission contractPermission,
@@ -102,6 +108,7 @@ public class ShareLink {
         this.createdBy = createdBy;
         this.vendor = vendor;
         this.contract = contract;
+        this.grant = grant;
         this.recipientLabel = recipientLabel;
         this.tokenHash = tokenHash;
         this.contractPermission = contractPermission;
@@ -146,6 +153,10 @@ public class ShareLink {
 
     public VendorAccessContract getContract() {
         return contract;
+    }
+
+    public VendorContractSecretGrant getGrant() {
+        return grant;
     }
 
     public String getRecipientLabel() {

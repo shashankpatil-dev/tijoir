@@ -41,9 +41,12 @@ public class ShareLinkController {
             @org.springframework.web.bind.annotation.RequestParam(required = false) Integer size,
             @org.springframework.web.bind.annotation.RequestParam(required = false) String query,
             @org.springframework.web.bind.annotation.RequestParam(required = false) ContractPermission permission,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) ShareLinkStatus status
+            @org.springframework.web.bind.annotation.RequestParam(required = false) ShareLinkStatus status,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID vendorId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID contractId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID grantId
     ) {
-        return shareLinkService.list(user, page, size, query, permission, status);
+        return shareLinkService.list(user, page, size, query, permission, status, vendorId, contractId, grantId);
     }
 
     @PostMapping("/{shareLinkId}/revoke")

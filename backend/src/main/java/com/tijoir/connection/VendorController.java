@@ -3,9 +3,11 @@ package com.tijoir.connection;
 import com.tijoir.auth.security.AuthenticatedUser;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.connection.dto.CreateVendorContractRequest;
+import com.tijoir.connection.dto.CreateVendorContractGrantRequest;
 import com.tijoir.connection.dto.CreateVendorRequest;
 import com.tijoir.connection.dto.OffboardVendorResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
+import com.tijoir.connection.dto.VendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -77,6 +79,36 @@ public class VendorController {
             @Valid @RequestBody CreateVendorContractRequest request
     ) {
         return vendorService.createContract(user, vendorId, request);
+    }
+
+    @GetMapping("/contracts/{contractId}/grants")
+    public PageResponse<VendorContractGrantResponse> listGrants(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID contractId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer page,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer size,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) VendorContractGrantStatus status
+    ) {
+        return vendorService.listGrants(user, contractId, page, size, status);
+    }
+
+    @PostMapping("/contracts/{contractId}/grants")
+    @ResponseStatus(HttpStatus.CREATED)
+    public VendorContractGrantResponse createGrant(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID contractId,
+            @Valid @RequestBody CreateVendorContractGrantRequest request
+    ) {
+        return vendorService.createGrant(user, contractId, request);
+    }
+
+    @PostMapping("/contracts/{contractId}/grants/{grantId}/revoke")
+    public VendorContractGrantResponse revokeGrant(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID contractId,
+            @PathVariable UUID grantId
+    ) {
+        return vendorService.revokeGrant(user, contractId, grantId);
     }
 
     @PostMapping("/{vendorId}/contracts/{contractId}/revoke")

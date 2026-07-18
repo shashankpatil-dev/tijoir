@@ -5,6 +5,7 @@ import type { DataTableColumn } from "@/components/ui/data-table";
 import {
   buildVendorColumns,
   buildVendorContractColumns,
+  buildVendorGrantColumns,
 } from "@/features/dashboard/lib/dashboard-columns";
 import {
   DASHBOARD_ITEMS_PER_PAGE,
@@ -14,17 +15,24 @@ import { dashboardQueryKeys } from "@/features/dashboard/lib/query-keys";
 import type { RouterLike, ShowToast } from "@/features/dashboard/hooks/workspace.types";
 import { fetchSecrets } from "@/features/secrets/api/secrets.api";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
+import { fetchShareLinksPage, revokeShareLink } from "@/features/share-links/api/share-links.api";
+import { buildShareColumns } from "@/features/share-links/lib/share-link-columns";
 import type { ContractPermission } from "@/features/share-links/types/share-links.types";
+import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
 import {
   createVendor,
   createVendorContract,
+  createVendorContractGrant,
+  fetchVendorContractGrantsPage,
   fetchVendorContractsPage,
   fetchVendorsPage,
   offboardVendor,
   revokeVendorContract,
+  revokeVendorContractGrant,
 } from "@/features/vendors/api/vendors.api";
 import type {
   VendorContractResponse,
+  VendorContractGrantResponse,
   VendorResponse,
 } from "@/features/vendors/types/vendors.types";
 
@@ -50,21 +58,33 @@ export function useVendorsWorkspace({
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [contractStatusFilter, setContractStatusFilter] = useState("ALL");
   const [contractPage, setContractPage] = useState(1);
+  const [selectedContractId, setSelectedContractId] = useState("");
+  const [grantStatusFilter, setGrantStatusFilter] = useState("ALL");
+  const [grantPage, setGrantPage] = useState(1);
+  const [shareActivityStatusFilter, setShareActivityStatusFilter] = useState("ALL");
+  const [shareActivityPage, setShareActivityPage] = useState(1);
   const [createVendorOpen, setCreateVendorOpen] = useState(false);
   const [createContractOpen, setCreateContractOpen] = useState(false);
+  const [createGrantOpen, setCreateGrantOpen] = useState(false);
   const [vendorName, setVendorName] = useState("Primary SFTP Vendor");
   const [vendorContactName, setVendorContactName] = useState("Primary operator");
   const [vendorContactEmail, setVendorContactEmail] = useState("");
   const [vendorNotes, setVendorNotes] = useState(
     "Handles the organization external integration workflow.",
   );
-  const [contractSecretId, setContractSecretId] = useState("");
   const [contractPermission, setContractPermission] = useState("VIEW_UNTIL_REVOKED");
   const [contractExpiry, setContractExpiry] = useState("");
+  const [grantSecretId, setGrantSecretId] = useState("");
+  const [grantPermission, setGrantPermission] = useState("VIEW_UNTIL_REVOKED");
+  const [grantExpiry, setGrantExpiry] = useState("");
   const [contractRevokeTarget, setContractRevokeTarget] =
     useState<VendorContractResponse | null>(null);
+  const [grantRevokeTarget, setGrantRevokeTarget] =
+    useState<VendorContractGrantResponse | null>(null);
   const [vendorOffboardTarget, setVendorOffboardTarget] =
     useState<VendorResponse | null>(null);
+  const [shareRevokeTarget, setShareRevokeTarget] =
+    useState<ShareLinkResponse | null>(null);
 
   useEffect(() => {
     setVendorPage(1);
@@ -73,6 +93,14 @@ export function useVendorsWorkspace({
   useEffect(() => {
     setContractPage(1);
   }, [contractStatusFilter, selectedVendorId]);
+
+  useEffect(() => {
+    setGrantPage(1);
+  }, [grantStatusFilter, selectedContractId]);
+
+  useEffect(() => {
+    setShareActivityPage(1);
+  }, [selectedContractId, shareActivityStatusFilter]);
 
   const vendorsPageQuery = useQuery({
     queryKey: dashboardQueryKeys.vendorsPage(sessionAccessToken, {
@@ -124,7 +152,7 @@ export function useVendorsWorkspace({
   const secretOptionsQuery = useQuery({
     queryKey: dashboardQueryKeys.secretOptions(sessionAccessToken),
     queryFn: () => fetchSecrets(sessionAccessToken as string),
-    enabled: Boolean(sessionAccessToken && createContractOpen),
+    enabled: Boolean(sessionAccessToken && createGrantOpen),
     staleTime: 60_000,
   });
 
@@ -138,11 +166,11 @@ export function useVendorsWorkspace({
 
   useEffect(() => {
     if (!secretOptions.length) {
-      setContractSecretId("");
+      setGrantSecretId("");
       return;
     }
 
-    setContractSecretId((current) =>
+    setGrantSecretId((current) =>
       current && secretOptions.some((secret) => secret.id === current)
         ? current
         : secretOptions[0].id,
@@ -180,6 +208,79 @@ export function useVendorsWorkspace({
     contractsPageQuery.data?.totalPages ??
     pageCount(vendorContracts.length, DASHBOARD_ITEMS_PER_PAGE);
 
+  useEffect(() => {
+    setSelectedContractId((current) =>
+      current && vendorContracts.some((contract) => contract.id === current) ? current : "",
+    );
+  }, [vendorContracts]);
+
+  const selectedContract =
+    vendorContracts.find((contract) => contract.id === selectedContractId) || null;
+
+  const grantsPageQuery = useQuery({
+    queryKey: dashboardQueryKeys.vendorContractGrantsPage(sessionAccessToken, selectedContractId, {
+      page: grantPage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      status: grantStatusFilter,
+    }),
+    queryFn: () =>
+      fetchVendorContractGrantsPage(sessionAccessToken as string, selectedContractId, {
+        page: grantPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        status:
+          grantStatusFilter === "ALL"
+            ? undefined
+            : (grantStatusFilter as "ACTIVE" | "REVOKED" | "EXPIRED"),
+      }),
+    enabled: Boolean(sessionAccessToken && selectedContractId),
+    placeholderData: (previous) => previous,
+  });
+
+  useEffect(() => {
+    if (grantsPageQuery.error) {
+      handleSessionError(grantsPageQuery.error, "Could not load vendor secret grants");
+    }
+  }, [grantsPageQuery.error, handleSessionError]);
+
+  const vendorGrants = grantsPageQuery.data?.items ?? [];
+  const grantsTotal = grantsPageQuery.data?.totalElements ?? vendorGrants.length;
+  const grantPageCount =
+    grantsPageQuery.data?.totalPages ??
+    pageCount(vendorGrants.length, DASHBOARD_ITEMS_PER_PAGE);
+
+  const contractShareActivityQuery = useQuery({
+    queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, {
+      page: shareActivityPage - 1,
+      size: DASHBOARD_ITEMS_PER_PAGE,
+      query: "",
+      permission: "ALL",
+      status: shareActivityStatusFilter,
+      contractId: selectedContractId || undefined,
+    }),
+    queryFn: () =>
+      fetchShareLinksPage(sessionAccessToken as string, {
+        page: shareActivityPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        status: shareActivityStatusFilter === "ALL" ? undefined : shareActivityStatusFilter,
+        contractId: selectedContractId || undefined,
+      }),
+    enabled: Boolean(sessionAccessToken && selectedContractId),
+    placeholderData: (previous) => previous,
+  });
+
+  useEffect(() => {
+    if (contractShareActivityQuery.error) {
+      handleSessionError(contractShareActivityQuery.error, "Could not load contract share activity");
+    }
+  }, [contractShareActivityQuery.error, handleSessionError]);
+
+  const contractShareActivity = contractShareActivityQuery.data?.items ?? [];
+  const shareActivityTotal =
+    contractShareActivityQuery.data?.totalElements ?? contractShareActivity.length;
+  const shareActivityPageCount =
+    contractShareActivityQuery.data?.totalPages ??
+    pageCount(contractShareActivity.length, DASHBOARD_ITEMS_PER_PAGE);
+
   const vendorColumns = useMemo<DataTableColumn<VendorResponse>[]>(
     () => buildVendorColumns(),
     [],
@@ -189,6 +290,25 @@ export function useVendorsWorkspace({
     () =>
       buildVendorContractColumns({
         onRevoke: (contract) => setContractRevokeTarget(contract),
+      }),
+    [],
+  );
+
+  const grantColumns = useMemo<DataTableColumn<VendorContractGrantResponse>[]>(
+    () =>
+      buildVendorGrantColumns({
+        onRevoke: (grant) => setGrantRevokeTarget(grant),
+      }),
+    [],
+  );
+
+  const shareActivityColumns = useMemo<DataTableColumn<ShareLinkResponse>[]>(
+    () =>
+      buildShareColumns({
+        copyText: async () => {
+          // Share activity is inventory only in the vendor drawer.
+        },
+        onRevoke: (shareLink) => setShareRevokeTarget(shareLink),
       }),
     [],
   );
@@ -205,12 +325,10 @@ export function useVendorsWorkspace({
   const createVendorContractMutation = useMutation({
     mutationFn: (payload: {
       vendorId: string;
-      secretId: string;
       permission: ContractPermission;
       expiresAt?: string | null;
     }) =>
       createVendorContract(sessionAccessToken as string, payload.vendorId, {
-        secretId: payload.secretId,
         permission: payload.permission,
         expiresAt: payload.expiresAt,
       }),
@@ -221,8 +339,31 @@ export function useVendorsWorkspace({
       revokeVendorContract(sessionAccessToken as string, payload.vendorId, payload.contractId),
   });
 
+  const createVendorContractGrantMutation = useMutation({
+    mutationFn: (payload: {
+      contractId: string;
+      secretId: string;
+      permission: ContractPermission;
+      expiresAt?: string | null;
+    }) =>
+      createVendorContractGrant(sessionAccessToken as string, payload.contractId, {
+        secretId: payload.secretId,
+        permission: payload.permission,
+        expiresAt: payload.expiresAt,
+      }),
+  });
+
+  const revokeVendorContractGrantMutation = useMutation({
+    mutationFn: (payload: { contractId: string; grantId: string }) =>
+      revokeVendorContractGrant(sessionAccessToken as string, payload.contractId, payload.grantId),
+  });
+
   const offboardVendorMutation = useMutation({
     mutationFn: (vendorId: string) => offboardVendor(sessionAccessToken as string, vendorId),
+  });
+
+  const revokeShareLinkMutation = useMutation({
+    mutationFn: (shareLinkId: string) => revokeShareLink(shareLinkId, sessionAccessToken as string),
   });
 
   async function invalidateVendors(vendorId?: string) {
@@ -255,6 +396,27 @@ export function useVendorsWorkspace({
                 page: contractPage - 1,
                 size: DASHBOARD_ITEMS_PER_PAGE,
                 status: contractStatusFilter,
+              }),
+            }),
+          ]
+        : []),
+      ...(selectedContractId
+        ? [
+            queryClient.invalidateQueries({
+              queryKey: dashboardQueryKeys.vendorContractGrantsPage(sessionAccessToken, selectedContractId, {
+                page: grantPage - 1,
+                size: DASHBOARD_ITEMS_PER_PAGE,
+                status: grantStatusFilter,
+              }),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: dashboardQueryKeys.shareLinksPage(sessionAccessToken, {
+                page: shareActivityPage - 1,
+                size: DASHBOARD_ITEMS_PER_PAGE,
+                query: "",
+                permission: "ALL",
+                status: shareActivityStatusFilter,
+                contractId: selectedContractId,
               }),
             }),
           ]
@@ -308,16 +470,15 @@ export function useVendorsWorkspace({
     try {
       const created = await createVendorContractMutation.mutateAsync({
         vendorId: selectedVendor.id,
-        secretId: contractSecretId,
         permission: contractPermission as ContractPermission,
         expiresAt: contractExpiry ? new Date(contractExpiry).toISOString() : null,
       });
       setCreateContractOpen(false);
       await invalidateVendors(selectedVendor.id);
-      setMessage(`Contract created for ${created.secretKey}.`);
+      setMessage(`Contract created for ${selectedVendor.name}.`);
       showToast({
         title: "Contract created",
-        description: `${selectedVendor.name} now has a contract for ${created.secretKey}.`,
+        description: `${selectedVendor.name} now has a vendor contract boundary ready for secret grants.`,
         tone: "success",
       });
     } catch (error) {
@@ -355,6 +516,66 @@ export function useVendorsWorkspace({
     }
   }
 
+  async function handleCreateVendorContractGrant(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!sessionAccessToken || !selectedContract) {
+      router.replace("/dashboard/vendors");
+      return;
+    }
+
+    setActionBusy("create-vendor-contract-grant");
+    setMessage("Creating vendor secret grant");
+
+    try {
+      const created = await createVendorContractGrantMutation.mutateAsync({
+        contractId: selectedContract.id,
+        secretId: grantSecretId,
+        permission: grantPermission as ContractPermission,
+        expiresAt: grantExpiry ? new Date(grantExpiry).toISOString() : null,
+      });
+      setCreateGrantOpen(false);
+      await invalidateVendors(selectedVendor?.id);
+      setMessage(`Secret grant created for ${created.secretKey}.`);
+      showToast({
+        title: "Secret grant created",
+        description: `${created.secretKey} is now governed by the selected vendor contract.`,
+        tone: "success",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not create vendor secret grant");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function handleRevokeVendorContractGrant() {
+    if (!sessionAccessToken || !grantRevokeTarget) {
+      router.replace("/dashboard/vendors");
+      return;
+    }
+
+    setActionBusy(`revoke-grant-${grantRevokeTarget.id}`);
+    setMessage("Revoking vendor secret grant");
+
+    try {
+      await revokeVendorContractGrantMutation.mutateAsync({
+        contractId: grantRevokeTarget.contractId,
+        grantId: grantRevokeTarget.id,
+      });
+      await invalidateVendors(selectedVendor?.id);
+      setMessage("Vendor secret grant revoked.");
+      showToast({
+        title: "Secret grant revoked",
+        description: "This secret is no longer available under the selected vendor contract.",
+        tone: "warning",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not revoke vendor secret grant");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   async function handleOffboardVendor() {
     if (!sessionAccessToken || !vendorOffboardTarget) {
       router.replace("/dashboard/vendors");
@@ -380,12 +601,46 @@ export function useVendorsWorkspace({
     }
   }
 
+  async function handleRevokeShareActivityLink() {
+    if (!sessionAccessToken || !shareRevokeTarget) {
+      router.replace("/dashboard/vendors");
+      return;
+    }
+
+    setActionBusy(`revoke-contract-share-${shareRevokeTarget.id}`);
+    setMessage("Revoking contract share link");
+
+    try {
+      await revokeShareLinkMutation.mutateAsync(shareRevokeTarget.id);
+      await invalidateVendors(selectedVendor?.id);
+      setMessage("Contract share link revoked.");
+      showToast({
+        title: "Share link revoked",
+        description: "Recipient delivery under the selected contract has been closed.",
+        tone: "warning",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not revoke contract share link");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   function openCreateContract() {
     if (!selectedVendor) {
       setMessage("Select a vendor before creating a contract.");
       return;
     }
     setCreateContractOpen(true);
+  }
+
+  function openCreateGrant() {
+    if (!selectedContract) {
+      setMessage("Select a contract before creating a secret grant.");
+      return;
+    }
+    setGrantPermission(selectedContract.permission);
+    setCreateGrantOpen(true);
   }
 
   return {
@@ -397,29 +652,63 @@ export function useVendorsWorkspace({
     contractRevokeTarget,
     contractsLoading: contractsPageQuery.isLoading && Boolean(selectedVendorId),
     contractsTotal,
-    contractSecretId,
     contractStatusFilter,
+    createGrantOpen,
     createContractOpen,
     createVendorOpen,
+    grantColumns,
+    grantExpiry,
+    grantPage,
+    grantPageCount,
+    grantPermission,
+    grantRevokeTarget,
+    grantsLoading: grantsPageQuery.isLoading && Boolean(selectedContractId),
+    grantsTotal,
+    grantSecretId,
+    grantStatusFilter,
+    handleRevokeShareActivityLink,
     handleCreateVendor,
     handleCreateVendorContract,
+    handleCreateVendorContractGrant,
     handleOffboardVendor,
     handleRevokeVendorContract,
+    handleRevokeVendorContractGrant,
     loadingVendors: vendorsPageQuery.isLoading,
+    openCreateGrant,
     openCreateContract,
+    contractShareActivity,
+    shareActivityColumns,
+    shareActivityLoading: contractShareActivityQuery.isLoading && Boolean(selectedContractId),
+    shareActivityPage,
+    shareActivityPageCount,
+    shareActivityStatusFilter,
+    shareActivityTotal,
+    paginatedVendorGrants: vendorGrants,
     paginatedVendorContracts: vendorContracts,
     paginatedVendors,
     secretOptions,
+    selectedContract,
+    selectedContractId,
     selectedVendor,
     selectedVendorId,
     setContractExpiry,
     setContractPage,
     setContractPermission,
     setContractRevokeTarget,
-    setContractSecretId,
     setContractStatusFilter,
+    setCreateGrantOpen,
     setCreateContractOpen,
     setCreateVendorOpen,
+    setGrantExpiry,
+    setGrantPage,
+    setGrantPermission,
+    setGrantRevokeTarget,
+    setGrantSecretId,
+    setGrantStatusFilter,
+    setShareActivityPage,
+    setShareActivityStatusFilter,
+    setShareRevokeTarget,
+    setSelectedContractId,
     setSelectedVendorId,
     setVendorContactEmail,
     setVendorContactName,
@@ -435,6 +724,7 @@ export function useVendorsWorkspace({
     vendorName,
     vendorNotes,
     vendorOffboardTarget,
+    shareRevokeTarget,
     vendorPage,
     vendorPageCount,
     vendorSearch,

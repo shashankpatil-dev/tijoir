@@ -9,6 +9,9 @@ import com.tijoir.connection.Vendor;
 import com.tijoir.connection.VendorAccessContract;
 import com.tijoir.connection.VendorAccessContractRepository;
 import com.tijoir.connection.VendorAccessContractStatus;
+import com.tijoir.connection.VendorContractGrantStatus;
+import com.tijoir.connection.VendorContractSecretGrant;
+import com.tijoir.connection.VendorContractSecretGrantRepository;
 import com.tijoir.connection.VendorRepository;
 import com.tijoir.connection.VendorStatus;
 import com.tijoir.common.exception.ApiException;
@@ -60,6 +63,7 @@ public class ShareLinkService {
     private final UserAccountRepository userAccountRepository;
     private final VendorRepository vendorRepository;
     private final VendorAccessContractRepository vendorAccessContractRepository;
+    private final VendorContractSecretGrantRepository vendorContractSecretGrantRepository;
     private final OrganizationPolicyRepository organizationPolicyRepository;
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
@@ -75,6 +79,7 @@ public class ShareLinkService {
             UserAccountRepository userAccountRepository,
             VendorRepository vendorRepository,
             VendorAccessContractRepository vendorAccessContractRepository,
+            VendorContractSecretGrantRepository vendorContractSecretGrantRepository,
             OrganizationPolicyRepository organizationPolicyRepository,
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
@@ -89,6 +94,7 @@ public class ShareLinkService {
         this.userAccountRepository = userAccountRepository;
         this.vendorRepository = vendorRepository;
         this.vendorAccessContractRepository = vendorAccessContractRepository;
+        this.vendorContractSecretGrantRepository = vendorContractSecretGrantRepository;
         this.organizationPolicyRepository = organizationPolicyRepository;
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
@@ -101,16 +107,20 @@ public class ShareLinkService {
     public ShareLinkResponse create(AuthenticatedUser principal, CreateShareLinkRequest request) {
         authorizationService.requireShareManager(principal.role());
         UserAccount actor = findActor(principal);
-        VaultSecret secret = findSecret(principal.organizationId(), request.secretId());
+        VendorContractSecretGrant grant = resolveGrant(principal.organizationId(), request.grantId());
+        VaultSecret secret = grant != null
+                ? grant.getSecret()
+                : findSecret(principal.organizationId(), request.secretId());
         if (secret.getStatus() != SecretStatus.ACTIVE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Share links can only be created for active secrets");
         }
-        Vendor vendor = resolveVendor(principal.organizationId(), request.vendorId(), request.contractId());
-        VendorAccessContract contract = resolveContract(principal.organizationId(), request.contractId(), vendor);
+        Vendor vendor = resolveVendor(principal.organizationId(), request.vendorId(), request.contractId(), grant);
+        VendorAccessContract contract = resolveContract(principal.organizationId(), request.contractId(), vendor, grant);
         OrganizationPolicyResponse policy = effectivePolicy(principal.organizationId());
-        validatePolicy(policy, request.permission(), vendor, contract);
-        validateContractAlignment(secret, request.permission(), vendor, contract);
-        Instant expiresAt = effectiveExpiry(request.expiresAt(), contract, policy);
+        ContractPermission permission = grant != null ? grant.getPermission() : request.permission();
+        validatePolicy(policy, permission, vendor, contract);
+        validateContractAlignment(secret, permission, vendor, contract, grant);
+        Instant expiresAt = effectiveExpiry(request.expiresAt(), contract, grant, policy);
         validateExpiry(expiresAt);
 
         String rawToken = CryptoUtil.randomUrlToken(TOKEN_BYTES);
@@ -120,18 +130,20 @@ public class ShareLinkService {
                 actor,
                 vendor,
                 contract,
+                grant,
                 normalizeRecipientLabel(request.recipientLabel()),
                 CryptoUtil.sha256Hex(rawToken),
-                request.permission(),
+                permission,
                 expiresAt
         ));
 
         Map<String, Object> auditDetails = new LinkedHashMap<>();
         auditDetails.put("secretId", secret.getId());
         auditDetails.put("secretKey", secret.getSecretKey());
-        auditDetails.put("permission", request.permission().name());
+        auditDetails.put("permission", permission.name());
         auditDetails.put("vendorId", vendor != null ? vendor.getId() : null);
         auditDetails.put("contractId", contract != null ? contract.getId() : null);
+        auditDetails.put("grantId", grant != null ? grant.getId() : null);
 
         auditEventRepository.save(new AuditEvent(
                 actor.getOrganization(),
@@ -153,13 +165,16 @@ public class ShareLinkService {
             Integer size,
             String query,
             ContractPermission permission,
-            ShareLinkStatus status
+            ShareLinkStatus status,
+            UUID vendorId,
+            UUID contractId,
+            UUID grantId
     ) {
         authorizationService.requireShareManager(principal.role());
         Instant now = Instant.now();
         PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<ShareLinkResponse> results = shareLinkRepository.findAll(
-                        shareLinkListSpec(principal.organizationId(), query, permission, status, now),
+                        shareLinkListSpec(principal.organizationId(), query, permission, status, vendorId, contractId, grantId, now),
                         pageRequest
                 )
                 .map(shareLink -> toResponse(shareLink, null, effectiveStatus(shareLink, now)));
@@ -292,7 +307,10 @@ public class ShareLinkService {
         }
     }
 
-    private Vendor resolveVendor(UUID organizationId, UUID vendorId, UUID contractId) {
+    private Vendor resolveVendor(UUID organizationId, UUID vendorId, UUID contractId, VendorContractSecretGrant grant) {
+        if (grant != null) {
+            return grant.getContract().getVendor();
+        }
         if (vendorId == null && contractId == null) {
             return null;
         }
@@ -312,7 +330,28 @@ public class ShareLinkService {
         return vendor;
     }
 
-    private VendorAccessContract resolveContract(UUID organizationId, UUID contractId, Vendor vendor) {
+    private VendorContractSecretGrant resolveGrant(UUID organizationId, UUID grantId) {
+        if (grantId == null) {
+            return null;
+        }
+        VendorContractSecretGrant grant = vendorContractSecretGrantRepository.findByIdAndOrganizationId(grantId, organizationId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract grant not found"));
+        expireGrantIfNeeded(grant, Instant.now());
+        if (grant.getStatus() != VendorContractGrantStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Share links can only be created for active vendor secret grants");
+        }
+        return grant;
+    }
+
+    private VendorAccessContract resolveContract(UUID organizationId, UUID contractId, Vendor vendor, VendorContractSecretGrant grant) {
+        if (grant != null) {
+            VendorAccessContract contract = grant.getContract();
+            expireContractIfNeeded(contract, Instant.now());
+            if (contract.getStatus() != VendorAccessContractStatus.ACTIVE) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Share links can only be created for active vendor contracts");
+            }
+            return contract;
+        }
         if (contractId == null) {
             return null;
         }
@@ -332,20 +371,28 @@ public class ShareLinkService {
             VaultSecret secret,
             ContractPermission permission,
             Vendor vendor,
-            VendorAccessContract contract
+            VendorAccessContract contract,
+            VendorContractSecretGrant grant
     ) {
+        if (grant != null) {
+            if (!grant.getSecret().getId().equals(secret.getId())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Share link secret must match the vendor secret grant");
+            }
+            if (grant.getPermission() != permission) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Share link permission must match the vendor secret grant permission");
+            }
+            if (contract == null || !grant.getContract().getId().equals(contract.getId())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Share link grant must belong to the selected vendor contract");
+            }
+            if (vendor != null && !grant.getContract().getVendor().getId().equals(vendor.getId())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Share link vendor must match the vendor secret grant vendor");
+            }
+            return;
+        }
         if (contract == null) {
             return;
         }
-        if (!contract.getSecret().getId().equals(secret.getId())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Share link secret must match the vendor contract secret");
-        }
-        if (contract.getContractPermission() != permission) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Share link permission must match the vendor contract permission");
-        }
-        if (vendor != null && !contract.getVendor().getId().equals(vendor.getId())) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Share link vendor must match the vendor contract vendor");
-        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor share links require an active contract secret grant");
     }
 
     private OrganizationPolicyResponse effectivePolicy(UUID organizationId) {
@@ -404,11 +451,20 @@ public class ShareLinkService {
     private Instant effectiveExpiry(
             Instant requestedExpiry,
             VendorAccessContract contract,
+            VendorContractSecretGrant grant,
             OrganizationPolicyResponse policy
     ) {
         Instant effectiveRequestedExpiry = requestedExpiry;
         if (effectiveRequestedExpiry == null && policy != null && policy.defaultShareLinkExpiryHours() != null) {
             effectiveRequestedExpiry = Instant.now().plusSeconds(policy.defaultShareLinkExpiryHours() * 60L * 60L);
+        }
+        if (grant != null) {
+            if (effectiveRequestedExpiry == null) {
+                return grant.getExpiresAt();
+            }
+            if (grant.getExpiresAt() != null && effectiveRequestedExpiry.isAfter(grant.getExpiresAt())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Share link expiry cannot exceed the vendor secret grant expiry");
+            }
         }
         if (contract == null) {
             return effectiveRequestedExpiry;
@@ -425,6 +481,12 @@ public class ShareLinkService {
     private void expireContractIfNeeded(VendorAccessContract contract, Instant now) {
         if (contract.getStatus() == VendorAccessContractStatus.ACTIVE && contract.isExpiredAt(now)) {
             contract.expire();
+        }
+    }
+
+    private void expireGrantIfNeeded(VendorContractSecretGrant grant, Instant now) {
+        if (grant.getStatus() == VendorContractGrantStatus.ACTIVE && grant.isExpiredAt(now)) {
+            grant.expire();
         }
     }
 
@@ -473,6 +535,7 @@ public class ShareLinkService {
                 shareLink.getVendor() != null ? shareLink.getVendor().getId() : null,
                 shareLink.getVendor() != null ? shareLink.getVendor().getName() : null,
                 shareLink.getContract() != null ? shareLink.getContract().getId() : null,
+                shareLink.getGrant() != null ? shareLink.getGrant().getId() : null,
                 shareLink.getRecipientLabel(),
                 shareLink.getContractPermission(),
                 status,
@@ -498,6 +561,9 @@ public class ShareLinkService {
             String query,
             ContractPermission permission,
             ShareLinkStatus status,
+            UUID vendorId,
+            UUID contractId,
+            UUID grantId,
             Instant now
     ) {
         return (root, criteriaQuery, criteriaBuilder) -> {
@@ -514,6 +580,15 @@ public class ShareLinkService {
             }
             if (permission != null) {
                 predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("contractPermission"), permission));
+            }
+            if (vendorId != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("vendor").get("id"), vendorId));
+            }
+            if (contractId != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("contract").get("id"), contractId));
+            }
+            if (grantId != null) {
+                predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("grant").get("id"), grantId));
             }
             if (status != null) {
                 predicate = criteriaBuilder.and(predicate, statusPredicate(root, criteriaBuilder, status, now));

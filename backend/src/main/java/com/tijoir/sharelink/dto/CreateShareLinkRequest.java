@@ -13,6 +13,7 @@ public record CreateShareLinkRequest(
         @NotNull ContractPermission permission,
         Instant expiresAt,
         UUID vendorId,
-        UUID contractId
+        UUID contractId,
+        UUID grantId
 ) {
 }

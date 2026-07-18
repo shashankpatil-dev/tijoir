@@ -21,12 +21,27 @@ export type VendorContractResponse = {
   id: string;
   vendorId: string;
   vendorName: string;
+  permission: ContractPermission;
+  grantCount: number;
+  status: VendorContractStatus;
+  expiresAt?: string | null;
+  revokedAt?: string | null;
+  createdAt: string;
+};
+
+export type VendorContractGrantStatus = "ACTIVE" | "REVOKED" | "EXPIRED";
+
+export type VendorContractGrantResponse = {
+  id: string;
+  contractId: string;
+  vendorId: string;
+  vendorName: string;
   secretId: string;
   secretName: string;
   secretKey: string;
   secretType: SecretType;
   permission: ContractPermission;
-  status: VendorContractStatus;
+  status: VendorContractGrantStatus;
   expiresAt?: string | null;
   revokedAt?: string | null;
   createdAt: string;

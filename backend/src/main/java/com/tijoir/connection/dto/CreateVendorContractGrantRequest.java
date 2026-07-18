@@ -4,8 +4,10 @@ import com.tijoir.contract.ContractPermission;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Instant;
+import java.util.UUID;
 
-public record CreateVendorContractRequest(
+public record CreateVendorContractGrantRequest(
+        @NotNull UUID secretId,
         @NotNull ContractPermission permission,
         Instant expiresAt
 ) {

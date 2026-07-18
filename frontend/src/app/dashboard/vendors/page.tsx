@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { useDashboardWorkspaceContext } from "@/features/dashboard/components/dashboard-workspace-context";
 import { CreateVendorContractDialog } from "@/features/vendors/components/create-vendor-contract-dialog";
+import { CreateVendorContractGrantDialog } from "@/features/vendors/components/create-vendor-contract-grant-dialog";
 import { CreateVendorDialog } from "@/features/vendors/components/create-vendor-dialog";
 import { VendorsView } from "@/features/vendors/components/vendors-view";
 import { useVendorsWorkspace } from "@/features/vendors/hooks/use-vendors-workspace";
@@ -37,24 +38,45 @@ export default function DashboardVendorsPage() {
     <>
       <VendorsView
         contractColumns={vendors.contractColumns}
+        grantColumns={vendors.grantColumns}
         contractPage={vendors.contractPage}
         contractPageCount={vendors.contractPageCount}
         contractStatusFilter={vendors.contractStatusFilter}
         contracts={vendors.paginatedVendorContracts}
         contractsLoading={vendors.contractsLoading}
         contractsTotal={vendors.contractsTotal}
+        contractShareActivity={vendors.contractShareActivity}
+        shareActivityColumns={vendors.shareActivityColumns}
+        shareActivityLoading={vendors.shareActivityLoading}
+        shareActivityPage={vendors.shareActivityPage}
+        shareActivityPageCount={vendors.shareActivityPageCount}
+        shareActivityStatusFilter={vendors.shareActivityStatusFilter}
+        shareActivityTotal={vendors.shareActivityTotal}
+        grantPage={vendors.grantPage}
+        grantPageCount={vendors.grantPageCount}
+        grantStatusFilter={vendors.grantStatusFilter}
+        grants={vendors.paginatedVendorGrants}
+        grantsLoading={vendors.grantsLoading}
+        grantsTotal={vendors.grantsTotal}
         loadingWorkspace={vendors.loadingVendors}
         onCloseVendor={() => vendors.setSelectedVendorId("")}
         onCreateContract={vendors.openCreateContract}
+        onCreateGrant={vendors.openCreateGrant}
         onCreateVendor={() => vendors.setCreateVendorOpen(true)}
         onOffboardVendor={() => {
           if (vendors.selectedVendor) {
             vendors.setVendorOffboardTarget(vendors.selectedVendor);
           }
         }}
+        selectedContract={vendors.selectedContract}
         selectedVendor={vendors.selectedVendor}
         setContractPage={vendors.setContractPage}
         setContractStatusFilter={vendors.setContractStatusFilter}
+        setGrantPage={vendors.setGrantPage}
+        setGrantStatusFilter={vendors.setGrantStatusFilter}
+        setShareActivityPage={vendors.setShareActivityPage}
+        setShareActivityStatusFilter={vendors.setShareActivityStatusFilter}
+        setSelectedContractId={vendors.setSelectedContractId}
         setSelectedVendorId={vendors.setSelectedVendorId}
         setVendorPage={vendors.setVendorPage}
         setVendorSearch={vendors.setVendorSearch}
@@ -89,22 +111,35 @@ export default function DashboardVendorsPage() {
         contractExpiry={vendors.contractExpiry}
         contractPermission={vendors.contractPermission}
         contractPermissions={CONTRACT_PERMISSIONS}
-        contractSecretId={vendors.contractSecretId}
         onClose={() => vendors.setCreateContractOpen(false)}
         onSubmit={vendors.handleCreateVendorContract}
         open={vendors.createContractOpen}
-        secrets={vendors.secretOptions}
         selectedVendor={vendors.selectedVendor}
         setContractExpiry={vendors.setContractExpiry}
         setContractPermission={vendors.setContractPermission}
-        setContractSecretId={vendors.setContractSecretId}
+      />
+
+      <CreateVendorContractGrantDialog
+        actionBusy={shell.actionBusy}
+        grantExpiry={vendors.grantExpiry}
+        grantPermission={vendors.grantPermission}
+        grantPermissions={CONTRACT_PERMISSIONS}
+        grantSecretId={vendors.grantSecretId}
+        onClose={() => vendors.setCreateGrantOpen(false)}
+        onSubmit={vendors.handleCreateVendorContractGrant}
+        open={vendors.createGrantOpen}
+        secrets={vendors.secretOptions}
+        selectedContract={vendors.selectedContract}
+        setGrantExpiry={vendors.setGrantExpiry}
+        setGrantPermission={vendors.setGrantPermission}
+        setGrantSecretId={vendors.setGrantSecretId}
       />
 
       <ConfirmDialog
         confirmLabel="Revoke contract"
         description={
           vendors.contractRevokeTarget
-            ? `Revoke the contract for ${vendors.contractRevokeTarget.secretKey}. Future vendor-linked access should stop immediately.`
+            ? `Revoke the contract boundary for ${vendors.contractRevokeTarget.vendorName}. Future vendor-linked access should stop immediately.`
             : ""
         }
         onClose={() => vendors.setContractRevokeTarget(null)}
@@ -134,6 +169,42 @@ export default function DashboardVendorsPage() {
         }}
         open={Boolean(vendors.vendorOffboardTarget)}
         title="Offboard vendor"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Revoke grant"
+        description={
+          vendors.grantRevokeTarget
+            ? `Revoke the secret grant for ${vendors.grantRevokeTarget.secretKey}. Future vendor delivery under this grant should stop immediately.`
+            : ""
+        }
+        onClose={() => vendors.setGrantRevokeTarget(null)}
+        onConfirm={() => {
+          if (vendors.grantRevokeTarget) {
+            void vendors.handleRevokeVendorContractGrant();
+          }
+          vendors.setGrantRevokeTarget(null);
+        }}
+        open={Boolean(vendors.grantRevokeTarget)}
+        title="Revoke secret grant"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Revoke link"
+        description={
+          vendors.shareRevokeTarget
+            ? `Revoke the share delivery for ${vendors.shareRevokeTarget.secretKey}. Recipient access from this contract activity item should stop immediately.`
+            : ""
+        }
+        onClose={() => vendors.setShareRevokeTarget(null)}
+        onConfirm={() => {
+          if (vendors.shareRevokeTarget) {
+            void vendors.handleRevokeShareActivityLink();
+          }
+          vendors.setShareRevokeTarget(null);
+        }}
+        open={Boolean(vendors.shareRevokeTarget)}
+        title="Revoke contract share link"
       />
     </>
   );

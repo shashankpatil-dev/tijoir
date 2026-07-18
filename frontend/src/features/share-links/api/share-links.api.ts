@@ -20,6 +20,9 @@ export async function fetchShareLinksPage(
     query?: string;
     permission?: ContractPermission;
     status?: string;
+    vendorId?: string;
+    contractId?: string;
+    grantId?: string;
   },
 ) {
   const searchParams = new URLSearchParams();
@@ -28,6 +31,9 @@ export async function fetchShareLinksPage(
   if (params.query) searchParams.set("query", params.query);
   if (params.permission) searchParams.set("permission", params.permission);
   if (params.status) searchParams.set("status", params.status);
+  if (params.vendorId) searchParams.set("vendorId", params.vendorId);
+  if (params.contractId) searchParams.set("contractId", params.contractId);
+  if (params.grantId) searchParams.set("grantId", params.grantId);
   return authenticatedApiRequest<PageResponse<ShareLinkResponse>>(
     `/api/share-links?${searchParams.toString()}`,
     accessToken,
@@ -43,6 +49,7 @@ export async function createShareLink(
     expiresAt?: string | null;
     vendorId?: string | null;
     contractId?: string | null;
+    grantId?: string | null;
   },
 ) {
   return authenticatedApiRequest<ShareLinkResponse>(

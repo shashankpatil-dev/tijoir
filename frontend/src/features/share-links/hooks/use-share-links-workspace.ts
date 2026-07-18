@@ -27,9 +27,11 @@ import type {
   ShareLinkResponse,
 } from "@/features/share-links/types/share-links.types";
 import {
+  fetchVendorContractGrantsPage,
   fetchVendorContractsPage,
   fetchVendors,
 } from "@/features/vendors/api/vendors.api";
+import type { VendorContractGrantResponse } from "@/features/vendors/types/vendors.types";
 
 export function useShareLinksWorkspace({
   handleSessionError,
@@ -60,6 +62,7 @@ export function useShareLinksWorkspace({
   const [shareSecretId, setShareSecretId] = useState("");
   const [shareVendorId, setShareVendorId] = useState("");
   const [shareContractId, setShareContractId] = useState("");
+  const [shareGrantId, setShareGrantId] = useState("");
   const [shareRecipientLabel, setShareRecipientLabel] = useState(
     "Primary vendor operator",
   );
@@ -152,18 +155,70 @@ export function useShareLinksWorkspace({
   const selectedContract =
     vendorContractsForShare.find((contract) => contract.id === shareContractId) || null;
 
+  const activeVendorGrantsQuery = useQuery({
+    queryKey: dashboardQueryKeys.vendorContractGrantsPage(sessionAccessToken, shareContractId, {
+      page: 0,
+      size: 100,
+      status: "ACTIVE",
+    }),
+    queryFn: () =>
+      fetchVendorContractGrantsPage(sessionAccessToken as string, shareContractId, {
+        page: 0,
+        size: 100,
+        status: "ACTIVE",
+      }),
+    enabled: Boolean(sessionAccessToken && shareContractId && createShareOpen),
+    placeholderData: (previous) => previous,
+  });
+
+  const vendorGrantsForShare = activeVendorGrantsQuery.data?.items ?? [];
+
+  useEffect(() => {
+    if (activeVendorGrantsQuery.error) {
+      handleSessionError(activeVendorGrantsQuery.error, "Could not load vendor contract grants");
+    }
+  }, [activeVendorGrantsQuery.error, handleSessionError]);
+
   useEffect(() => {
     if (!selectedContract) {
+      if (shareGrantId) {
+        setShareGrantId("");
+      }
       return;
-    }
-
-    if (shareSecretId !== selectedContract.secretId) {
-      setShareSecretId(selectedContract.secretId);
     }
     if (sharePermission !== selectedContract.permission) {
       setSharePermission(selectedContract.permission);
     }
-  }, [selectedContract, sharePermission, shareSecretId]);
+  }, [selectedContract, shareGrantId, sharePermission]);
+
+  useEffect(() => {
+    if (!shareContractId) {
+      if (shareGrantId) {
+        setShareGrantId("");
+      }
+      return;
+    }
+
+    if (shareGrantId && !vendorGrantsForShare.some((grant) => grant.id === shareGrantId)) {
+      setShareGrantId("");
+    }
+  }, [shareContractId, shareGrantId, vendorGrantsForShare]);
+
+  const selectedGrant: VendorContractGrantResponse | null =
+    vendorGrantsForShare.find((grant) => grant.id === shareGrantId) || null;
+
+  useEffect(() => {
+    if (!selectedGrant) {
+      return;
+    }
+
+    if (shareSecretId !== selectedGrant.secretId) {
+      setShareSecretId(selectedGrant.secretId);
+    }
+    if (sharePermission !== selectedGrant.permission) {
+      setSharePermission(selectedGrant.permission);
+    }
+  }, [selectedGrant, sharePermission, shareSecretId]);
 
   const shareLinksPageParams = {
     page: sharePage - 1,
@@ -241,6 +296,7 @@ export function useShareLinksWorkspace({
       expiresAt: string | null;
       vendorId?: string | null;
       contractId?: string | null;
+      grantId?: string | null;
     }) => createShareLink(sessionAccessToken as string, payload),
   });
 
@@ -276,6 +332,10 @@ export function useShareLinksWorkspace({
       setMessage("Select a secret before creating a share link.");
       return;
     }
+    if (shareVendorId && !shareGrantId) {
+      setMessage("Select a contract secret grant before creating vendor delivery.");
+      return;
+    }
 
     setActionBusy("create-share-link");
     setMessage("Creating share link");
@@ -288,6 +348,7 @@ export function useShareLinksWorkspace({
         expiresAt: shareExpiry ? new Date(shareExpiry).toISOString() : null,
         vendorId: shareVendorId || null,
         contractId: shareContractId || null,
+        grantId: shareGrantId || null,
       });
 
       const preview =
@@ -361,6 +422,7 @@ export function useShareLinksWorkspace({
     setSelectedShareLinkId,
     setShareContractId,
     setShareExpiry,
+    setShareGrantId,
     setSharePage,
     setSharePermission,
     setSharePermissionFilter,
@@ -373,6 +435,7 @@ export function useShareLinksWorkspace({
     shareColumns,
     shareContractId,
     shareExpiry,
+    shareGrantId,
     shareLinksAvailable: !(
       shareLinksPageQuery.error instanceof ApiRequestError && shareLinksPageQuery.error.status === 403
     ),
@@ -388,6 +451,7 @@ export function useShareLinksWorkspace({
     shareTotal: filteredShareLinksLength,
     shareVendorId,
     vendorContractsForShare,
+    vendorGrantsForShare,
     vendors: vendorOptions,
   };
 }

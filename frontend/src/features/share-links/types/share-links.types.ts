@@ -16,6 +16,7 @@ export type ShareLinkResponse = {
   vendorId?: string | null;
   vendorName?: string | null;
   contractId?: string | null;
+  grantId?: string | null;
   recipientLabel?: string | null;
   permission: ContractPermission;
   status: ShareLinkStatus;

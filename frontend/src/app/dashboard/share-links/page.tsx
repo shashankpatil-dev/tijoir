@@ -69,6 +69,7 @@ export default function DashboardShareLinksPage() {
       />
 
       <CreateShareLinkDialog
+        activeVendorGrants={share.vendorGrantsForShare}
         activeVendorContracts={share.vendorContractsForShare}
         actionBusy={shell.actionBusy}
         contractPermissions={CONTRACT_PERMISSIONS}
@@ -78,12 +79,14 @@ export default function DashboardShareLinksPage() {
         secrets={share.secrets}
         setShareContractId={share.setShareContractId}
         setShareExpiry={share.setShareExpiry}
+        setShareGrantId={share.setShareGrantId}
         setSharePermission={share.setSharePermission}
         setShareRecipientLabel={share.setShareRecipientLabel}
         setShareSecretId={share.setShareSecretId}
         setShareVendorId={share.setShareVendorId}
         shareContractId={share.shareContractId}
         shareExpiry={share.shareExpiry}
+        shareGrantId={share.shareGrantId}
         sharePermission={share.sharePermission}
         shareRecipientLabel={share.shareRecipientLabel}
         shareSecretId={share.shareSecretId}

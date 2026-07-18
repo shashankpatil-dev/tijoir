@@ -6,6 +6,8 @@ import type { PageResponse } from "@/lib/api/types";
 import type {
   OffboardVendorResponse,
   VendorContractResponse,
+  VendorContractGrantResponse,
+  VendorContractGrantStatus,
   VendorContractStatus,
   VendorResponse,
   VendorStatus,
@@ -74,7 +76,6 @@ export async function createVendorContract(
   accessToken: string,
   vendorId: string,
   payload: {
-    secretId: string;
     permission: ContractPermission;
     expiresAt?: string | null;
   },
@@ -96,6 +97,56 @@ export async function revokeVendorContract(
 ) {
   return authenticatedApiRequest<VendorContractResponse>(
     `/api/vendors/${vendorId}/contracts/${contractId}/revoke`,
+    accessToken,
+    { method: "POST" },
+  );
+}
+
+export async function fetchVendorContractGrantsPage(
+  accessToken: string,
+  contractId: string,
+  params: {
+    page?: number;
+    size?: number;
+    status?: VendorContractGrantStatus;
+  },
+) {
+  const searchParams = new URLSearchParams();
+  if (params.page !== undefined) searchParams.set("page", String(params.page));
+  if (params.size !== undefined) searchParams.set("size", String(params.size));
+  if (params.status) searchParams.set("status", params.status);
+  return authenticatedApiRequest<PageResponse<VendorContractGrantResponse>>(
+    `/api/vendors/contracts/${contractId}/grants?${searchParams.toString()}`,
+    accessToken,
+  );
+}
+
+export async function createVendorContractGrant(
+  accessToken: string,
+  contractId: string,
+  payload: {
+    secretId: string;
+    permission: ContractPermission;
+    expiresAt?: string | null;
+  },
+) {
+  return authenticatedApiRequest<VendorContractGrantResponse>(
+    `/api/vendors/contracts/${contractId}/grants`,
+    accessToken,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function revokeVendorContractGrant(
+  accessToken: string,
+  contractId: string,
+  grantId: string,
+) {
+  return authenticatedApiRequest<VendorContractGrantResponse>(
+    `/api/vendors/contracts/${contractId}/grants/${grantId}/revoke`,
     accessToken,
     { method: "POST" },
   );

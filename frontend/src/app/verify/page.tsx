@@ -73,7 +73,7 @@ export default function VerifyPage() {
         description: "You can log in now.",
         tone: "success",
       });
-      router.push("/login");
+      router.push("/");
     } catch (error) {
       const text = error instanceof Error ? error.message : "Something went wrong";
       showToast({ title: "Verification failed", description: text, tone: "error" });
@@ -126,7 +126,7 @@ export default function VerifyPage() {
           <div className="space-y-4">
             <StatusPanel
               title="Almost there"
-              body="Verifying your email unlocks login and the workspace."
+              body="Verifying your email unlocks  and the workspace."
             />
             <StatusPanel
               title="Where's the link?"
@@ -144,7 +144,7 @@ export default function VerifyPage() {
               Confirm your email
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Verification unlocks login and everything in the workspace.
+              Verification unlocks  and everything in the workspace.
             </p>
           </div>
 
@@ -192,8 +192,8 @@ export default function VerifyPage() {
           <Link className="font-medium text-(--color-brand-strong)" href="/signup">
             Back to signup
           </Link>
-          <Link className="font-medium text-(--color-brand-strong)" href="/login">
-            Continue to login
+          <Link className="font-medium text-(--color-brand-strong)" href="/">
+            Continue to 
           </Link>
         </div>
       </AuthShell>

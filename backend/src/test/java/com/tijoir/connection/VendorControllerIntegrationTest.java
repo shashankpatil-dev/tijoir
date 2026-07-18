@@ -72,10 +72,9 @@ class VendorControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "secretId": "%s",
                                   "permission": "VIEW_UNTIL_REVOKED"
                                 }
-                                """.formatted(secretId)))
+                                """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.vendorName").value("PayU"))
                 .andExpect(jsonPath("$.permission").value("VIEW_UNTIL_REVOKED"))
@@ -84,6 +83,23 @@ class VendorControllerIntegrationTest {
                 .getContentAsString();
 
         String contractId = objectMapper.readTree(contractResponse).get("id").asText();
+
+        String grantResponse = mockMvc.perform(post("/api/vendors/contracts/" + contractId + "/grants")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "secretId": "%s",
+                                  "permission": "VIEW_UNTIL_REVOKED"
+                                }
+                                """.formatted(secretId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.secretKey").value("payu-sftp"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String grantId = objectMapper.readTree(grantResponse).get("id").asText();
 
         String shareResponse = mockMvc.perform(post("/api/share-links")
                         .header("Authorization", "Bearer " + ownerToken)
@@ -94,9 +110,10 @@ class VendorControllerIntegrationTest {
                                   "permission": "VIEW_UNTIL_REVOKED",
                                   "vendorId": "%s",
                                   "contractId": "%s",
+                                  "grantId": "%s",
                                   "recipientLabel": "PayU primary operator"
                                 }
-                                """.formatted(secretId, vendorId, contractId)))
+                                """.formatted(secretId, vendorId, contractId, grantId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.vendorId").value(vendorId))
                 .andExpect(jsonPath("$.contractId").value(contractId))
@@ -116,7 +133,7 @@ class VendorControllerIntegrationTest {
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
-                .andExpect(jsonPath("$.items[0].secretKey").value("payu-sftp"));
+                .andExpect(jsonPath("$.items[0].grantCount").value(1));
 
         mockMvc.perform(post("/api/vendors/" + vendorId + "/offboard")
                         .header("Authorization", "Bearer " + ownerToken))

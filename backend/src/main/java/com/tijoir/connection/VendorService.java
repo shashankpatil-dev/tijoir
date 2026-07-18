@@ -9,9 +9,11 @@ import com.tijoir.common.exception.ApiException;
 import com.tijoir.common.paging.PageRequestFactory;
 import com.tijoir.common.paging.PageResponse;
 import com.tijoir.connection.dto.CreateVendorContractRequest;
+import com.tijoir.connection.dto.CreateVendorContractGrantRequest;
 import com.tijoir.connection.dto.CreateVendorRequest;
 import com.tijoir.connection.dto.OffboardVendorResponse;
 import com.tijoir.connection.dto.VendorContractResponse;
+import com.tijoir.connection.dto.VendorContractGrantResponse;
 import com.tijoir.connection.dto.VendorResponse;
 import com.tijoir.contract.ContractPermission;
 import com.tijoir.organization.OrganizationAuthorizationService;
@@ -43,6 +45,7 @@ import java.util.UUID;
 public class VendorService {
     private final VendorRepository vendorRepository;
     private final VendorAccessContractRepository vendorAccessContractRepository;
+    private final VendorContractSecretGrantRepository vendorContractSecretGrantRepository;
     private final VaultSecretRepository vaultSecretRepository;
     private final ShareLinkRepository shareLinkRepository;
     private final OrganizationAuthorizationService authorizationService;
@@ -53,6 +56,7 @@ public class VendorService {
     public VendorService(
             VendorRepository vendorRepository,
             VendorAccessContractRepository vendorAccessContractRepository,
+            VendorContractSecretGrantRepository vendorContractSecretGrantRepository,
             VaultSecretRepository vaultSecretRepository,
             ShareLinkRepository shareLinkRepository,
             OrganizationAuthorizationService authorizationService,
@@ -62,6 +66,7 @@ public class VendorService {
     ) {
         this.vendorRepository = vendorRepository;
         this.vendorAccessContractRepository = vendorAccessContractRepository;
+        this.vendorContractSecretGrantRepository = vendorContractSecretGrantRepository;
         this.vaultSecretRepository = vaultSecretRepository;
         this.shareLinkRepository = shareLinkRepository;
         this.authorizationService = authorizationService;
@@ -139,6 +144,24 @@ public class VendorService {
         return PageResponse.from(results);
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<VendorContractGrantResponse> listGrants(
+            AuthenticatedUser principal,
+            UUID contractId,
+            Integer page,
+            Integer size,
+            VendorContractGrantStatus status
+    ) {
+        authorizationService.requireVendorManager(principal.role());
+        VendorAccessContract contract = findContract(principal.organizationId(), contractId);
+        Instant now = Instant.now();
+        PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<VendorContractGrantResponse> results = vendorContractSecretGrantRepository
+                .findAll(grantSpec(principal.organizationId(), contract.getId(), status, now), pageRequest)
+                .map(grant -> toGrantResponse(grant, effectiveGrantStatus(grant, now)));
+        return PageResponse.from(results);
+    }
+
     @Transactional
     public VendorContractResponse createContract(
             AuthenticatedUser principal,
@@ -151,20 +174,11 @@ public class VendorService {
         Vendor vendor = findVendor(principal.organizationId(), vendorId);
         ensureVendorActive(vendor);
 
-        VaultSecret secret = vaultSecretRepository.findByIdAndOrganizationId(request.secretId(), principal.organizationId())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Secret not found"));
-        if (secret.getStatus() != SecretStatus.ACTIVE) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor contracts can only be created for active secrets");
-        }
         validateExpiry(request.expiresAt());
-        if (hasActiveContractForSecret(vendorId, secret.getId(), Instant.now())) {
-            throw new ApiException(HttpStatus.CONFLICT, "An active contract already exists for this vendor and secret");
-        }
 
         VendorAccessContract contract = vendorAccessContractRepository.save(new VendorAccessContract(
                 actor.getOrganization(),
                 vendor,
-                secret,
                 actor,
                 request.permission(),
                 request.expiresAt()
@@ -178,13 +192,72 @@ public class VendorService {
                 contract.getId(),
                 toJson(Map.of(
                         "vendorId", vendor.getId(),
-                        "secretId", secret.getId(),
-                        "secretKey", secret.getSecretKey(),
                         "permission", request.permission().name()
                 ))
         ));
 
+        dashboardSummaryService.evict(principal.organizationId());
         return toContractResponse(contract, contract.getStatus());
+    }
+
+    @Transactional
+    public VendorContractGrantResponse createGrant(
+            AuthenticatedUser principal,
+            UUID contractId,
+            CreateVendorContractGrantRequest request
+    ) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireVendorManager(actor.getRole());
+
+        VendorAccessContract contract = findContract(principal.organizationId(), contractId);
+        ensureVendorActive(contract.getVendor());
+        expireContractIfNeeded(contract, Instant.now());
+        if (contract.getStatus() != VendorAccessContractStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Secret grants can only be created for active contracts");
+        }
+
+        VaultSecret secret = vaultSecretRepository.findByIdAndOrganizationId(request.secretId(), principal.organizationId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Secret not found"));
+        if (secret.getStatus() != SecretStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Secret grants can only target active secrets");
+        }
+        validateExpiry(request.expiresAt());
+        if (contract.getContractPermission() != request.permission()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Grant permission must match the parent contract permission");
+        }
+        if (vendorContractSecretGrantRepository.existsByContractIdAndSecretIdAndStatus(contractId, secret.getId(), VendorContractGrantStatus.ACTIVE)) {
+            throw new ApiException(HttpStatus.CONFLICT, "An active secret grant already exists for this contract and secret");
+        }
+        if (hasActiveGrantForVendorSecret(contract.getVendor().getId(), secret.getId(), Instant.now())) {
+            throw new ApiException(HttpStatus.CONFLICT, "An active vendor secret grant already exposes this secret for the vendor");
+        }
+
+        VendorContractSecretGrant grant = vendorContractSecretGrantRepository.save(new VendorContractSecretGrant(
+                actor.getOrganization(),
+                contract,
+                secret,
+                actor,
+                request.permission(),
+                request.expiresAt() != null ? request.expiresAt() : contract.getExpiresAt()
+        ));
+
+        auditEventRepository.save(new AuditEvent(
+                actor.getOrganization(),
+                actor,
+                AuditAction.VENDOR_CONTRACT_GRANT_CREATED,
+                "VENDOR_CONTRACT_SECRET_GRANT",
+                grant.getId(),
+                toJson(Map.of(
+                        "contractId", contract.getId(),
+                        "vendorId", contract.getVendor().getId(),
+                        "secretId", secret.getId(),
+                        "secretKey", secret.getSecretKey(),
+                        "permission", grant.getPermission().name()
+                ))
+        ));
+
+        dashboardSummaryService.evict(principal.organizationId());
+        return toGrantResponse(grant, grant.getStatus());
     }
 
     @Transactional
@@ -202,6 +275,11 @@ public class VendorService {
         expireContractIfNeeded(contract, Instant.now());
         if (contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
             contract.revoke();
+            int revokedGrants = 0;
+            for (VendorContractSecretGrant grant : vendorContractSecretGrantRepository.findAllByContractIdAndStatus(contract.getId(), VendorContractGrantStatus.ACTIVE)) {
+                grant.revoke();
+                revokedGrants++;
+            }
             auditEventRepository.save(new AuditEvent(
                     actor.getOrganization(),
                     actor,
@@ -210,14 +288,52 @@ public class VendorService {
                     contract.getId(),
                     toJson(Map.of(
                             "vendorId", vendor.getId(),
-                            "secretId", contract.getSecret().getId(),
-                            "secretKey", contract.getSecret().getSecretKey(),
-                            "permission", contract.getContractPermission().name()
+                            "permission", contract.getContractPermission().name(),
+                            "revokedGrants", revokedGrants
                     ))
             ));
         }
 
         return toContractResponse(contract, effectiveContractStatus(contract, Instant.now()));
+    }
+
+    @Transactional
+    public VendorContractGrantResponse revokeGrant(
+            AuthenticatedUser principal,
+            UUID contractId,
+            UUID grantId
+    ) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireVendorManager(actor.getRole());
+
+        VendorAccessContract contract = findContract(principal.organizationId(), contractId);
+        VendorContractSecretGrant grant = vendorContractSecretGrantRepository.findByIdAndOrganizationId(grantId, principal.organizationId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract grant not found"));
+        if (!grant.getContract().getId().equals(contract.getId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Vendor contract grant not found");
+        }
+
+        expireGrantIfNeeded(grant, Instant.now());
+        if (grant.getStatus() == VendorContractGrantStatus.ACTIVE) {
+            grant.revoke();
+            auditEventRepository.save(new AuditEvent(
+                    actor.getOrganization(),
+                    actor,
+                    AuditAction.VENDOR_CONTRACT_GRANT_REVOKED,
+                    "VENDOR_CONTRACT_SECRET_GRANT",
+                    grant.getId(),
+                    toJson(Map.of(
+                            "contractId", contract.getId(),
+                            "vendorId", contract.getVendor().getId(),
+                            "secretId", grant.getSecret().getId(),
+                            "secretKey", grant.getSecret().getSecretKey(),
+                            "permission", grant.getPermission().name()
+                    ))
+            ));
+            dashboardSummaryService.evict(principal.organizationId());
+        }
+
+        return toGrantResponse(grant, effectiveGrantStatus(grant, Instant.now()));
     }
 
     @Transactional
@@ -229,11 +345,16 @@ public class VendorService {
         Instant now = Instant.now();
 
         int revokedContracts = 0;
+        int revokedGrants = 0;
         for (VendorAccessContract contract : vendorAccessContractRepository.findAllByVendorIdAndStatus(vendorId, VendorAccessContractStatus.ACTIVE)) {
             expireContractIfNeeded(contract, now);
             if (contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
                 contract.revoke();
                 revokedContracts++;
+            }
+            for (VendorContractSecretGrant grant : vendorContractSecretGrantRepository.findAllByContractIdAndStatus(contract.getId(), VendorContractGrantStatus.ACTIVE)) {
+                grant.revoke();
+                revokedGrants++;
             }
         }
 
@@ -256,6 +377,7 @@ public class VendorService {
                 toJson(Map.of(
                         "vendorName", vendor.getName(),
                         "revokedContracts", revokedContracts,
+                        "revokedGrants", revokedGrants,
                         "revokedShareLinks", revokedShareLinks
                 ))
         ));
@@ -275,6 +397,11 @@ public class VendorService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor not found"));
     }
 
+    private VendorAccessContract findContract(UUID organizationId, UUID contractId) {
+        return vendorAccessContractRepository.findByIdAndOrganizationId(contractId, organizationId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
+    }
+
     private void ensureVendorActive(Vendor vendor) {
         if (vendor.getStatus() != VendorStatus.ACTIVE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor has already been offboarded");
@@ -287,15 +414,27 @@ public class VendorService {
         }
     }
 
-    private boolean hasActiveContractForSecret(UUID vendorId, UUID secretId, Instant now) {
+    private boolean hasActiveGrantForVendorSecret(UUID vendorId, UUID secretId, Instant now) {
         for (VendorAccessContract contract : vendorAccessContractRepository.findAllByVendorIdAndStatus(vendorId, VendorAccessContractStatus.ACTIVE)) {
             expireContractIfNeeded(contract, now);
-            if (contract.getStatus() == VendorAccessContractStatus.ACTIVE
-                    && contract.getSecret().getId().equals(secretId)) {
-                return true;
+            if (contract.getStatus() != VendorAccessContractStatus.ACTIVE) {
+                continue;
+            }
+            for (VendorContractSecretGrant grant : vendorContractSecretGrantRepository.findAllByContractIdAndStatus(contract.getId(), VendorContractGrantStatus.ACTIVE)) {
+                expireGrantIfNeeded(grant, now);
+                if (grant.getStatus() == VendorContractGrantStatus.ACTIVE
+                        && grant.getSecret().getId().equals(secretId)) {
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    private void expireGrantIfNeeded(VendorContractSecretGrant grant, Instant now) {
+        if (grant.getStatus() == VendorContractGrantStatus.ACTIVE && grant.isExpiredAt(now)) {
+            grant.expire();
+        }
     }
 
     private void expireContractIfNeeded(VendorAccessContract contract, Instant now) {
@@ -309,6 +448,13 @@ public class VendorService {
             return VendorAccessContractStatus.EXPIRED;
         }
         return contract.getStatus();
+    }
+
+    private VendorContractGrantStatus effectiveGrantStatus(VendorContractSecretGrant grant, Instant now) {
+        if (grant.getStatus() == VendorContractGrantStatus.ACTIVE && grant.isExpiredAt(now)) {
+            return VendorContractGrantStatus.EXPIRED;
+        }
+        return grant.getStatus();
     }
 
     private VendorResponse toVendorResponse(Vendor vendor) {
@@ -330,15 +476,33 @@ public class VendorService {
                 contract.getId(),
                 contract.getVendor().getId(),
                 contract.getVendor().getName(),
-                contract.getSecret().getId(),
-                contract.getSecret().getName(),
-                contract.getSecret().getSecretKey(),
-                contract.getSecret().getSecretType(),
                 contract.getContractPermission(),
+                vendorContractSecretGrantRepository.findAllByContractIdAndStatus(contract.getId(), VendorContractGrantStatus.ACTIVE).size(),
                 status,
                 contract.getExpiresAt(),
                 contract.getRevokedAt(),
                 contract.getCreatedAt()
+        );
+    }
+
+    private VendorContractGrantResponse toGrantResponse(
+            VendorContractSecretGrant grant,
+            VendorContractGrantStatus status
+    ) {
+        return new VendorContractGrantResponse(
+                grant.getId(),
+                grant.getContract().getId(),
+                grant.getContract().getVendor().getId(),
+                grant.getContract().getVendor().getName(),
+                grant.getSecret().getId(),
+                grant.getSecret().getName(),
+                grant.getSecret().getSecretKey(),
+                grant.getSecret().getSecretType(),
+                grant.getPermission(),
+                status,
+                grant.getExpiresAt(),
+                grant.getRevokedAt(),
+                grant.getCreatedAt()
         );
     }
 
@@ -376,6 +540,22 @@ public class VendorService {
         };
     }
 
+    private Specification<VendorContractSecretGrant> grantSpec(
+            UUID organizationId,
+            UUID contractId,
+            VendorContractGrantStatus status,
+            Instant now
+    ) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.equal(root.get("organization").get("id"), organizationId);
+            predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("contract").get("id"), contractId));
+            if (status != null) {
+                predicate = criteriaBuilder.and(predicate, grantStatusPredicate(root, criteriaBuilder, status, now));
+            }
+            return predicate;
+        };
+    }
+
     private Predicate contractStatusPredicate(
             jakarta.persistence.criteria.Root<VendorAccessContract> root,
             jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder,
@@ -399,6 +579,32 @@ public class VendorService {
                     )
             );
             case REVOKED -> criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.REVOKED);
+        };
+    }
+
+    private Predicate grantStatusPredicate(
+            jakarta.persistence.criteria.Root<VendorContractSecretGrant> root,
+            jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder,
+            VendorContractGrantStatus status,
+            Instant now
+    ) {
+        return switch (status) {
+            case ACTIVE -> criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("status"), VendorContractGrantStatus.ACTIVE),
+                    criteriaBuilder.or(
+                            criteriaBuilder.isNull(root.get("expiresAt")),
+                            criteriaBuilder.greaterThan(root.get("expiresAt"), now)
+                    )
+            );
+            case EXPIRED -> criteriaBuilder.or(
+                    criteriaBuilder.equal(root.get("status"), VendorContractGrantStatus.EXPIRED),
+                    criteriaBuilder.and(
+                            criteriaBuilder.equal(root.get("status"), VendorContractGrantStatus.ACTIVE),
+                            criteriaBuilder.isNotNull(root.get("expiresAt")),
+                            criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), now)
+                    )
+            );
+            case REVOKED -> criteriaBuilder.equal(root.get("status"), VendorContractGrantStatus.REVOKED);
         };
     }
 

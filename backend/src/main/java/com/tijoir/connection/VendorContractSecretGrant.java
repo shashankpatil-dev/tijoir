@@ -20,8 +20,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "vendor_access_contracts")
-public class VendorAccessContract {
+@Table(name = "vendor_contract_secret_grants")
+public class VendorContractSecretGrant {
     @Id
     private UUID id;
 
@@ -30,11 +30,11 @@ public class VendorAccessContract {
     private Organization organization;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "vendor_id", nullable = false)
-    private Vendor vendor;
+    @JoinColumn(name = "contract_id", nullable = false)
+    private VendorAccessContract contract;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "secret_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "secret_id", nullable = false)
     private VaultSecret secret;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -42,12 +42,12 @@ public class VendorAccessContract {
     private UserAccount createdBy;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "contract_permission", nullable = false)
-    private ContractPermission contractPermission;
+    @Column(name = "grant_permission", nullable = false)
+    private ContractPermission permission;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private VendorAccessContractStatus status;
+    private VendorContractGrantStatus status;
 
     private Instant expiresAt;
 
@@ -59,22 +59,24 @@ public class VendorAccessContract {
     @Column(nullable = false)
     private Instant updatedAt;
 
-    protected VendorAccessContract() {
+    protected VendorContractSecretGrant() {
     }
 
-    public VendorAccessContract(
+    public VendorContractSecretGrant(
             Organization organization,
-            Vendor vendor,
+            VendorAccessContract contract,
+            VaultSecret secret,
             UserAccount createdBy,
-            ContractPermission contractPermission,
+            ContractPermission permission,
             Instant expiresAt
     ) {
         this.organization = organization;
-        this.vendor = vendor;
+        this.contract = contract;
+        this.secret = secret;
         this.createdBy = createdBy;
-        this.contractPermission = contractPermission;
+        this.permission = permission;
         this.expiresAt = expiresAt;
-        this.status = VendorAccessContractStatus.ACTIVE;
+        this.status = VendorContractGrantStatus.ACTIVE;
     }
 
     @PrePersist
@@ -100,8 +102,8 @@ public class VendorAccessContract {
         return organization;
     }
 
-    public Vendor getVendor() {
-        return vendor;
+    public VendorAccessContract getContract() {
+        return contract;
     }
 
     public VaultSecret getSecret() {
@@ -112,11 +114,11 @@ public class VendorAccessContract {
         return createdBy;
     }
 
-    public ContractPermission getContractPermission() {
-        return contractPermission;
+    public ContractPermission getPermission() {
+        return permission;
     }
 
-    public VendorAccessContractStatus getStatus() {
+    public VendorContractGrantStatus getStatus() {
         return status;
     }
 
@@ -137,15 +139,15 @@ public class VendorAccessContract {
     }
 
     public void revoke() {
-        if (status != VendorAccessContractStatus.REVOKED) {
-            status = VendorAccessContractStatus.REVOKED;
+        if (status != VendorContractGrantStatus.REVOKED) {
+            status = VendorContractGrantStatus.REVOKED;
             revokedAt = Instant.now();
         }
     }
 
     public void expire() {
-        if (status == VendorAccessContractStatus.ACTIVE) {
-            status = VendorAccessContractStatus.EXPIRED;
+        if (status == VendorContractGrantStatus.ACTIVE) {
+            status = VendorContractGrantStatus.EXPIRED;
         }
     }
 }

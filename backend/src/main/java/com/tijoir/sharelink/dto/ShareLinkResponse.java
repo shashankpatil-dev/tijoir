@@ -16,6 +16,7 @@ public record ShareLinkResponse(
         UUID vendorId,
         String vendorName,
         UUID contractId,
+        UUID grantId,
         String recipientLabel,
         ContractPermission permission,
         ShareLinkStatus status,

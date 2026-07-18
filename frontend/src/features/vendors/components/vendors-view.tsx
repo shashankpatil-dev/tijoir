@@ -20,27 +20,50 @@ import {
   SearchInput,
   TableToolbar,
 } from "@/components/ui/table-controls";
+import type { ShareLinkResponse } from "@/features/share-links/types/share-links.types";
 import type {
   VendorContractResponse,
+  VendorContractGrantResponse,
   VendorResponse,
 } from "@/features/vendors/types/vendors.types";
 
 export function VendorsView({
   contractColumns,
+  grantColumns,
   contractPage,
   contractPageCount,
   contractStatusFilter,
   contracts,
   contractsLoading,
   contractsTotal,
+  contractShareActivity,
+  grantPage,
+  grantPageCount,
+  grantStatusFilter,
+  grants,
+  grantsLoading,
+  grantsTotal,
   loadingWorkspace,
   onCloseVendor,
   onCreateContract,
+  onCreateGrant,
   onCreateVendor,
   onOffboardVendor,
+  shareActivityColumns,
+  shareActivityLoading,
+  shareActivityPage,
+  shareActivityPageCount,
+  shareActivityStatusFilter,
+  shareActivityTotal,
+  selectedContract,
   selectedVendor,
   setContractPage,
   setContractStatusFilter,
+  setGrantPage,
+  setGrantStatusFilter,
+  setShareActivityPage,
+  setShareActivityStatusFilter,
+  setSelectedContractId,
   setSelectedVendorId,
   setVendorPage,
   setVendorSearch,
@@ -55,20 +78,41 @@ export function VendorsView({
   vendorsTotal,
 }: {
   contractColumns: DataTableColumn<VendorContractResponse>[];
+  grantColumns: DataTableColumn<VendorContractGrantResponse>[];
   contractPage: number;
   contractPageCount: number;
   contractStatusFilter: string;
   contracts: VendorContractResponse[];
   contractsLoading: boolean;
   contractsTotal: number;
+  contractShareActivity: ShareLinkResponse[];
+  grantPage: number;
+  grantPageCount: number;
+  grantStatusFilter: string;
+  grants: VendorContractGrantResponse[];
+  grantsLoading: boolean;
+  grantsTotal: number;
   loadingWorkspace: boolean;
   onCloseVendor: () => void;
   onCreateContract: () => void;
+  onCreateGrant: () => void;
   onCreateVendor: () => void;
   onOffboardVendor: () => void;
+  shareActivityColumns: DataTableColumn<ShareLinkResponse>[];
+  shareActivityLoading: boolean;
+  shareActivityPage: number;
+  shareActivityPageCount: number;
+  shareActivityStatusFilter: string;
+  shareActivityTotal: number;
+  selectedContract: VendorContractResponse | null;
   selectedVendor: VendorResponse | null;
   setContractPage: (page: number) => void;
   setContractStatusFilter: (value: string) => void;
+  setGrantPage: (page: number) => void;
+  setGrantStatusFilter: (value: string) => void;
+  setShareActivityPage: (page: number) => void;
+  setShareActivityStatusFilter: (value: string) => void;
+  setSelectedContractId: (value: string) => void;
   setSelectedVendorId: (value: string) => void;
   setVendorPage: (page: number) => void;
   setVendorSearch: (value: string) => void;
@@ -241,7 +285,9 @@ export function VendorsView({
                   emptyDescription="This vendor does not have contract records for the current filters."
                   emptyTitle="No contracts to show"
                   loading={contractsLoading || (loadingWorkspace && !contracts.length)}
+                  onRowClick={(contract) => setSelectedContractId(contract.id)}
                   rowKey={(contract) => contract.id}
+                  selectedRowKey={selectedContract?.id ?? null}
                 />
 
                 <PaginationControls
@@ -251,6 +297,96 @@ export function VendorsView({
                   pageCount={contractPageCount}
                   totalItems={contractsTotal}
                 />
+
+                {selectedContract ? (
+                  <div className="space-y-4 rounded-2xl border border-border bg-(--color-surface) p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-(--color-ink-strong)">
+                          Secret grants
+                        </p>
+                        <p className="text-sm text-muted">
+                          Attach one or more secrets to the selected contract boundary.
+                        </p>
+                      </div>
+                      <Button
+                        disabled={selectedVendor.status !== "ACTIVE"}
+                        onClick={onCreateGrant}
+                        type="button"
+                      >
+                        Create grant
+                      </Button>
+                    </div>
+
+                    <FilterSelect
+                      onChange={setGrantStatusFilter}
+                      options={[
+                        { label: "All statuses", value: "ALL" },
+                        { label: "Active", value: "ACTIVE" },
+                        { label: "Revoked", value: "REVOKED" },
+                        { label: "Expired", value: "EXPIRED" },
+                      ]}
+                      value={grantStatusFilter}
+                    />
+
+                    <DataTable
+                      columns={grantColumns}
+                      data={grants}
+                      emptyDescription="This contract does not have secret grants for the current filters."
+                      emptyTitle="No grants to show"
+                      loading={grantsLoading || (loadingWorkspace && !grants.length)}
+                      rowKey={(grant) => grant.id}
+                    />
+
+                    <PaginationControls
+                      currentPage={grantPage}
+                      itemLabel="grants"
+                      onPageChange={setGrantPage}
+                      pageCount={grantPageCount}
+                      totalItems={grantsTotal}
+                    />
+
+                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-(--color-ink-strong)">
+                          Share activity
+                        </p>
+                        <p className="text-sm text-muted">
+                          Track recipient delivery created under the selected contract.
+                        </p>
+                      </div>
+
+                      <FilterSelect
+                        onChange={setShareActivityStatusFilter}
+                        options={[
+                          { label: "All statuses", value: "ALL" },
+                          { label: "Active", value: "ACTIVE" },
+                          { label: "Consumed", value: "CONSUMED" },
+                          { label: "Revoked", value: "REVOKED" },
+                          { label: "Expired", value: "EXPIRED" },
+                        ]}
+                        value={shareActivityStatusFilter}
+                      />
+
+                      <DataTable
+                        columns={shareActivityColumns}
+                        data={contractShareActivity}
+                        emptyDescription="No delivery activity exists for the selected contract and filters."
+                        emptyTitle="No share activity to show"
+                        loading={shareActivityLoading || (loadingWorkspace && !contractShareActivity.length)}
+                        rowKey={(shareLink) => shareLink.id}
+                      />
+
+                      <PaginationControls
+                        currentPage={shareActivityPage}
+                        itemLabel="share links"
+                        onPageChange={setShareActivityPage}
+                        pageCount={shareActivityPageCount}
+                        totalItems={shareActivityTotal}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </TabsContent>
             </Tabs>
           ) : null}

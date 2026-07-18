@@ -6,6 +6,7 @@ import { formatInstant } from "@/features/dashboard/lib/dashboard-format";
 import type { SecretSummary } from "@/features/secrets/types/secrets.types";
 import type {
   VendorContractResponse,
+  VendorContractGrantResponse,
   VendorResponse,
 } from "@/features/vendors/types/vendors.types";
 
@@ -97,26 +98,17 @@ export function buildVendorContractColumns({
 }): DataTableColumn<VendorContractResponse>[] {
   return [
     {
-      key: "secret",
-      label: "Secret",
+      key: "boundary",
+      label: "Contract",
       sortable: true,
-      sortValue: (contract) => contract.secretName,
+      sortValue: (contract) => `${contract.vendorName}-${contract.permission}`,
       render: (contract) => (
         <div className="space-y-1">
           <p className="font-semibold text-(--color-ink-strong)">
-            {contract.secretName}
+            {contract.permission}
           </p>
-          <p className="text-xs text-muted">{contract.secretKey}</p>
+          <p className="text-xs text-muted">Vendor boundary</p>
         </div>
-      ),
-    },
-    {
-      key: "permission",
-      label: "Permission",
-      sortable: true,
-      sortValue: (contract) => contract.permission,
-      render: (contract) => (
-        <Badge tone={statusTone(contract.permission)}>{contract.permission}</Badge>
       ),
     },
     {
@@ -127,6 +119,13 @@ export function buildVendorContractColumns({
       render: (contract) => (
         <Badge tone={statusTone(contract.status)}>{contract.status}</Badge>
       ),
+    },
+    {
+      key: "grantCount",
+      label: "Grants",
+      sortable: true,
+      sortValue: (contract) => contract.grantCount,
+      render: (contract) => contract.grantCount,
     },
     {
       key: "expiresAt",
@@ -151,6 +150,74 @@ export function buildVendorContractColumns({
             }}
           >
             <span>Revoke contract</span>
+          </MenuItem>
+        </Menu>
+      ),
+    },
+  ];
+}
+
+export function buildVendorGrantColumns({
+  onRevoke,
+}: {
+  onRevoke: (grant: VendorContractGrantResponse) => void;
+}): DataTableColumn<VendorContractGrantResponse>[] {
+  return [
+    {
+      key: "secret",
+      label: "Secret",
+      sortable: true,
+      sortValue: (grant) => grant.secretName,
+      render: (grant) => (
+        <div className="space-y-1">
+          <p className="font-semibold text-(--color-ink-strong)">
+            {grant.secretName}
+          </p>
+          <p className="text-xs text-muted">{grant.secretKey}</p>
+        </div>
+      ),
+    },
+    {
+      key: "permission",
+      label: "Permission",
+      sortable: true,
+      sortValue: (grant) => grant.permission,
+      render: (grant) => (
+        <Badge tone={statusTone(grant.permission)}>{grant.permission}</Badge>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      sortValue: (grant) => grant.status,
+      render: (grant) => (
+        <Badge tone={statusTone(grant.status)}>{grant.status}</Badge>
+      ),
+    },
+    {
+      key: "expiresAt",
+      label: "Expiry",
+      sortable: true,
+      sortValue: (grant) => (grant.expiresAt ? new Date(grant.expiresAt).getTime() : 0),
+      render: (grant) => formatInstant(grant.expiresAt),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (grant) => (
+        <Menu
+          buttonClassName="px-3 py-2 text-xs"
+          label={<span aria-label="Grant actions">•••</span>}
+        >
+          <MenuItem
+            onClick={() => {
+              if (grant.status === "ACTIVE") {
+                onRevoke(grant);
+              }
+            }}
+          >
+            <span>Revoke grant</span>
           </MenuItem>
         </Menu>
       ),
