@@ -7,7 +7,10 @@ export type NotificationDeliveryStatus =
 export type NotificationType =
   | "EMAIL_VERIFICATION"
   | "EMAIL_VERIFICATION_RESEND"
-  | "ORGANIZATION_INVITE";
+  | "ORGANIZATION_INVITE"
+  | "VENDOR_CONTRACT_PROPOSED"
+  | "VENDOR_CONTRACT_ACCEPTED"
+  | "VENDOR_CONTRACT_REJECTED";
 
 export type NotificationSummary = {
   id: string;

@@ -27,6 +27,12 @@ function titleForType(type: NotificationSummary["type"]) {
       return "Verification resend";
     case "ORGANIZATION_INVITE":
       return "Organization invite";
+    case "VENDOR_CONTRACT_PROPOSED":
+      return "Vendor proposal";
+    case "VENDOR_CONTRACT_ACCEPTED":
+      return "Vendor accepted";
+    case "VENDOR_CONTRACT_REJECTED":
+      return "Vendor rejected";
     default:
       return type;
   }
@@ -152,7 +158,7 @@ export function NotificationsView({
           </div>
         ) : (
           <EmptyState
-            description="Verification, invite, and future delivery notifications will appear here."
+            description="Verification, invite, and vendor collaboration notifications will appear here."
             title="No notifications yet"
           />
         )}

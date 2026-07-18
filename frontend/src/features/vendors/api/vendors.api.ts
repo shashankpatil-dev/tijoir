@@ -133,6 +133,17 @@ export async function acceptIncomingVendorContract(
   );
 }
 
+export async function rejectIncomingVendorContract(
+  accessToken: string,
+  contractId: string,
+) {
+  return authenticatedApiRequest<IncomingVendorContractResponse>(
+    `/api/vendors/contracts/${contractId}/reject`,
+    accessToken,
+    { method: "POST" },
+  );
+}
+
 export async function fetchVendorContractGrantsPage(
   accessToken: string,
   contractId: string,

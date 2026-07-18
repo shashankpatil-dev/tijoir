@@ -100,6 +100,14 @@ public class VendorController {
         return vendorService.acceptIncomingContract(user, contractId);
     }
 
+    @PostMapping("/contracts/{contractId}/reject")
+    public IncomingVendorContractResponse rejectIncomingContract(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @PathVariable UUID contractId
+    ) {
+        return vendorService.rejectIncomingContract(user, contractId);
+    }
+
     @GetMapping("/contracts/{contractId}/grants")
     public PageResponse<VendorContractGrantResponse> listGrants(
             @AuthenticationPrincipal AuthenticatedUser user,

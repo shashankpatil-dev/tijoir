@@ -9,6 +9,8 @@ import com.tijoir.notification.email.EmailSender;
 import com.tijoir.notification.email.EmailTemplateFactory;
 import com.tijoir.notification.dto.NotificationResponse;
 import com.tijoir.organization.OrganizationInvite;
+import com.tijoir.organization.UserAccountRepository;
+import com.tijoir.organization.UserRole;
 import com.tijoir.organization.UserAccount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,19 +29,22 @@ public class NotificationService {
     private final NotificationLinkFactory notificationLinkFactory;
     private final EmailTemplateFactory emailTemplateFactory;
     private final EmailSender emailSender;
+    private final UserAccountRepository userAccountRepository;
 
     public NotificationService(
             NotificationRecordRepository notificationRecordRepository,
             NotificationProperties notificationProperties,
             NotificationLinkFactory notificationLinkFactory,
             EmailTemplateFactory emailTemplateFactory,
-            EmailSender emailSender
+            EmailSender emailSender,
+            UserAccountRepository userAccountRepository
     ) {
         this.notificationRecordRepository = notificationRecordRepository;
         this.notificationProperties = notificationProperties;
         this.notificationLinkFactory = notificationLinkFactory;
         this.emailTemplateFactory = emailTemplateFactory;
         this.emailSender = emailSender;
+        this.userAccountRepository = userAccountRepository;
     }
 
     @Transactional(readOnly = true)
@@ -167,6 +172,63 @@ public class NotificationService {
         applyDeliveryResult(record, emailSender.send(message));
     }
 
+    @Transactional
+    public void recordIncomingVendorContractProposed(
+            UserAccount recipient,
+            String ownerOrganizationName,
+            String vendorName
+    ) {
+        recordInAppNotification(
+                recipient,
+                NotificationType.VENDOR_CONTRACT_PROPOSED,
+                "Vendor contract proposal received",
+                "%s proposed a vendor contract for %s that now awaits counterparty review."
+                        .formatted(ownerOrganizationName, vendorName),
+                notificationLinkFactory.dashboardVendorsLink()
+        );
+    }
+
+    @Transactional
+    public void recordVendorContractAccepted(
+            UserAccount recipient,
+            String counterpartyOrganizationName,
+            String vendorName
+    ) {
+        recordInAppNotification(
+                recipient,
+                NotificationType.VENDOR_CONTRACT_ACCEPTED,
+                "Vendor contract accepted",
+                "%s accepted the vendor contract for %s. Grants and vendor delivery can now proceed."
+                        .formatted(counterpartyOrganizationName, vendorName),
+                notificationLinkFactory.dashboardVendorsLink()
+        );
+    }
+
+    @Transactional
+    public void recordVendorContractRejected(
+            UserAccount recipient,
+            String counterpartyOrganizationName,
+            String vendorName
+    ) {
+        recordInAppNotification(
+                recipient,
+                NotificationType.VENDOR_CONTRACT_REJECTED,
+                "Vendor contract rejected",
+                "%s rejected the vendor contract proposal for %s."
+                        .formatted(counterpartyOrganizationName, vendorName),
+                notificationLinkFactory.dashboardVendorsLink()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<UserAccount> listVendorManagersForOrganization(java.util.UUID organizationId) {
+        return userAccountRepository.findAllByOrganizationIdAndDeactivatedAtIsNullOrderByCreatedAtAsc(organizationId).stream()
+                .filter(user -> user.getRole() == UserRole.ORG_OWNER
+                        || user.getRole() == UserRole.ADMIN
+                        || user.getRole() == UserRole.MEMBER)
+                .toList();
+    }
+
     private NotificationResponse toResponse(NotificationRecord record) {
         return new NotificationResponse(
                 record.getId(),
@@ -192,5 +254,29 @@ public class NotificationService {
             return;
         }
         record.markFailed(result.error());
+    }
+
+    private void recordInAppNotification(
+            UserAccount recipient,
+            NotificationType type,
+            String title,
+            String message,
+            String actionUrl
+    ) {
+        if (!notificationProperties.isEnabled()) {
+            return;
+        }
+
+        NotificationRecord record = notificationRecordRepository.save(new NotificationRecord(
+                recipient.getOrganization(),
+                recipient,
+                type,
+                title,
+                message,
+                actionUrl,
+                recipient.getEmail(),
+                NotificationEmailDeliveryStatus.SKIPPED
+        ));
+        record.markSkipped();
     }
 }

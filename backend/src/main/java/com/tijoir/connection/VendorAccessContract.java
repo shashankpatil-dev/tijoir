@@ -166,6 +166,12 @@ public class VendorAccessContract {
         }
     }
 
+    public void rejectByCounterparty() {
+        if (status == VendorAccessContractStatus.PROPOSED) {
+            status = VendorAccessContractStatus.REJECTED;
+        }
+    }
+
     public void expire() {
         if (status == VendorAccessContractStatus.ACTIVE || status == VendorAccessContractStatus.PROPOSED) {
             status = VendorAccessContractStatus.EXPIRED;

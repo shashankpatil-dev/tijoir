@@ -30,6 +30,10 @@ public class NotificationLinkFactory {
         return "%s/reset?token=%s".formatted(publicBaseUrl, encode(rawToken));
     }
 
+    public String dashboardVendorsLink() {
+        return "%s/dashboard/vendors".formatted(publicBaseUrl);
+    }
+
     private String trimTrailingSlash(String value) {
         return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }

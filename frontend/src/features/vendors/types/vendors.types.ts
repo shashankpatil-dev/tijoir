@@ -18,7 +18,12 @@ export type VendorResponse = {
   createdAt: string;
 };
 
-export type VendorContractStatus = "PROPOSED" | "ACTIVE" | "REVOKED" | "EXPIRED";
+export type VendorContractStatus =
+  | "PROPOSED"
+  | "ACTIVE"
+  | "REJECTED"
+  | "REVOKED"
+  | "EXPIRED";
 
 export type VendorContractResponse = {
   id: string;

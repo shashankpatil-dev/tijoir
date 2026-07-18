@@ -33,6 +33,13 @@ export function VendorsView({
   incomingContractColumns,
   incomingContractPage,
   incomingContractPageCount,
+  incomingGrantPage,
+  incomingGrantPageCount,
+  incomingGrantColumns,
+  incomingGrants,
+  incomingGrantsLoading,
+  incomingGrantsTotal,
+  incomingGrantStatusFilter,
   incomingContractStatusFilter,
   incomingContracts,
   incomingContractsLoading,
@@ -57,6 +64,7 @@ export function VendorsView({
   onCreateGrant,
   onCreateVendor,
   onOffboardVendor,
+  selectedIncomingContract,
   shareActivityColumns,
   shareActivityLoading,
   shareActivityPage,
@@ -68,7 +76,10 @@ export function VendorsView({
   setContractPage,
   setContractStatusFilter,
   setIncomingContractPage,
+  setIncomingGrantPage,
+  setIncomingGrantStatusFilter,
   setIncomingContractStatusFilter,
+  setSelectedIncomingContractId,
   setGrantPage,
   setGrantStatusFilter,
   setShareActivityPage,
@@ -91,6 +102,13 @@ export function VendorsView({
   incomingContractColumns: DataTableColumn<IncomingVendorContractResponse>[];
   incomingContractPage: number;
   incomingContractPageCount: number;
+  incomingGrantPage: number;
+  incomingGrantPageCount: number;
+  incomingGrantColumns: DataTableColumn<VendorContractGrantResponse>[];
+  incomingGrants: VendorContractGrantResponse[];
+  incomingGrantsLoading: boolean;
+  incomingGrantsTotal: number;
+  incomingGrantStatusFilter: string;
   incomingContractStatusFilter: string;
   incomingContracts: IncomingVendorContractResponse[];
   incomingContractsLoading: boolean;
@@ -115,6 +133,7 @@ export function VendorsView({
   onCreateGrant: () => void;
   onCreateVendor: () => void;
   onOffboardVendor: () => void;
+  selectedIncomingContract: IncomingVendorContractResponse | null;
   shareActivityColumns: DataTableColumn<ShareLinkResponse>[];
   shareActivityLoading: boolean;
   shareActivityPage: number;
@@ -126,7 +145,10 @@ export function VendorsView({
   setContractPage: (page: number) => void;
   setContractStatusFilter: (value: string) => void;
   setIncomingContractPage: (page: number) => void;
+  setIncomingGrantPage: (page: number) => void;
+  setIncomingGrantStatusFilter: (value: string) => void;
   setIncomingContractStatusFilter: (value: string) => void;
+  setSelectedIncomingContractId: (value: string) => void;
   setGrantPage: (page: number) => void;
   setGrantStatusFilter: (value: string) => void;
   setShareActivityPage: (page: number) => void;
@@ -166,6 +188,7 @@ export function VendorsView({
                 { label: "All statuses", value: "ALL" },
                 { label: "Proposed", value: "PROPOSED" },
                 { label: "Active", value: "ACTIVE" },
+                { label: "Rejected", value: "REJECTED" },
                 { label: "Revoked", value: "REVOKED" },
                 { label: "Expired", value: "EXPIRED" },
               ]}
@@ -179,7 +202,9 @@ export function VendorsView({
             emptyDescription="Linked vendor proposals from other organizations appear here for counterparty review."
             emptyTitle="No incoming proposals to show"
             loading={incomingContractsLoading}
+            onRowClick={(contract) => setSelectedIncomingContractId(contract.id)}
             rowKey={(contract) => contract.id}
+            selectedRowKey={selectedIncomingContract?.id ?? null}
           />
 
           <PaginationControls
@@ -189,6 +214,77 @@ export function VendorsView({
             pageCount={incomingContractPageCount}
             totalItems={incomingContractsTotal}
           />
+
+          {selectedIncomingContract ? (
+            <div className="space-y-4 rounded-2xl border border-border bg-(--color-surface) p-4">
+              <div>
+                <p className="text-sm font-semibold text-(--color-ink-strong)">
+                  Counterparty contract access
+                </p>
+                <p className="text-sm text-muted">
+                  Review the contract boundary and the grants your organization can operate under.
+                </p>
+              </div>
+
+              <DefinitionRows
+                items={[
+                  { label: "Owner organization", value: selectedIncomingContract.ownerOrganizationName },
+                  { label: "Vendor record", value: selectedIncomingContract.vendorName },
+                  { label: "Permission", value: selectedIncomingContract.permission },
+                  { label: "Status", value: selectedIncomingContract.status },
+                  {
+                    label: "Accepted at",
+                    value: selectedIncomingContract.counterpartyAcceptedAt || "Not accepted yet",
+                  },
+                  { label: "Expires at", value: selectedIncomingContract.expiresAt || "No expiry" },
+                ]}
+              />
+
+              {selectedIncomingContract.status === "PROPOSED" ? (
+                <InlineMessage
+                  body="Accept this proposal to activate collaboration. No secret grants will appear until the contract is active."
+                  title="Pending your organization review"
+                  tone="warning"
+                />
+              ) : null}
+
+              {selectedIncomingContract.status === "REJECTED" ? (
+                <InlineMessage
+                  body="This proposal has been closed. The owner organization must issue a fresh contract if collaboration should continue."
+                  title="Proposal rejected"
+                  tone="warning"
+                />
+              ) : null}
+
+              <FilterSelect
+                onChange={setIncomingGrantStatusFilter}
+                options={[
+                  { label: "All grant statuses", value: "ALL" },
+                  { label: "Active", value: "ACTIVE" },
+                  { label: "Revoked", value: "REVOKED" },
+                  { label: "Expired", value: "EXPIRED" },
+                ]}
+                value={incomingGrantStatusFilter}
+              />
+
+              <DataTable
+                columns={incomingGrantColumns}
+                data={incomingGrants}
+                emptyDescription="Grant inventory becomes visible here after the owner organization attaches secrets to this contract."
+                emptyTitle="No grants available yet"
+                loading={incomingGrantsLoading}
+                rowKey={(grant) => grant.id}
+              />
+
+              <PaginationControls
+                currentPage={incomingGrantPage}
+                itemLabel="incoming grants"
+                onPageChange={setIncomingGrantPage}
+                pageCount={incomingGrantPageCount}
+                totalItems={incomingGrantsTotal}
+              />
+            </div>
+          ) : null}
         </div>
       </PageSection>
 
@@ -334,6 +430,7 @@ export function VendorsView({
                       { label: "All statuses", value: "ALL" },
                       { label: "Proposed", value: "PROPOSED" },
                       { label: "Active", value: "ACTIVE" },
+                      { label: "Rejected", value: "REJECTED" },
                       { label: "Revoked", value: "REVOKED" },
                       { label: "Expired", value: "EXPIRED" },
                     ]}
@@ -387,6 +484,14 @@ export function VendorsView({
                       <InlineMessage
                         body="This contract is still waiting for counterparty acceptance. Secret grants and vendor delivery remain blocked until it becomes active."
                         title="Counterparty acceptance required"
+                        tone="warning"
+                      />
+                    ) : null}
+
+                    {selectedContract.status === "REJECTED" ? (
+                      <InlineMessage
+                        body="The counterparty rejected this proposal. Create a fresh contract proposal if the vendor relationship should continue."
+                        title="Proposal rejected"
                         tone="warning"
                       />
                     ) : null}

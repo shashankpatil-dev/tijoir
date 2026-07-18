@@ -343,7 +343,7 @@ function DashboardNotificationsBell({
                 Notifications
               </p>
               <p className="text-xs text-muted">
-                Verification, invite, and access events.
+                Verification, invite, and vendor collaboration events.
               </p>
             </div>
             {unreadCount ? (
@@ -367,11 +367,19 @@ function DashboardNotificationsBell({
           ) : notificationSummary.length ? (
             <div className="space-y-1">
               {notificationSummary.map((notification) => {
-                const Icon = notification.type === "ORGANIZATION_INVITE"
-                  ? UserPlus
-                  : notification.type === "EMAIL_VERIFICATION"
-                    ? ShieldCheck
-                    : Mail;
+                const Icon =
+                  notification.type === "ORGANIZATION_INVITE"
+                    ? UserPlus
+                    : notification.type === "EMAIL_VERIFICATION"
+                      || notification.type === "EMAIL_VERIFICATION_RESEND"
+                      ? ShieldCheck
+                      : notification.type === "VENDOR_CONTRACT_PROPOSED"
+                        ? Building2
+                        : notification.type === "VENDOR_CONTRACT_ACCEPTED"
+                          ? Check
+                          : notification.type === "VENDOR_CONTRACT_REJECTED"
+                            ? Bell
+                            : Mail;
 
                 return (
                   <button

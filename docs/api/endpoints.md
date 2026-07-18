@@ -75,6 +75,8 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 | POST | `/{vendorId}/contracts` | vendor-manager | create access contract (see note) |
 | GET  | `/incoming-contracts` | vendor-manager | list contracts proposed to the current org as counterparty |
 | POST | `/contracts/{contractId}/accept` | vendor-manager | counterparty org accepts a proposed contract |
+| POST | `/contracts/{contractId}/reject` | vendor-manager | counterparty org rejects a proposed contract |
+| GET  | `/contracts/{contractId}/grants` | vendor-manager | owner org or linked counterparty org can inspect grant inventory for an accessible contract |
 | POST | `/{vendorId}/contracts/{contractId}/revoke` | vendor-manager | |
 | POST | `/{vendorId}/offboard` | vendor-manager | revokes active contracts + vendor share links |
 
@@ -82,9 +84,10 @@ implemented controllers — there is **no** `/api/connections` / `/api/contracts
 > - plain CRM vendors still create contracts directly as `ACTIVE`
 > - if a vendor is linked to another onboarded org through `linkedOrganizationSlug`, contracts
 >   start as `PROPOSED`
-> - the linked counterparty org must accept before the contract becomes `ACTIVE`
+> - the linked counterparty org can accept or reject the proposal
+> - only accepted proposals become `ACTIVE`
 > - grant creation and vendor share-link creation stay blocked until the contract is active
-> - status enum: `PROPOSED / ACTIVE / REVOKED / EXPIRED`
+> - status enum: `PROPOSED / ACTIVE / REJECTED / REVOKED / EXPIRED`
 
 ## Audit — `/api/audit-events`
 | Method | Path | Auth | Notes |

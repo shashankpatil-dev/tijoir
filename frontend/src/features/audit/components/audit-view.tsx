@@ -73,6 +73,8 @@ export function AuditView({
                 { label: "SHARE_LINK_REVOKED", value: "SHARE_LINK_REVOKED" },
                 { label: "VENDOR_CREATED", value: "VENDOR_CREATED" },
                 { label: "VENDOR_CONTRACT_CREATED", value: "VENDOR_CONTRACT_CREATED" },
+                { label: "VENDOR_CONTRACT_ACCEPTED", value: "VENDOR_CONTRACT_ACCEPTED" },
+                { label: "VENDOR_CONTRACT_REJECTED", value: "VENDOR_CONTRACT_REJECTED" },
                 { label: "VENDOR_CONTRACT_REVOKED", value: "VENDOR_CONTRACT_REVOKED" },
                 { label: "VENDOR_OFFBOARDED", value: "VENDOR_OFFBOARDED" },
                 { label: "MEMBER_INVITED", value: "MEMBER_INVITED" },

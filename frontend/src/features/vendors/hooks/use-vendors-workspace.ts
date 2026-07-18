@@ -30,6 +30,7 @@ import {
   fetchVendorContractsPage,
   fetchVendorsPage,
   offboardVendor,
+  rejectIncomingVendorContract,
   revokeVendorContract,
   revokeVendorContractGrant,
 } from "@/features/vendors/api/vendors.api";
@@ -62,6 +63,9 @@ export function useVendorsWorkspace({
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [incomingContractStatusFilter, setIncomingContractStatusFilter] = useState("ALL");
   const [incomingContractPage, setIncomingContractPage] = useState(1);
+  const [selectedIncomingContractId, setSelectedIncomingContractId] = useState("");
+  const [incomingGrantStatusFilter, setIncomingGrantStatusFilter] = useState("ALL");
+  const [incomingGrantPage, setIncomingGrantPage] = useState(1);
   const [contractStatusFilter, setContractStatusFilter] = useState("ALL");
   const [contractPage, setContractPage] = useState(1);
   const [selectedContractId, setSelectedContractId] = useState("");
@@ -100,6 +104,10 @@ export function useVendorsWorkspace({
   useEffect(() => {
     setIncomingContractPage(1);
   }, [incomingContractStatusFilter]);
+
+  useEffect(() => {
+    setIncomingGrantPage(1);
+  }, [incomingGrantStatusFilter, selectedIncomingContractId]);
 
   useEffect(() => {
     setContractPage(1);
@@ -188,7 +196,12 @@ export function useVendorsWorkspace({
         status:
           incomingContractStatusFilter === "ALL"
             ? undefined
-            : (incomingContractStatusFilter as "PROPOSED" | "ACTIVE" | "REVOKED" | "EXPIRED"),
+            : (incomingContractStatusFilter as
+                | "PROPOSED"
+                | "ACTIVE"
+                | "REJECTED"
+                | "REVOKED"
+                | "EXPIRED"),
       }),
     enabled: Boolean(sessionAccessToken),
     placeholderData: (previous) => previous,
@@ -210,6 +223,54 @@ export function useVendorsWorkspace({
   const incomingContractPageCount =
     incomingContractsPageQuery.data?.totalPages ??
     pageCount(paginatedIncomingContracts.length, DASHBOARD_ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setSelectedIncomingContractId((current) =>
+      current && paginatedIncomingContracts.some((contract) => contract.id === current) ? current : "",
+    );
+  }, [paginatedIncomingContracts]);
+
+  const selectedIncomingContract =
+    paginatedIncomingContracts.find((contract) => contract.id === selectedIncomingContractId) || null;
+
+  const incomingGrantsPageQuery = useQuery({
+    queryKey: dashboardQueryKeys.vendorContractGrantsPage(
+      sessionAccessToken,
+      selectedIncomingContractId,
+      {
+        page: incomingGrantPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        status: incomingGrantStatusFilter,
+      },
+    ),
+    queryFn: () =>
+      fetchVendorContractGrantsPage(sessionAccessToken as string, selectedIncomingContractId, {
+        page: incomingGrantPage - 1,
+        size: DASHBOARD_ITEMS_PER_PAGE,
+        status:
+          incomingGrantStatusFilter === "ALL"
+            ? undefined
+            : (incomingGrantStatusFilter as "ACTIVE" | "REVOKED" | "EXPIRED"),
+      }),
+    enabled: Boolean(sessionAccessToken && selectedIncomingContractId),
+    placeholderData: (previous) => previous,
+  });
+
+  useEffect(() => {
+    if (incomingGrantsPageQuery.error) {
+      handleSessionError(
+        incomingGrantsPageQuery.error,
+        "Could not load incoming contract secret grants",
+      );
+    }
+  }, [handleSessionError, incomingGrantsPageQuery.error]);
+
+  const incomingContractGrants = incomingGrantsPageQuery.data?.items ?? [];
+  const incomingGrantsTotal =
+    incomingGrantsPageQuery.data?.totalElements ?? incomingContractGrants.length;
+  const incomingGrantPageCount =
+    incomingGrantsPageQuery.data?.totalPages ??
+    pageCount(incomingContractGrants.length, DASHBOARD_ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (!secretOptions.length) {
@@ -237,7 +298,12 @@ export function useVendorsWorkspace({
         status:
           contractStatusFilter === "ALL"
             ? undefined
-            : (contractStatusFilter as "PROPOSED" | "ACTIVE" | "REVOKED" | "EXPIRED"),
+            : (contractStatusFilter as
+                | "PROPOSED"
+                | "ACTIVE"
+                | "REJECTED"
+                | "REVOKED"
+                | "EXPIRED"),
       }),
     enabled: Boolean(sessionAccessToken && selectedVendorId),
     placeholderData: (previous) => previous,
@@ -333,15 +399,15 @@ export function useVendorsWorkspace({
     [],
   );
 
-  const incomingContractColumns = useMemo<DataTableColumn<IncomingVendorContractResponse>[]>(
-    () =>
-      buildIncomingVendorContractColumns({
-        onAccept: (contract) => {
-          void handleAcceptIncomingContract(contract);
-        },
-      }),
-    [],
-  );
+  const incomingContractColumns: DataTableColumn<IncomingVendorContractResponse>[] =
+    buildIncomingVendorContractColumns({
+      onAccept: (contract) => {
+        void handleAcceptIncomingContract(contract);
+      },
+      onReject: (contract) => {
+        void handleRejectIncomingContract(contract);
+      },
+    });
 
   const contractColumns = useMemo<DataTableColumn<VendorContractResponse>[]>(
     () =>
@@ -356,6 +422,11 @@ export function useVendorsWorkspace({
       buildVendorGrantColumns({
         onRevoke: (grant) => setGrantRevokeTarget(grant),
       }),
+    [],
+  );
+
+  const incomingGrantColumns = useMemo<DataTableColumn<VendorContractGrantResponse>[]>(
+    () => buildVendorGrantColumns({}),
     [],
   );
 
@@ -400,6 +471,11 @@ export function useVendorsWorkspace({
   const acceptIncomingVendorContractMutation = useMutation({
     mutationFn: (contractId: string) =>
       acceptIncomingVendorContract(sessionAccessToken as string, contractId),
+  });
+
+  const rejectIncomingVendorContractMutation = useMutation({
+    mutationFn: (contractId: string) =>
+      rejectIncomingVendorContract(sessionAccessToken as string, contractId),
   });
 
   const createVendorContractGrantMutation = useMutation({
@@ -622,6 +698,31 @@ export function useVendorsWorkspace({
     }
   }
 
+  async function handleRejectIncomingContract(contract: IncomingVendorContractResponse) {
+    if (!sessionAccessToken) {
+      router.replace("/dashboard/vendors");
+      return;
+    }
+
+    setActionBusy(`reject-incoming-contract-${contract.id}`);
+    setMessage("Rejecting incoming vendor contract");
+
+    try {
+      const rejected = await rejectIncomingVendorContractMutation.mutateAsync(contract.id);
+      await invalidateVendors();
+      setMessage(`Contract rejected from ${rejected.ownerOrganizationName}.`);
+      showToast({
+        title: "Contract rejected",
+        description: `The proposal from ${rejected.ownerOrganizationName} has been closed and cannot receive grants.`,
+        tone: "warning",
+      });
+    } catch (error) {
+      handleSessionError(error, "Could not reject incoming vendor contract");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
   async function handleCreateVendorContractGrant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sessionAccessToken || !selectedContract) {
@@ -759,6 +860,13 @@ export function useVendorsWorkspace({
     incomingContractColumns,
     incomingContractPage,
     incomingContractPageCount,
+    incomingGrantColumns,
+    incomingGrantPage,
+    incomingGrantPageCount,
+    incomingGrantsLoading:
+      incomingGrantsPageQuery.isLoading || incomingGrantsPageQuery.isFetching,
+    incomingGrantsTotal,
+    incomingGrantStatusFilter,
     incomingContractStatusFilter,
     contractPage,
     contractPageCount,
@@ -800,9 +908,12 @@ export function useVendorsWorkspace({
     shareActivityTotal,
     paginatedVendorGrants: vendorGrants,
     paginatedVendorContracts: vendorContracts,
+    incomingContractGrants,
     paginatedIncomingContracts,
     paginatedVendors,
     secretOptions,
+    selectedIncomingContract,
+    selectedIncomingContractId,
     selectedContract,
     selectedContractId,
     selectedVendor,
@@ -822,11 +933,14 @@ export function useVendorsWorkspace({
     setGrantSecretId,
     setGrantStatusFilter,
     setIncomingContractPage,
+    setIncomingGrantPage,
+    setIncomingGrantStatusFilter,
     setIncomingContractStatusFilter,
     setLinkedOrganizationSlug,
     setShareActivityPage,
     setShareActivityStatusFilter,
     setShareRevokeTarget,
+    setSelectedIncomingContractId,
     setSelectedContractId,
     setSelectedVendorId,
     setVendorContactEmail,

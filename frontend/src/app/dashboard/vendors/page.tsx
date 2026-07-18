@@ -41,6 +41,13 @@ export default function DashboardVendorsPage() {
         incomingContractColumns={vendors.incomingContractColumns}
         incomingContractPage={vendors.incomingContractPage}
         incomingContractPageCount={vendors.incomingContractPageCount}
+        incomingGrantColumns={vendors.incomingGrantColumns}
+        incomingGrantPage={vendors.incomingGrantPage}
+        incomingGrantPageCount={vendors.incomingGrantPageCount}
+        incomingGrants={vendors.incomingContractGrants}
+        incomingGrantsLoading={vendors.incomingGrantsLoading}
+        incomingGrantsTotal={vendors.incomingGrantsTotal}
+        incomingGrantStatusFilter={vendors.incomingGrantStatusFilter}
         incomingContractStatusFilter={vendors.incomingContractStatusFilter}
         incomingContracts={vendors.paginatedIncomingContracts}
         incomingContractsLoading={vendors.incomingContractsLoading}
@@ -75,12 +82,16 @@ export default function DashboardVendorsPage() {
             vendors.setVendorOffboardTarget(vendors.selectedVendor);
           }
         }}
+        selectedIncomingContract={vendors.selectedIncomingContract}
         selectedContract={vendors.selectedContract}
         selectedVendor={vendors.selectedVendor}
         setContractPage={vendors.setContractPage}
         setContractStatusFilter={vendors.setContractStatusFilter}
         setIncomingContractPage={vendors.setIncomingContractPage}
+        setIncomingGrantPage={vendors.setIncomingGrantPage}
+        setIncomingGrantStatusFilter={vendors.setIncomingGrantStatusFilter}
         setIncomingContractStatusFilter={vendors.setIncomingContractStatusFilter}
+        setSelectedIncomingContractId={vendors.setSelectedIncomingContractId}
         setGrantPage={vendors.setGrantPage}
         setGrantStatusFilter={vendors.setGrantStatusFilter}
         setShareActivityPage={vendors.setShareActivityPage}

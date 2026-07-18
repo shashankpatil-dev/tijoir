@@ -22,6 +22,7 @@ import com.tijoir.organization.OrganizationAuthorizationService;
 import com.tijoir.organization.OrganizationRepository;
 import com.tijoir.organization.UserAccount;
 import com.tijoir.dashboard.DashboardSummaryService;
+import com.tijoir.notification.NotificationService;
 import com.tijoir.secret.SecretStatus;
 import com.tijoir.secret.VaultSecret;
 import com.tijoir.secret.VaultSecretRepository;
@@ -55,6 +56,7 @@ public class VendorService {
     private final OrganizationAuthorizationService authorizationService;
     private final AuditEventRepository auditEventRepository;
     private final DashboardSummaryService dashboardSummaryService;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     public VendorService(
@@ -67,6 +69,7 @@ public class VendorService {
             OrganizationAuthorizationService authorizationService,
             AuditEventRepository auditEventRepository,
             DashboardSummaryService dashboardSummaryService,
+            NotificationService notificationService,
             ObjectMapper objectMapper
     ) {
         this.vendorRepository = vendorRepository;
@@ -78,6 +81,7 @@ public class VendorService {
         this.authorizationService = authorizationService;
         this.auditEventRepository = auditEventRepository;
         this.dashboardSummaryService = dashboardSummaryService;
+        this.notificationService = notificationService;
         this.objectMapper = objectMapper;
     }
 
@@ -178,11 +182,11 @@ public class VendorService {
             VendorContractGrantStatus status
     ) {
         authorizationService.requireVendorManager(principal.role());
-        VendorAccessContract contract = findContract(principal.organizationId(), contractId);
+        VendorAccessContract contract = findAccessibleContract(principal.organizationId(), contractId);
         Instant now = Instant.now();
         PageRequest pageRequest = PageRequestFactory.create(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<VendorContractGrantResponse> results = vendorContractSecretGrantRepository
-                .findAll(grantSpec(principal.organizationId(), contract.getId(), status, now), pageRequest)
+                .findAll(grantSpec(contract.getOrganization().getId(), contract.getId(), status, now), pageRequest)
                 .map(grant -> toGrantResponse(grant, effectiveGrantStatus(grant, now)));
         return PageResponse.from(results);
     }
@@ -226,6 +230,16 @@ public class VendorService {
                 contract.getId(),
                 toJson(auditDetails)
         ));
+
+        if (vendor.getLinkedOrganization() != null && initialStatus == VendorAccessContractStatus.PROPOSED) {
+            for (UserAccount manager : notificationService.listVendorManagersForOrganization(vendor.getLinkedOrganization().getId())) {
+                notificationService.recordIncomingVendorContractProposed(
+                        manager,
+                        actor.getOrganization().getName(),
+                        vendor.getName()
+                );
+            }
+        }
 
         dashboardSummaryService.evict(principal.organizationId());
         return toContractResponse(contract, contract.getStatus());
@@ -280,6 +294,80 @@ public class VendorService {
                 contract.getId(),
                 toJson(auditDetails)
         ));
+
+        for (UserAccount manager : notificationService.listVendorManagersForOrganization(contract.getOrganization().getId())) {
+            notificationService.recordVendorContractAccepted(
+                    manager,
+                    actor.getOrganization().getName(),
+                    vendor.getName()
+            );
+        }
+
+        dashboardSummaryService.evict(contract.getOrganization().getId());
+        dashboardSummaryService.evict(actor.getOrganization().getId());
+        return toIncomingContractResponse(contract, contract.getStatus());
+    }
+
+    @Transactional
+    public IncomingVendorContractResponse rejectIncomingContract(AuthenticatedUser principal, UUID contractId) {
+        UserAccount actor = authorizationService.requireActor(principal);
+        authorizationService.requireVendorManager(actor.getRole());
+
+        VendorAccessContract contract = vendorAccessContractRepository.findById(contractId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
+        Vendor vendor = contract.getVendor();
+        Organization linkedOrganization = vendor.getLinkedOrganization();
+        if (linkedOrganization == null || !linkedOrganization.getId().equals(principal.organizationId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Incoming vendor contract not found");
+        }
+
+        ensureVendorActive(vendor);
+        expireContractIfNeeded(contract, Instant.now());
+        if (contract.getStatus() == VendorAccessContractStatus.REJECTED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor contract has already been rejected");
+        }
+        if (contract.getStatus() == VendorAccessContractStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Vendor contract has already been accepted");
+        }
+        if (contract.getStatus() != VendorAccessContractStatus.PROPOSED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only proposed vendor contracts can be rejected");
+        }
+
+        contract.rejectByCounterparty();
+
+        Map<String, Object> auditDetails = new LinkedHashMap<>();
+        auditDetails.put("vendorId", vendor.getId());
+        auditDetails.put("vendorName", vendor.getName());
+        auditDetails.put("ownerOrganizationId", contract.getOrganization().getId());
+        auditDetails.put("ownerOrganizationSlug", contract.getOrganization().getSlug());
+        auditDetails.put("counterpartyOrganizationId", actor.getOrganization().getId());
+        auditDetails.put("counterpartyOrganizationSlug", actor.getOrganization().getSlug());
+        auditDetails.put("permission", contract.getContractPermission().name());
+
+        auditEventRepository.save(new AuditEvent(
+                contract.getOrganization(),
+                actor,
+                AuditAction.VENDOR_CONTRACT_REJECTED,
+                "VENDOR_ACCESS_CONTRACT",
+                contract.getId(),
+                toJson(auditDetails)
+        ));
+        auditEventRepository.save(new AuditEvent(
+                actor.getOrganization(),
+                actor,
+                AuditAction.VENDOR_CONTRACT_REJECTED,
+                "VENDOR_ACCESS_CONTRACT",
+                contract.getId(),
+                toJson(auditDetails)
+        ));
+
+        for (UserAccount manager : notificationService.listVendorManagersForOrganization(contract.getOrganization().getId())) {
+            notificationService.recordVendorContractRejected(
+                    manager,
+                    actor.getOrganization().getName(),
+                    vendor.getName()
+            );
+        }
 
         dashboardSummaryService.evict(contract.getOrganization().getId());
         dashboardSummaryService.evict(actor.getOrganization().getId());
@@ -489,6 +577,19 @@ public class VendorService {
     private VendorAccessContract findContract(UUID organizationId, UUID contractId) {
         return vendorAccessContractRepository.findByIdAndOrganizationId(contractId, organizationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
+    }
+
+    private VendorAccessContract findAccessibleContract(UUID organizationId, UUID contractId) {
+        VendorAccessContract contract = vendorAccessContractRepository.findById(contractId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found"));
+        if (contract.getOrganization().getId().equals(organizationId)) {
+            return contract;
+        }
+        Organization linkedOrganization = contract.getVendor().getLinkedOrganization();
+        if (linkedOrganization != null && linkedOrganization.getId().equals(organizationId)) {
+            return contract;
+        }
+        throw new ApiException(HttpStatus.NOT_FOUND, "Vendor contract not found");
     }
 
     private Organization resolveLinkedOrganization(Organization ownerOrganization, String linkedOrganizationSlug) {
@@ -730,6 +831,7 @@ public class VendorService {
                             criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), now)
                     )
             );
+            case REJECTED -> criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.REJECTED);
             case REVOKED -> criteriaBuilder.equal(root.get("status"), VendorAccessContractStatus.REVOKED);
         };
     }

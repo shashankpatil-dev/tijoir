@@ -26,7 +26,7 @@ Current Tijoir MVP now behaves closer to:
 - one global identity mirrored onto org-scoped workspace users
 - one identity -> many organization memberships
 - invite acceptance attaches to an existing identity when the email already exists
-- vendor collaboration still uses single-sided CRM-style vendor grants, not counterparty org collaboration
+- vendor collaboration now supports linked-org contract proposals with counterparty accept or reject before grants can proceed
 
 The design below is still the recommended direction, but the remaining work is now concentrated far more in vendor collaboration than in core identity.
 
@@ -48,7 +48,7 @@ The target model is still **not implemented end to end**, but the core identity 
 
 The core architecture from this document that still remains:
 
-- [ ] bilateral vendor contract handshake with counterparty acceptance
+- [x] bilateral vendor contract handshake with counterparty accept/reject
 - [ ] vendor org workspace access as a first-class collaboration model
 - [ ] domain-verified trust and stronger managed-account controls
 - [ ] further production email delivery confidence and invite-verification reliability
@@ -696,15 +696,15 @@ Current implemented baseline in the live MVP:
 
 - owner org can create a vendor linked to another onboarded org by `linkedOrganizationSlug`
 - linked-org contracts start as `PROPOSED`
-- the linked counterparty org can list incoming contracts and accept them
-- once accepted, the contract becomes `ACTIVE`
+- the linked counterparty org can list incoming contracts and accept or reject them
+- the linked counterparty org can inspect accepted incoming contracts and the attached grant inventory from its own workspace
+- accepted proposals become `ACTIVE`, rejected proposals become `REJECTED`
 - grant creation remains blocked until the contract is active
 
 ### Remaining Phase C - strengthen trust and delivery around collaboration
 
 - improve email/invite delivery confidence for collaboration and onboarding
-- add clearer acceptance/revocation surfaces in frontend flows
-- improve end-to-end tests around linked vendor collaboration and offboarding
+- improve end-to-end coverage across linked vendor collaboration, notifications, and offboarding
 
 ### Remaining Phase D - strengthen trust and operations
 

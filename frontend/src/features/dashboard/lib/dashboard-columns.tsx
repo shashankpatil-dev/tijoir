@@ -162,8 +162,10 @@ export function buildVendorContractColumns({
 
 export function buildIncomingVendorContractColumns({
   onAccept,
+  onReject,
 }: {
   onAccept: (contract: IncomingVendorContractResponse) => void;
+  onReject: (contract: IncomingVendorContractResponse) => void;
 }): DataTableColumn<IncomingVendorContractResponse>[] {
   return [
     {
@@ -226,6 +228,12 @@ export function buildIncomingVendorContractColumns({
           >
             <span>Accept proposal</span>
           </MenuItem>
+          <MenuItem
+            disabled={contract.status !== "PROPOSED"}
+            onClick={() => onReject(contract)}
+          >
+            <span>Reject proposal</span>
+          </MenuItem>
         </Menu>
       ),
     },
@@ -235,9 +243,9 @@ export function buildIncomingVendorContractColumns({
 export function buildVendorGrantColumns({
   onRevoke,
 }: {
-  onRevoke: (grant: VendorContractGrantResponse) => void;
+  onRevoke?: (grant: VendorContractGrantResponse) => void;
 }): DataTableColumn<VendorContractGrantResponse>[] {
-  return [
+  const columns: DataTableColumn<VendorContractGrantResponse>[] = [
     {
       key: "secret",
       label: "Secret",
@@ -277,7 +285,10 @@ export function buildVendorGrantColumns({
       sortValue: (grant) => (grant.expiresAt ? new Date(grant.expiresAt).getTime() : 0),
       render: (grant) => formatInstant(grant.expiresAt),
     },
-    {
+  ];
+
+  if (onRevoke) {
+    columns.push({
       key: "actions",
       label: "Actions",
       render: (grant) => (
@@ -296,8 +307,10 @@ export function buildVendorGrantColumns({
           </MenuItem>
         </Menu>
       ),
-    },
-  ];
+    });
+  }
+
+  return columns;
 }
 
 export function buildAuditColumns(): DataTableColumn<AuditEventResponse>[] {
