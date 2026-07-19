@@ -120,19 +120,19 @@ variable "notification_expose_dev_tokens" {
 variable "notification_email_enabled" {
   description = "Enable transactional email delivery."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "notification_email_provider" {
   description = "Transactional email provider."
   type        = string
-  default     = "noop"
+  default     = "ses"
 }
 
 variable "notification_email_from_address" {
   description = "Verified sender email address for transactional notifications."
   type        = string
-  default     = "no-reply@localhost"
+  default     = "shashankpatil.dev@gmail.com"
 }
 
 variable "google_client_id" {

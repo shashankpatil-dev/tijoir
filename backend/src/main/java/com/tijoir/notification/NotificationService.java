@@ -172,6 +172,7 @@ public class NotificationService {
                 invite.getExpiresAt()
         );
         applyDeliveryResult(record, emailSender.send(message));
+        recordExistingRecipientInviteNotification(actor, invite, actionUrl, resend);
     }
 
     @Transactional
@@ -325,5 +326,29 @@ public class NotificationService {
                 NotificationEmailDeliveryStatus.SKIPPED
         ));
         record.markSkipped();
+    }
+
+    private void recordExistingRecipientInviteNotification(
+            UserAccount actor,
+            OrganizationInvite invite,
+            String actionUrl,
+            boolean resend
+    ) {
+        for (UserAccount recipient : userAccountRepository.findAllByEmailIgnoreCaseAndDeactivatedAtIsNull(invite.getEmail())) {
+            if (recipient.getId().equals(actor.getId())) {
+                continue;
+            }
+            recordInAppNotification(
+                    recipient,
+                    NotificationType.ORGANIZATION_INVITE,
+                    resend ? "Organization invite resent" : "Organization invite received",
+                    resend
+                            ? "%s sent a fresh invitation to join %s."
+                            .formatted(actor.getName(), actor.getOrganization().getName())
+                            : "%s invited you to join %s."
+                            .formatted(actor.getName(), actor.getOrganization().getName()),
+                    actionUrl
+            );
+        }
     }
 }

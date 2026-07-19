@@ -354,6 +354,14 @@ class OrganizationControllerIntegrationTest {
 
         String inviteToken = objectMapper.readTree(secondOrgInviteResponse).get("inviteToken").asText();
 
+        mockMvc.perform(get("/api/notifications")
+                        .header("Authorization", "Bearer " + firstOrgSessionToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].type").value("ORGANIZATION_INVITE"))
+                .andExpect(jsonPath("$.items[0].title").value("Organization invite received"))
+                .andExpect(jsonPath("$.items[0].message").value("Owner User invited you to join Beta Org."))
+                .andExpect(jsonPath("$.items[0].actionUrl").value("http://localhost:3000/invite?token=" + inviteToken));
+
         String acceptedResponse = mockMvc.perform(post("/api/organization/invites/accept")
                         .header("Authorization", "Bearer " + firstOrgSessionToken)
                         .contentType(MediaType.APPLICATION_JSON)
