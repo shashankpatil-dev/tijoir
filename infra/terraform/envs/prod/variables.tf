@@ -126,13 +126,20 @@ variable "notification_email_enabled" {
 variable "notification_email_provider" {
   description = "Transactional email provider."
   type        = string
-  default     = "ses"
+  default     = "brevo"
 }
 
 variable "notification_email_from_address" {
   description = "Verified sender email address for transactional notifications."
   type        = string
   default     = "shashankpatil.dev@gmail.com"
+}
+
+variable "notification_email_brevo_api_key" {
+  description = "Brevo transactional email API key."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "google_client_id" {

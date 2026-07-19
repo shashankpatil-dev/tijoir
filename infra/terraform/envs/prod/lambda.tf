@@ -159,6 +159,7 @@ resource "aws_lambda_function" "backend" {
       TIJOIR_NOTIFICATION_EMAIL_ENABLED              = tostring(var.notification_email_enabled)
       TIJOIR_NOTIFICATION_EMAIL_PROVIDER             = var.notification_email_provider
       TIJOIR_NOTIFICATION_EMAIL_FROM_ADDRESS         = var.notification_email_from_address
+      BREVO_API_KEY                                  = var.notification_email_brevo_api_key
       TIJOIR_NOTIFICATION_EMAIL_VERIFICATION_ENABLED = tostring(var.notification_email_enabled)
       TIJOIR_NOTIFICATION_EMAIL_INVITES_ENABLED      = tostring(var.notification_email_enabled)
       DB_POOL_MAX_SIZE                               = "2"

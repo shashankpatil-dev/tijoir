@@ -32,6 +32,8 @@ public class NotificationProperties {
         private boolean enabled = true;
         private String provider = "noop";
         private String fromAddress = "no-reply@localhost";
+        private String fromName = "Tijoir";
+        private String brevoApiKey = "";
         private final Feature verification = new Feature(true);
         private final Feature invites = new Feature(true);
 
@@ -57,6 +59,22 @@ public class NotificationProperties {
 
         public void setFromAddress(String fromAddress) {
             this.fromAddress = fromAddress;
+        }
+
+        public String getFromName() {
+            return fromName;
+        }
+
+        public void setFromName(String fromName) {
+            this.fromName = fromName;
+        }
+
+        public String getBrevoApiKey() {
+            return brevoApiKey;
+        }
+
+        public void setBrevoApiKey(String brevoApiKey) {
+            this.brevoApiKey = brevoApiKey;
         }
 
         public Feature getVerification() {

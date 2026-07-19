@@ -53,6 +53,8 @@ tijoir:
       enabled: ${TIJOIR_NOTIFICATION_EMAIL_ENABLED:true}
       provider: ${TIJOIR_NOTIFICATION_EMAIL_PROVIDER:noop}
       from-address: ${TIJOIR_NOTIFICATION_EMAIL_FROM_ADDRESS:no-reply@localhost}
+      from-name: ${TIJOIR_NOTIFICATION_EMAIL_FROM_NAME:Tijoir}
+      brevo-api-key: ${BREVO_API_KEY:}
       verification:
         enabled: ${TIJOIR_NOTIFICATION_EMAIL_VERIFICATION_ENABLED:true}
       invites:

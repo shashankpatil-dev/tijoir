@@ -21,7 +21,7 @@ lambda_timeout                = 30
 notifications_enabled         = true
 notification_expose_dev_tokens = true
 notification_email_enabled    = false
-notification_email_provider   = "noop"
+notification_email_provider   = "brevo"
 notification_email_from_address = "no-reply@example.com"
 
 # Google Sign-In (public OAuth Web client ID). Blank disables Google.
