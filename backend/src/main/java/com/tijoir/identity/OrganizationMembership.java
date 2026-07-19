@@ -42,7 +42,7 @@ public class OrganizationMembership {
     @Column(nullable = false)
     private OrganizationMembershipStatus status;
 
-    @Column(nullable = false)
+    @Column(name = "is_managed_member", nullable = false)
     private boolean managedMember;
 
     @Column(nullable = false)
