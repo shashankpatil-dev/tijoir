@@ -5,14 +5,12 @@ on:
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/backend-prod-deploy.yml"
   push:
     branches:
       - main
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/backend-prod-deploy.yml"
   workflow_dispatch:
 
 permissions:
